@@ -1,0 +1,49 @@
+{
+  "name": "brighton-backend",
+  "version": "1.0.0",
+  "description": "Senior-care backend - Secure orchestration layer for external APIs",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "build": "echo 'No build step required for this application'",
+    "test": "mocha src/tests/**/*.test.js --exit",
+    "create-db": "node src/scripts/create-database.js",
+    "migrate": "npm run create-db && sequelize-cli db:migrate",
+    "migrate:undo": "sequelize-cli db:migrate:undo",
+    "migrate:undo:all": "sequelize-cli db:migrate:undo:all",
+    "migrate:status": "sequelize-cli db:migrate:status"
+  },
+  "dependencies": {
+    "@aws-sdk/client-ses": "^3.787.0",
+    "@aws-sdk/client-sns": "^3.787.0",
+    "axios": "^1.6.7",
+    "bcrypt": "^5.1.1",
+    "body-parser": "^1.19.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.1",
+    "express": "^4.17.1",
+    "express-rate-limit": "^7.1.5",
+    "firebase-admin": "^12.6.0",
+    "helmet": "^7.1.0",
+    "ioredis": "^5.4.1",
+    "jsonwebtoken": "^9.0.2",
+    "moment": "^2.30.1",
+    "node-cron": "^3.0.3",
+    "nodemailer": "^6.9.12",
+    "pg": "^8.11.3",
+    "pg-hstore": "^2.3.4",
+    "sequelize": "^6.37.5"
+  },
+  "devDependencies": {
+    "chai": "^5.1.1",
+    "mocha": "^10.7.3",
+    "nodemon": "^2.0.22",
+    "sequelize-cli": "^6.6.1",
+    "sinon": "^19.0.2",
+    "supertest": "^7.0.0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

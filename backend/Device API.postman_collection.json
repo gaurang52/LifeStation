@@ -1,0 +1,449 @@
+{
+  "info": {
+    "_postman_id": "7363c138-e9ea-4d22-81fa-66ead33584ee",
+    "name": "Device API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "45930524"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = JSON.parse(pm.response.text());",
+              "pm.environment.set(\"access_token\", jsonData.access_token);",
+              "pm.environment.set(\"refresh_token\", jsonData.refresh_token);"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "grant_type",
+              "value": "password",
+              "type": "text"
+            },
+            {
+              "key": "username",
+              "value": "{{username}}",
+              "type": "text"
+            },
+            {
+              "key": "password",
+              "value": "{{vault:accountAPIpassword}}",
+              "type": "text"
+            },
+            {
+              "key": "client_id",
+              "value": "brighton-api",
+              "type": "text"
+            }
+          ]
+        },
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/token",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["token"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Refresh",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = JSON.parse(pm.response.text());",
+              "pm.environment.set(\"access_token\", jsonData.access_token);",
+              "pm.environment.set(\"refresh_token\", jsonData.refresh_token);"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "grant_type",
+              "value": "password",
+              "type": "text"
+            },
+            {
+              "key": "client_id",
+              "value": "brighton-api",
+              "type": "text"
+            },
+            {
+              "key": "refresh_token",
+              "value": "{{refresh_token}}",
+              "type": "text"
+            }
+          ]
+        },
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/token/refresh",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["token", "refresh"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Devices",
+      "protocolProfileBehavior": {
+        "disabledSystemHeaders": {}
+      },
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/device",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["device"],
+          "query": [
+            {
+              "key": "page",
+              "value": "3",
+              "disabled": true
+            },
+            {
+              "key": "servco",
+              "value": "880888",
+              "disabled": true
+            },
+            {
+              "key": "corp_id",
+              "value": "null",
+              "disabled": true
+            },
+            {
+              "key": "status",
+              "value": "null",
+              "disabled": true
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Device Read",
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true,
+        "disabledSystemHeaders": {}
+      },
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": []
+        },
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/device/{{id_type}}/{{id}}",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["device", "{{id_type}}", "{{id}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Device Get Most Recent Information",
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true,
+        "disabledSystemHeaders": {}
+      },
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": []
+        },
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/device/{{id_type}}/{{id}}/recent",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["device", "{{id_type}}", "{{id}}", "recent"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Device Request Signal",
+      "protocolProfileBehavior": {
+        "disabledSystemHeaders": {}
+      },
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": []
+        },
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/device/{{id_type}}/{{id}}/signal",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["device", "{{id_type}}", "{{id}}", "signal"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Device Get Fall Detection Status",
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true,
+        "disabledSystemHeaders": {}
+      },
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": []
+        },
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/device/{{id_type}}/{{id}}/falldetection",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["device", "{{id_type}}", "{{id}}", "falldetection"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Device Turn On Fall Detection",
+      "protocolProfileBehavior": {
+        "disabledSystemHeaders": {}
+      },
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": []
+        },
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/device/{{id_type}}/{{id}}/falldetection",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["device", "{{id_type}}", "{{id}}", "falldetection"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Device Turn Off Fall Detection",
+      "protocolProfileBehavior": {
+        "disabledSystemHeaders": {}
+      },
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": []
+        },
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/device/{{id_type}}/{{id}}/falldetection",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["device", "{{id_type}}", "{{id}}", "falldetection"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "SIM Read",
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true,
+        "disabledSystemHeaders": {}
+      },
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": []
+        },
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/sim/{{id_type}}/{{id}}",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["sim", "{{id_type}}", "{{id}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "SIM Activate",
+      "protocolProfileBehavior": {
+        "disabledSystemHeaders": {}
+      },
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": []
+        },
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/sim/{{id_type}}/{{id}}/activate",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["sim", "{{id_type}}", "{{id}}", "activate"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "SIM Deactivate",
+      "protocolProfileBehavior": {
+        "disabledSystemHeaders": {}
+      },
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": []
+        },
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/sim/{{id_type}}/{{id}}/deactivate",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["sim", "{{id_type}}", "{{id}}", "deactivate"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Add Device",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"device_imei\" : \"861475032341820\",\n    \"sim_iccid\": \"89010303300042917022\",\n    \"device_type\" : 95,\n    \"sim_action\" : \"none\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/device/",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["device", ""]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Device Reboot",
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true,
+        "disabledSystemHeaders": {}
+      },
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": []
+        },
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/device/{{id_type}}/{{id}}/reboot",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["device", "{{id_type}}", "{{id}}", "reboot"]
+        }
+      },
+      "response": []
+    }
+  ]
+}

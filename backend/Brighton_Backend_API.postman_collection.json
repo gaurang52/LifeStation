@@ -1,0 +1,419 @@
+{
+  "info": {
+    "_postman_id": "brighton-backend-api-collection",
+    "name": "Brighton Backend API",
+    "description": "Complete API collection for Brighton Senior-Care Backend",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "brighton-backend"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Signup",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set(\"access_token\", jsonData.token);",
+                  "    pm.environment.set(\"refresh_token\", jsonData.refresh_token);",
+                  "    pm.environment.set(\"user_id\", jsonData.user.id);",
+                  "    pm.environment.set(\"user_type\", jsonData.user.user_type);",
+                  "    console.log(\"User registered and token saved to environment\");",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"John Doe\",\n    \"email\": \"john.doe@example.com\",\n    \"password\": \"password123\",\n    \"user_type\": \"senior\",\n    \"mobile\": \"+1234567890\",\n    \"address\": \"123 Main St, City, State\",\n    \"gender\": \"male\",\n    \"fcm_token\": \"optional_fcm_token\",\n    \"platform\": \"ios\",\n    \"privacy_accepted\": true,\n    \"terms_accepted\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/signup",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "signup"]
+            },
+            "description": "Register a new user account. Required fields: name, email, password, user_type, privacy_accepted, terms_accepted. user_type must be one of: ADMIN, SUPER_ADMIN, caregiver, senior"
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set(\"access_token\", jsonData.token);",
+                  "    pm.environment.set(\"refresh_token\", jsonData.refresh_token);",
+                  "    pm.environment.set(\"user_id\", jsonData.user.id);",
+                  "    pm.environment.set(\"user_type\", jsonData.user.user_type);",
+                  "    console.log(\"Token saved to environment\");",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"senior@example.com\",\n    \"password\": \"password123\",\n    \"fcm_token\": \"optional_fcm_token\",\n    \"platform\": \"ios\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "description": "Authenticate user and receive JWT token"
+          },
+          "response": []
+        }
+      ],
+      "description": "Authentication endpoints"
+    },
+    {
+      "name": "Devices",
+      "item": [
+        {
+          "name": "Create Device",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.environment.set(\"device_id\", jsonData.device.device_id);",
+                  "    pm.environment.set(\"device_id_type\", jsonData.device.id_type);",
+                  "    console.log(\"Device ID saved to environment\");",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"device_imei\": \"861475032341820\",\n    \"sim_iccid\": \"89010303300042917022\",\n    \"device_type\": 95,\n    \"sim_action\": \"none\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/devices",
+              "host": ["{{base_url}}"],
+              "path": ["devices"]
+            },
+            "description": "Register a new device with the external Device API"
+          },
+          "response": []
+        },
+        {
+          "name": "List Devices",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/devices?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["devices"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page number (default: 1)"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Items per page (default: 10, max: 100)"
+                }
+              ]
+            },
+            "description": "Get all devices accessible to the authenticated user"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Device by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/devices/{{device_id_type}}/{{device_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["devices", "{{device_id_type}}", "{{device_id}}"]
+            },
+            "description": "Get specific device details by ID. id_type can be: imei, serial, or uuid"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Fall Detection Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/devices/{{device_id_type}}/{{device_id}}/fall-detection",
+              "host": ["{{base_url}}"],
+              "path": ["devices", "{{device_id_type}}", "{{device_id}}", "fall-detection"]
+            },
+            "description": "Get fall detection status for a device"
+          },
+          "response": []
+        },
+        {
+          "name": "Enable Fall Detection",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"enabled\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/devices/{{device_id_type}}/{{device_id}}/fall-detection",
+              "host": ["{{base_url}}"],
+              "path": ["devices", "{{device_id_type}}", "{{device_id}}", "fall-detection"]
+            },
+            "description": "Enable fall detection for a device"
+          },
+          "response": []
+        },
+        {
+          "name": "Disable Fall Detection",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"enabled\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/devices/{{device_id_type}}/{{device_id}}/fall-detection",
+              "host": ["{{base_url}}"],
+              "path": ["devices", "{{device_id_type}}", "{{device_id}}", "fall-detection"]
+            },
+            "description": "Disable fall detection for a device"
+          },
+          "response": []
+        }
+      ],
+      "description": "Device management endpoints"
+    },
+    {
+      "name": "Vitals",
+      "item": [
+        {
+          "name": "Get Recent Vitals",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/vitals/recent?senior_id={{senior_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["vitals", "recent"],
+              "query": [
+                {
+                  "key": "senior_id",
+                  "value": "{{senior_id}}",
+                  "description": "Senior user ID (required)",
+                  "disabled": false
+                }
+              ]
+            },
+            "description": "Get recent vitals and alerts for a senior"
+          },
+          "response": []
+        }
+      ],
+      "description": "Vitals and health data endpoints"
+    },
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            },
+            "description": "Check service health status"
+          },
+          "response": []
+        }
+      ],
+      "description": "Health check endpoints"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refresh_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "user_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "user_type",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "device_id",
+      "value": "861475032341820",
+      "type": "string"
+    },
+    {
+      "key": "device_id_type",
+      "value": "imei",
+      "type": "string"
+    },
+    {
+      "key": "senior_id",
+      "value": "1",
+      "type": "string"
+    }
+  ]
+}

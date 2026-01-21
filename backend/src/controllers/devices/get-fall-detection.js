@@ -1,0 +1,69 @@
+const deviceApiService = require('../../services/device-api.service');
+const accessControlService = require('../../services/access-control.service');
+const auditLogService = require('../../services/audit-log.service');
+const logger = require('../../utils/logger');
+const { isValidIdType } = require('../../utils/validators');
+
+const getFallDetection = async (req, res) => {
+  try {
+    const { id_type, id } = req.params;
+    const userId = req.user_id;
+
+    if (!id || !id_type) {
+      return res.status(400).json({ error: 'Device ID and id_type are required' });
+    }
+
+    if (!isValidIdType(id_type)) {
+      return res.status(400).json({ error: 'Invalid id_type. Must be: imei, serial, or uuid' });
+    }
+
+    // Check access control
+    const canAccess = await accessControlService.canUserAccessDevice(userId, id, id_type);
+
+    if (!canAccess) {
+      return res.status(403).json({
+        error: 'Access denied: You do not have permission to access this device',
+      });
+    }
+
+    // Get fall detection status from Device API
+    try {
+      const fallDetection = await deviceApiService.getFallDetection(id_type, id);
+
+      // Log audit entry
+      await auditLogService.log({
+        user_id: userId,
+        action: 'fall_detection_access',
+        resource_type: 'device',
+        resource_id: id,
+        external_api: 'device',
+        request_method: 'GET',
+        request_path: `/devices/${id_type}/${id}/fall-detection`,
+        response_status: 200,
+        ip_address: req.ip,
+        user_agent: req.get('user-agent'),
+      });
+
+      res.status(200).json({
+        device_id: id,
+        id_type,
+        fall_detection_enabled: fallDetection.enabled || false,
+        status: fallDetection.status,
+      });
+    } catch (error) {
+      logger.error('Error fetching fall detection from Device API:', error);
+      res.status(500).json({
+        error: 'Failed to fetch fall detection status from external service',
+        message: error.message,
+      });
+    }
+  } catch (error) {
+    logger.error('Error in get-fall-detection:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error.message,
+    });
+  }
+};
+
+module.exports = getFallDetection;

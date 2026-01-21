@@ -1,0 +1,183 @@
+const deviceApiService = require('../../services/device-api.service');
+const db = require('../../models');
+const accessControlService = require('../../services/access-control.service');
+const auditLogService = require('../../services/audit-log.service');
+const dataNormalizationService = require('../../services/data-normalization.service');
+const logger = require('../../utils/logger');
+const { isValidIdType, isValidIMEI } = require('../../utils/validators');
+
+const addDevice = async (req, res) => {
+  try {
+    const { device_imei, sim_iccid, device_type, sim_action = 'none' } = req.body;
+    const userId = req.user_id;
+
+    // Validate input
+    if (!device_imei) {
+      return res.status(400).json({ error: 'device_imei is required' });
+    }
+
+    if (!isValidIMEI(device_imei)) {
+      return res.status(400).json({ error: 'Invalid IMEI format' });
+    }
+
+    // Validate user is a senior
+    const user = await db.Users.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (user.user_type !== 'senior') {
+      return res.status(403).json({ error: 'Only seniors can register devices' });
+    }
+
+    // Check if device already exists locally
+    let device = await db.Devices.findOne({
+      where: {
+        device_id: device_imei,
+        id_type: 'imei',
+      },
+    });
+
+    if (device) {
+      // Device exists, check if already mapped to user
+      const existingMapping = await db.UserDeviceMapping.findOne({
+        where: {
+          user_id: userId,
+          device_id: device.id,
+        },
+      });
+
+      if (existingMapping) {
+        return res.status(200).json({
+          message: 'Device already registered and mapped to user',
+          device: {
+            device_id: device_imei,
+            id_type: 'imei',
+            status: device.status,
+            name: device.name,
+          },
+        });
+      }
+    }
+
+    // Register device with Device API
+    // Build request body matching Postman collection exactly (omit null/undefined values)
+    const deviceData = {
+      device_imei,
+      sim_action,
+    };
+
+    // Only include optional fields if they have values (matching Postman collection structure)
+    if (sim_iccid) {
+      deviceData.sim_iccid = sim_iccid;
+    }
+    if (device_type !== null && device_type !== undefined) {
+      deviceData.device_type = device_type;
+    }
+
+    let externalDevice;
+    try {
+      externalDevice = await deviceApiService.addDevice(deviceData);
+    } catch (error) {
+      logger.error('Error adding device via Device API:', error);
+      return res.status(500).json({
+        error: 'Failed to register device with external service',
+        message: error.message,
+      });
+    }
+
+    // Normalize status value from external API
+    const validStatuses = ['active', 'inactive', 'pending', 'deactivated', 'error'];
+    const normalizedStatus =
+      externalDevice.status && validStatuses.includes(externalDevice.status.toLowerCase())
+        ? externalDevice.status.toLowerCase()
+        : 'active';
+
+    // Store device locally
+    if (!device) {
+      device = await db.Devices.create({
+        device_id: device_imei,
+        id_type: 'imei',
+        device_imei,
+        device_serial: externalDevice.serial || null,
+        device_uuid: externalDevice.uuid || null,
+        name: externalDevice.name || null,
+        sim_iccid: sim_iccid || null,
+        device_type: device_type || null,
+        servco_no: user.servco_no || null,
+        status: normalizedStatus,
+        battery_level: externalDevice.battery_level || null,
+        signal_strength: externalDevice.signal_strength || null,
+        last_seen: externalDevice.last_seen || new Date(),
+        device_metadata: externalDevice.metadata || {},
+        last_synced_at: new Date(),
+      });
+    } else {
+      // Update existing device with normalized status
+      const updateStatus =
+        externalDevice.status && validStatuses.includes(externalDevice.status.toLowerCase())
+          ? externalDevice.status.toLowerCase()
+          : device.status;
+
+      await device.update({
+        device_serial: externalDevice.serial || device.device_serial,
+        device_uuid: externalDevice.uuid || device.device_uuid,
+        name: externalDevice.name || device.name,
+        sim_iccid: sim_iccid || device.sim_iccid,
+        device_type: device_type || device.device_type,
+        status: updateStatus,
+        battery_level: externalDevice.battery_level || device.battery_level,
+        signal_strength: externalDevice.signal_strength || device.signal_strength,
+        last_seen: externalDevice.last_seen || device.last_seen,
+        device_metadata: externalDevice.metadata || device.device_metadata,
+        last_synced_at: new Date(),
+      });
+    }
+
+    // Create user-device mapping
+    await db.UserDeviceMapping.create({
+      user_id: userId,
+      device_id: device.id,
+      external_device_id: device_imei,
+      id_type: 'imei',
+      cs_no: user.cs_no || null,
+    });
+
+    // Log audit entry
+    await auditLogService.log({
+      user_id: userId,
+      action: 'device_registered',
+      resource_type: 'device',
+      resource_id: device_imei,
+      external_api: 'device',
+      request_method: 'POST',
+      request_path: '/devices',
+      response_status: 200,
+      ip_address: req.ip,
+      user_agent: req.get('user-agent'),
+    });
+
+    logger.info(`Device registered: ${device_imei} for user ${userId}`);
+
+    res.status(200).json({
+      message: 'Device registered successfully',
+      device: {
+        id: device.id,
+        device_id: device_imei,
+        id_type: 'imei',
+        name: device.name,
+        status: device.status,
+        battery_level: device.battery_level,
+        signal_strength: device.signal_strength,
+      },
+    });
+  } catch (error) {
+    logger.error('Error in add-device:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error.message,
+    });
+  }
+};
+
+module.exports = addDevice;

@@ -1,0 +1,352 @@
+{
+  "info": {
+    "_postman_id": "73c5421b-648a-4831-ba63-25abaa293301",
+    "name": "ReportsAPI",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "45930524"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = JSON.parse(pm.response.text());",
+              "pm.environment.set(\"access_token\", jsonData.access_token);",
+              "pm.environment.set(\"refresh_token\", jsonData.refresh_token);",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "grant type",
+              "value": "password",
+              "type": "text"
+            },
+            {
+              "key": "username",
+              "value": "{{username}}",
+              "type": "text"
+            },
+            {
+              "key": "password",
+              "value": "{{vault:accountAPIpassword}}",
+              "type": "text"
+            },
+            {
+              "key": "client_id",
+              "value": "affiliated-report",
+              "type": "text"
+            }
+          ]
+        },
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/token",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["token"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Refresh",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = JSON.parse(pm.response.text());",
+              "pm.environment.set(\"access_token\", jsonData.access_token);",
+              "pm.environment.set(\"refresh_token\", jsonData.refresh_token);"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "grant_type",
+              "value": "password",
+              "type": "text"
+            },
+            {
+              "key": "client_id",
+              "value": "affiliated-report",
+              "type": "text"
+            },
+            {
+              "key": "refresh_token",
+              "value": "{{refresh_token}}",
+              "type": "text"
+            }
+          ]
+        },
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/token/refresh",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["token", "refresh"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Recent",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/report/recent/{{cs_no}}",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["report", "recent", "{{cs_no}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "History Create",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var response = JSON.parse(responseBody);",
+              "if (response && 'report_id' in response) {",
+              "    postman.setEnvironmentVariable('report_id', JSON.parse(responseBody).report_id);",
+              "}",
+              "    ",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n\t\"servco_no\": \"880900\",\n\t\"before\": \"2017-10-11 00:00:00\",\n\t\"after\": \"2017-10-01 00:00:00\",\n\t\"cs_start\": \"0000000\",\n\t\"cs_end\": \"9999999\",\n\t\"signal_type\": [\"TT\",\"TF\"],\n\t\"title\": \"Test Report TT TF w/corpacct\"\n}"
+        },
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/report/history",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["report", "history"]
+        },
+        "description": "Documentation from the PhP validation function:\n    /**\n     * Validates a request for an ssrs_event_history_report_v2 via the REST API.  Descriptions of validations in the example.\n     * Unspecified parameters are ignored.  Data must be sent as raw JSON.\n     *\n     * @uses php://input\n     * @uses self::eventrpt_ids\n     * @throws Exception when validation fails (details in the example)\n     * @param string $username The secuser in MAS\n     * @example POST input {\n     *  @type string $before              (optional) A datestamp in format \"YYYY/MM/DD HH:mm:SS\".  Filters out events in all subsequent dates.\n     *                                      @throws Exception if the string is not in that format or if it does not correspond to a calendar date.\n     *                                      Defaults to time of request.\n     *  @type string $after               (optional) Same as $before but filters events on dates previous.  Defaults to today - 30 days.\n     *  @type array $signaltype           (optional) An array of strings.  Each item must be a string and correspond to a MAStermind\n     *                                      [event_report_code][eventrpt_id], which are cached in Oauth_reports::eventrpt_ids_cachename.\n     *                                      @throws Exception if not an array or if a non-string in the array or if a non-eventrpt_id is in the string.\n     *  @type string $cs_start            (optional) A cs_no that represents the beginning of a range of cs_nos.  @throws Exception if present w/o cs_end or is not\n     *                                      a string.\n     *  @type string $cs_end              (optional) @throws Exception if not a string or is present w/o cs_start, otherwise same as $cs_start.\n     *  @type string $servco_no           (optional) @throws Exception if not a string.\n     *  @type string $corpacct_servco_no  (optional) @throws Exception if not a string.\n     *  @type string $title               (optional) defaults to APIReport<<timestamp>> @throws Exception if string exceeds 40 char limit\n     * }\n     * @return array The validated parameters re-formed for the SSRS server.\n     */"
+      },
+      "response": []
+    },
+    {
+      "name": "History Ready",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/report/history/{{report_id}}/ready",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["report", "history", "{{report_id}}", "ready"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "History Get",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/report/history/{{report_id}}",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["report", "history", "{{report_id}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Signal Types",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/report/signal_types",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["report", "signal_types"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Accounts Create",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var response = JSON.parse(responseBody);\r",
+              "if (response && 'report_id' in response) {\r",
+              "    postman.setEnvironmentVariable('report_id', JSON.parse(responseBody).report_id);\r",
+              "}"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"Report_Title\": \"Accounts Report\",\n    \"OOS_Status\": \"Both\",\n    \"ShowAddress\": \"true\",\n    \"ShowPhones\": \"true\"\n  }"
+        },
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/report/account",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["report", "account"]
+        },
+        "description": "{\n    \"Report_Title\": \"Accounts Report\",\n    \"OOS_Status\": \"In Service\",\n    \"ShowAddress\": \"true\",\n    \"ShowPhones\": \"true\",\n    \"servco_no\":null, // optional\n    \"corpacct_servco_no\":null //optional\n    \"active_date_start\":\"Y-m-d H:i:s\", // optional\n    \"active_date_end\":\"Y-m-d H:i:s\", / optional\n  }"
+      },
+      "response": []
+    },
+    {
+      "name": "Accounts Ready",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "tests['200 Respone Code'] = responseCode.code === 200;",
+              "var jsonData = pm.response.json();",
+              "console.log(jsonData);"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/report/account/{{report_id}}/ready",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["report", "account", "{{report_id}}", "ready"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Accounts Get",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [""],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/report/account/{{report_id}}",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["report", "account", "{{report_id}}"]
+        }
+      },
+      "response": []
+    }
+  ]
+}
