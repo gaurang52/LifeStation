@@ -1,0 +1,8 @@
+node_modules
+ios
+android
+build
+dist
+*.lock
+*.log
+.env*
