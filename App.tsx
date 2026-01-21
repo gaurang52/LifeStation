@@ -1,6 +1,6 @@
 import 'react-native-gesture-handler';
 import '@core/api/setup';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -36,9 +36,19 @@ const Auth = () => (
   </AuthStack.Navigator>
 );
 
-const App = (): JSX.Element => {
+const App = (): React.JSX.Element => {
   const isAuthenticated = useAuthStore(state => state.isAuthenticated);
   const hasHydrated = useAuthStore(state => state._hasHydrated);
+
+  // Safety fallback: if hydration doesn't complete within 3 seconds, force it
+  useEffect(() => {
+    if (!hasHydrated) {
+      const timeout = setTimeout(() => {
+        useAuthStore.setState({ _hasHydrated: true });
+      }, 3000);
+      return () => clearTimeout(timeout);
+    }
+  }, [hasHydrated]);
 
   if (!hasHydrated) {
     return (

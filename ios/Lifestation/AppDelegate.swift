@@ -24,7 +24,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     window = UIWindow(frame: UIScreen.main.bounds)
 
     factory.startReactNative(
-      withModuleName: "RN082Tmp",
+      withModuleName: "Lifestation",
       in: window,
       launchOptions: launchOptions
     )

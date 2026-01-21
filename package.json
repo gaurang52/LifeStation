@@ -1,6 +1,6 @@
 {
-  "name": "lifestation",
-  "version": "1.0.0",
+  "name": "Lifestation",
+  "version": "0.0.1",
   "private": true,
   "scripts": {
     "android": "react-native run-android",
@@ -8,67 +8,56 @@
     "lint": "eslint .",
     "start": "react-native start",
     "test": "jest",
-    "android:debug": "cd android && ./gradlew assembleDebug",
-    "android:release": "cd android && ./gradlew assembleRelease",
-    "ios:pod": "cd ios && pod install",
-    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,md}\"",
-    "format:check": "prettier --check \"**/*.{js,jsx,ts,tsx,json,md}\"",
-    "prepare": "husky install"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepare": "husky"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^1.22.3",
-    "@react-navigation/bottom-tabs": "^6.6.1",
-    "@react-navigation/native": "^6.1.18",
-    "@react-navigation/stack": "^6.4.1",
-    "@testing-library/jest-native": "^5.4.3",
-    "@testing-library/react-native": "^13.3.3",
-    "axios": "^1.13.2",
-    "react": "^18.2.0",
-    "react-native": "0.82.0",
+    "@react-native/new-app-screen": "0.83.1",
+    "@react-navigation/bottom-tabs": "^7.10.1",
+    "@react-navigation/native": "^7.1.28",
+    "@react-navigation/stack": "^7.6.16",
+    "react": "19.2.0",
+    "react-native": "0.83.1",
     "react-native-dotenv": "^3.4.11",
     "react-native-gesture-handler": "^2.30.0",
-    "react-native-safe-area-context": "^4.14.1",
-    "react-native-screens": "^3.37.0",
+    "react-native-safe-area-context": "^5.5.2",
     "zustand": "^4.5.7"
   },
   "devDependencies": {
-    "@babel/core": "^7.23.7",
-    "@babel/preset-env": "^7.23.7",
-    "@babel/runtime": "^7.23.7",
-    "@react-native/babel-preset": "^0.82.0",
-    "@react-native/eslint-config": "^0.73.2",
-    "@react-native/metro-config": "^0.82.0",
-    "@react-native/typescript-config": "^0.82.0",
-    "@types/jest": "^30.0.0",
-    "@types/react": "^18.2.45",
-    "@types/react-test-renderer": "^18.0.7",
-    "@typescript-eslint/eslint-plugin": "^6.15.0",
-    "@typescript-eslint/parser": "^6.15.0",
-    "babel-jest": "^29.7.0",
+    "@babel/core": "^7.25.2",
+    "@babel/preset-env": "^7.25.3",
+    "@babel/runtime": "^7.25.0",
+    "@react-native-community/cli": "20.0.0",
+    "@react-native-community/cli-platform-android": "20.0.0",
+    "@react-native-community/cli-platform-ios": "20.0.0",
+    "@react-native/babel-preset": "0.83.1",
+    "@react-native/eslint-config": "0.83.1",
+    "@react-native/metro-config": "0.83.1",
+    "@react-native/typescript-config": "0.83.1",
+    "@types/jest": "^29.5.13",
+    "@types/react": "^19.2.0",
+    "@types/react-test-renderer": "^19.1.0",
+    "axios": "^1.13.2",
     "babel-plugin-module-resolver": "^5.0.2",
-    "eslint": "^8.56.0",
-    "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-prettier": "^5.1.2",
-    "eslint-plugin-react": "^7.33.2",
-    "eslint-plugin-react-hooks": "^4.6.0",
-    "eslint-plugin-react-native": "^4.1.0",
+    "eslint": "^8.19.0",
+    "eslint-plugin-prettier": "^5.5.5",
     "husky": "^9.0.11",
-    "jest": "^29.7.0",
-    "lint-staged": "^15.2.10",
-    "prettier": "^3.1.1",
-    "react-test-renderer": "18.2.0",
-    "typescript": "^5.3.3"
-  },
-  "engines": {
-    "node": ">=18"
+    "jest": "^29.6.3",
+    "lint-staged": "^15.5.2",
+    "prettier": "2.8.8",
+    "react-test-renderer": "19.2.0",
+    "typescript": "^5.8.3"
   },
   "lint-staged": {
-    "**/*.{js,jsx,ts,tsx}": [
-      "eslint --fix",
-      "prettier --write"
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --fix"
     ],
-    "**/*.{json,md}": [
+    "*.{js,jsx,ts,tsx,json,md,yml,yaml}": [
       "prettier --write"
     ]
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

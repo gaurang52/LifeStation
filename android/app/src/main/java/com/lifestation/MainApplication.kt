@@ -1,4 +1,4 @@
-package com.rn082tmp
+package com.lifestation
 
 import android.app.Application
 import com.facebook.react.PackageList

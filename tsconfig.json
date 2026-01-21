@@ -3,6 +3,7 @@
   "compilerOptions": {
     "target": "esnext",
     "lib": ["es2017"],
+    "types": ["react", "react-native", "jest"],
     "allowJs": true,
     "jsx": "react-native",
     "noEmit": true,
@@ -12,7 +13,6 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "resolveJsonModule": true,
-    "types": ["jest"],
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],

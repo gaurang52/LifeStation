@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-               BuildableName = "RN082Tmp.app"
-               BlueprintName = "RN082Tmp"
-               ReferencedContainer = "container:RN082Tmp.xcodeproj">
+               BuildableName = "Lifestation.app"
+               BlueprintName = "Lifestation"
+               ReferencedContainer = "container:Lifestation.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -33,9 +33,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "00E356ED1AD99517003FC87E"
-               BuildableName = "RN082TmpTests.xctest"
-               BlueprintName = "RN082TmpTests"
-               ReferencedContainer = "container:RN082Tmp.xcodeproj">
+               BuildableName = "LifestationTests.xctest"
+               BlueprintName = "LifestationTests"
+               ReferencedContainer = "container:Lifestation.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -55,9 +55,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "RN082Tmp.app"
-            BlueprintName = "RN082Tmp"
-            ReferencedContainer = "container:RN082Tmp.xcodeproj">
+            BuildableName = "Lifestation.app"
+            BlueprintName = "Lifestation"
+            ReferencedContainer = "container:Lifestation.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -72,9 +72,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "RN082Tmp.app"
-            BlueprintName = "RN082Tmp"
-            ReferencedContainer = "container:RN082Tmp.xcodeproj">
+            BuildableName = "Lifestation.app"
+            BlueprintName = "Lifestation"
+            ReferencedContainer = "container:Lifestation.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>
