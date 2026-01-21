@@ -37,5 +37,16 @@ module.exports = {
       files: ['*.config.js', '.eslintrc.js'],
       rules: { '@typescript-eslint/no-var-requires': 'off' },
     },
+    {
+      files: ['backend/**/*.js'],
+      env: { node: true },
+      rules: {
+        '@typescript-eslint/no-var-requires': 'off',
+        '@typescript-eslint/no-unused-vars': 'warn',
+        'no-undef': 'off',
+        radix: 'off',
+        'no-new': 'off',
+      },
+    },
   ],
 };
