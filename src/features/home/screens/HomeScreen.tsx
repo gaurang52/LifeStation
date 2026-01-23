@@ -15,7 +15,7 @@ import {
   Card,
   TopNavbar,
   DeviceStatusBar,
-  MapViewComponent,
+  // MapViewComponent, // TODO: Uncomment after fixing Google Maps API key configuration
 } from '@shared/components';
 import { useAuthStore } from '@core/store';
 import { spacing, colors } from '@shared/theme';
@@ -485,56 +485,57 @@ const HomeScreen: React.FC = () => {
     return 'event';
   };
 
-  const getLastLocation = (): { latitude: number; longitude: number } => {
-    // Priority 1: Use GPS location from telemetry (device recent endpoint)
-    if (deviceInfo?.location?.latitude && deviceInfo.location.longitude) {
-      const lat =
-        typeof deviceInfo.location.latitude === 'string'
-          ? parseFloat(deviceInfo.location.latitude)
-          : deviceInfo.location.latitude;
-      const lng =
-        typeof deviceInfo.location.longitude === 'string'
-          ? parseFloat(deviceInfo.location.longitude)
-          : deviceInfo.location.longitude;
+  // TODO: Uncomment when MapViewComponent is re-enabled
+  // const getLastLocation = (): { latitude: number; longitude: number } => {
+  //   // Priority 1: Use GPS location from telemetry (device recent endpoint)
+  //   if (deviceInfo?.location?.latitude && deviceInfo.location.longitude) {
+  //     const lat =
+  //       typeof deviceInfo.location.latitude === 'string'
+  //         ? parseFloat(deviceInfo.location.latitude)
+  //         : deviceInfo.location.latitude;
+  //     const lng =
+  //       typeof deviceInfo.location.longitude === 'string'
+  //         ? parseFloat(deviceInfo.location.longitude)
+  //         : deviceInfo.location.longitude;
 
-      if (!isNaN(lat) && !isNaN(lng) && lat !== null && lng !== null) {
-        console.log('HomeScreen - Using deviceInfo location:', {
-          lat,
-          lng,
-          original: deviceInfo.location,
-        });
-        return { latitude: lat, longitude: lng };
-      }
-    }
+  //     if (!isNaN(lat) && !isNaN(lng) && lat !== null && lng !== null) {
+  //       console.log('HomeScreen - Using deviceInfo location:', {
+  //         lat,
+  //         lng,
+  //         original: deviceInfo.location,
+  //       });
+  //       return { latitude: lat, longitude: lng };
+  //     }
+  //   }
 
-    // Priority 2: Find the most recent location event
-    const locationEvent = events.find(
-      e => e.eventtype?.toLowerCase().includes('location') && e.rawevent?.location,
-    );
-    if (locationEvent?.rawevent?.location) {
-      const lat =
-        typeof locationEvent.rawevent.location.latitude === 'string'
-          ? parseFloat(locationEvent.rawevent.location.latitude)
-          : locationEvent.rawevent.location.latitude;
-      const lng =
-        typeof locationEvent.rawevent.location.longitude === 'string'
-          ? parseFloat(locationEvent.rawevent.location.longitude)
-          : locationEvent.rawevent.location.longitude;
+  //   // Priority 2: Find the most recent location event
+  //   const locationEvent = events.find(
+  //     e => e.eventtype?.toLowerCase().includes('location') && e.rawevent?.location,
+  //   );
+  //   if (locationEvent?.rawevent?.location) {
+  //     const lat =
+  //       typeof locationEvent.rawevent.location.latitude === 'string'
+  //         ? parseFloat(locationEvent.rawevent.location.latitude)
+  //         : locationEvent.rawevent.location.latitude;
+  //     const lng =
+  //       typeof locationEvent.rawevent.location.longitude === 'string'
+  //         ? parseFloat(locationEvent.rawevent.location.longitude)
+  //         : locationEvent.rawevent.location.longitude;
 
-      if (!isNaN(lat) && !isNaN(lng) && lat !== null && lng !== null) {
-        console.log('HomeScreen - Using location event:', { lat, lng, event: locationEvent });
-        return { latitude: lat, longitude: lng };
-      }
-    }
+  //     if (!isNaN(lat) && !isNaN(lng) && lat !== null && lng !== null) {
+  //       console.log('HomeScreen - Using location event:', { lat, lng, event: locationEvent });
+  //       return { latitude: lat, longitude: lng };
+  //     }
+  //   }
 
-    // Temporary default location (San Francisco) when no location is available
-    console.log('HomeScreen - Using default location (no valid location found)', {
-      deviceInfoLocation: deviceInfo?.location,
-      eventsCount: events.length,
-      locationEvents: events.filter(e => e.eventtype?.toLowerCase().includes('location')),
-    });
-    return { latitude: 37.78825, longitude: -122.4324 };
-  };
+  //   // Temporary default location (San Francisco) when no location is available
+  //   console.log('HomeScreen - Using default location (no valid location found)', {
+  //     deviceInfoLocation: deviceInfo?.location,
+  //     eventsCount: events.length,
+  //     locationEvents: events.filter(e => e.eventtype?.toLowerCase().includes('location')),
+  //   });
+  //   return { latitude: 37.78825, longitude: -122.4324 };
+  // };
 
   const renderContent = () => {
     if (loading && !refreshing) {
@@ -594,7 +595,7 @@ const HomeScreen: React.FC = () => {
         lastUpdate: activeDevice.last_seen || undefined,
       };
 
-      const location = getLastLocation();
+      // const location = getLastLocation(); // TODO: Uncomment when MapViewComponent is re-enabled
       return (
         <>
           {/* Device Status Bar */}
@@ -728,6 +729,7 @@ const HomeScreen: React.FC = () => {
             </View>
           </Card>
 
+          {/* TODO: Temporarily commented out - uncomment after fixing Google Maps API key configuration
           <MapViewComponent
             latitude={location.latitude}
             longitude={location.longitude}
@@ -735,6 +737,7 @@ const HomeScreen: React.FC = () => {
             showMarker={true}
             markerTitle="Device Location"
           />
+          */}
           <Card style={styles.eventsCard}>
             <View style={styles.eventsHeader}>
               <MaterialIcons name="event" size={20} color={colors.primary} />
@@ -783,7 +786,7 @@ const HomeScreen: React.FC = () => {
       return null;
     }
 
-    const location = getLastLocation();
+    // const location = getLastLocation(); // TODO: Uncomment when MapViewComponent is re-enabled
 
     return (
       <>
@@ -920,7 +923,7 @@ const HomeScreen: React.FC = () => {
           </View>
         </Card>
 
-        {/* Map Section */}
+        {/* Map Section - TODO: Temporarily commented out - uncomment after fixing Google Maps API key configuration
         <MapViewComponent
           latitude={location?.latitude}
           longitude={location?.longitude}
@@ -928,6 +931,7 @@ const HomeScreen: React.FC = () => {
           showMarker={true}
           markerTitle="Device Location"
         />
+        */}
 
         {/* Recent Events Section */}
         <Card style={styles.eventsCard}>
@@ -1068,10 +1072,11 @@ const styles = StyleSheet.create({
     backgroundColor: colors.lightPrimary,
     gap: spacing.xs,
   },
+  // eslint-disable-next-line react-native/no-color-literals
   errorBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fffbeb',
+    backgroundColor: '#fffbeb', // Light yellow/amber warning background
     padding: spacing.sm,
     borderRadius: 8,
     marginBottom: spacing.md,
@@ -1138,12 +1143,15 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: spacing.xs / 2,
   },
+  // TODO: Uncomment when device details header/title are used
+  // eslint-disable-next-line react-native/no-unused-styles
   deviceDetailsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     marginBottom: spacing.md,
   },
+  // eslint-disable-next-line react-native/no-unused-styles
   deviceDetailsTitle: {
     fontSize: 16,
     fontWeight: '600',
