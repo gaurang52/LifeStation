@@ -1,6 +1,7 @@
 const reportsApiService = require('../../services/reports-api.service');
 const deviceApiService = require('../../services/device-api.service');
 const accessControlService = require('../../services/access-control.service');
+const externalApiTokenService = require('../../services/external-api-token.service');
 const db = require('../../models');
 const auditLogService = require('../../services/audit-log.service');
 const cacheService = require('../../services/cache.service');
@@ -274,6 +275,28 @@ const getAllEvents = async (req, res) => {
       });
     }
 
+    // Verify external API authentication before fetching events
+    try {
+      logger.info('Verifying Reports API authentication before fetching events', {
+        cs_no: csNo,
+        device_id: device_id,
+      });
+      await reportsApiService.getAccessToken();
+      logger.info('Reports API authentication verified successfully');
+    } catch (authError) {
+      logger.error('Reports API authentication failed', {
+        error: authError.message,
+        stack: authError.stack,
+        cs_no: csNo,
+        device_id: device_id,
+      });
+      return res.status(500).json({
+        error: 'Authentication failed',
+        message:
+          'Unable to authenticate with the external Reports API. Please check backend configuration.',
+      });
+    }
+
     // Fetch events from Reports API
     let eventsData = [];
     const dateRange = getDateRange(frequency);
@@ -320,8 +343,15 @@ const getAllEvents = async (req, res) => {
     } catch (error) {
       logger.error('Error fetching events from Reports API:', {
         error: error.message,
+        stack: error.stack,
         cs_no: csNo,
         device_id: device_id,
+        frequency: frequency,
+        error_name: error.name,
+        error_code: error.code,
+        response_status: error.response?.status,
+        response_data: error.response?.data,
+        response_headers: error.response?.headers,
       });
 
       // Return cached data if available

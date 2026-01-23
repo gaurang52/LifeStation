@@ -73,12 +73,13 @@ class ExternalApiTokenService {
       throw new Error(`Invalid URL format: ${tokenURL}`);
     }
 
-    const authRequest = this.buildAuthRequest(apiName, config, clientId);
+    let authRequest = this.buildAuthRequest(apiName, config, clientId);
 
     logger.info('External API auth initiated', {
       external_api: apiName,
       client_id: clientId,
       url: tokenURL,
+      format: authRequest.headers['Content-Type'],
     });
 
     try {
@@ -120,12 +121,82 @@ class ExternalApiTokenService {
       });
       return access_token;
     } catch (error) {
+      // For Reports API, if JSON format fails with 400, try form-encoded format
+      if (
+        apiName === 'reports' &&
+        error.response?.status === 400 &&
+        authRequest.headers['Content-Type'] === 'application/json'
+      ) {
+        logger.warn('Reports API JSON auth failed with 400, retrying with form-encoded format', {
+          external_api: apiName,
+          client_id: clientId,
+        });
+
+        // Retry with form-encoded format
+        const formData = new URLSearchParams();
+        formData.append('grant type', 'password');
+        formData.append('username', config.username);
+        formData.append('password', config.password);
+        formData.append('client_id', clientId);
+
+        try {
+          const retryResponse = await axios.post(tokenURL, formData.toString(), {
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            timeout: 30000,
+          });
+
+          const { access_token, refresh_token, expires_in } = retryResponse.data;
+
+          // Encrypt tokens
+          const encryptedAccessToken = encryption.encryptToString(access_token);
+          const encryptedRefreshToken = refresh_token
+            ? encryption.encryptToString(refresh_token)
+            : null;
+
+          // Calculate expiration
+          const expiresAt = new Date(Date.now() + (expires_in || 3600) * 1000);
+
+          // Store in DB
+          await db.ExternalApiTokens.upsert({
+            api_name: apiName,
+            client_id: clientId,
+            access_token_encrypted: encryptedAccessToken,
+            refresh_token_encrypted: encryptedRefreshToken,
+            expires_at: expiresAt,
+          });
+
+          logger.info('External API auth succeeded (form-encoded retry)', {
+            external_api: apiName,
+            client_id: clientId,
+            expires_at: expiresAt.toISOString(),
+          });
+          return access_token;
+        } catch (retryError) {
+          logger.error('External API auth failed (both formats)', {
+            external_api: apiName,
+            client_id: clientId,
+            json_status: error.response?.status,
+            form_status: retryError.response?.status,
+            json_message: error.message,
+            form_message: retryError.message,
+            json_response: error.response?.data,
+            form_response: retryError.response?.data,
+          });
+          throw new Error(
+            `Failed to authenticate with ${apiName} API: JSON format failed (${error.message}), Form-encoded format failed (${retryError.message})`,
+          );
+        }
+      }
+
       logger.error('External API auth failed', {
         external_api: apiName,
         client_id: clientId,
         status: error.response?.status,
         error_code: error.code,
         message: error.message,
+        response_data: error.response?.data,
       });
       throw new Error(`Failed to authenticate with ${apiName} API: ${error.message}`);
     }
@@ -229,7 +300,27 @@ class ExternalApiTokenService {
    */
   buildAuthRequest(apiName, config, clientId) {
     if (apiName === 'reports') {
-      // Reports API Postman collection uses "grant type" (with space) and JSON content-type
+      // Reports API: Try JSON format first (works on local), fallback to form-encoded if needed
+      // Some environments may require form-encoded format
+      const useFormEncoded = process.env.REPORTS_API_USE_FORM_ENCODED === 'true';
+
+      if (useFormEncoded) {
+        // Form-encoded format for environments that require it
+        const formData = new URLSearchParams();
+        formData.append('grant type', 'password'); // Space in key name as per Postman collection
+        formData.append('username', config.username);
+        formData.append('password', config.password);
+        formData.append('client_id', clientId);
+
+        return {
+          body: formData.toString(),
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        };
+      }
+
+      // JSON format (default - works on local)
       const payload = {
         'grant type': 'password',
         username: config.username,
