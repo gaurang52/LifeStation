@@ -33,6 +33,7 @@
     "nodemailer": "^6.9.12",
     "pg": "^8.11.3",
     "pg-hstore": "^2.3.4",
+    "pdfkit": "^0.17.2",
     "sequelize": "^6.37.5"
   },
   "devDependencies": {

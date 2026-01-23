@@ -1,36 +1,52 @@
 import { apiClient } from './client';
-import type { User, ApiResponse } from '@core/types';
+import type { User } from '@core/types';
 
 export interface LoginRequest {
   email: string;
   password: string;
+  fcm_token?: string;
+  platform?: string;
 }
 
 export interface LoginResponse {
-  user: User;
+  message: string;
   token: string;
+  refresh_token: string;
+  user: User;
 }
 
-/** Adjust DTOs and paths to match your backend. */
+export interface SignupRequest {
+  name: string;
+  email: string;
+  password: string;
+  user_type: 'ADMIN' | 'SUPER_ADMIN' | 'caregiver' | 'senior';
+  mobile?: string;
+  address?: string;
+  gender?: string;
+  fcm_token?: string;
+  platform?: string;
+  privacy_accepted: boolean;
+  terms_accepted: boolean;
+}
+
+export interface SignupResponse {
+  message: string;
+  token: string;
+  refresh_token: string;
+  user: User;
+}
+
+/** Auth API matching backend routes exactly */
 export const authApi = {
   async login(payload: LoginRequest): Promise<LoginResponse> {
-    const res = await apiClient.post<ApiResponse<LoginResponse> | LoginResponse>(
-      '/auth/login',
-      payload,
-    );
-    const data = (res as ApiResponse<LoginResponse>).data ?? (res as LoginResponse);
-    if (!data?.user || !data?.token) throw new Error('Invalid login response');
-    return { user: data.user, token: data.token };
+    const res = await apiClient.post<LoginResponse>('/auth/login', payload);
+    if (!res?.user || !res?.token) throw new Error('Invalid login response');
+    return res;
   },
 
-  async logout(): Promise<void> {
-    await apiClient.post('/auth/logout');
-  },
-
-  async me(): Promise<User> {
-    const res = await apiClient.get<ApiResponse<User> | User>('/auth/me');
-    const user = (res as ApiResponse<User>).data ?? (res as User);
-    if (!user?.id) throw new Error('Invalid me response');
-    return user;
+  async signup(payload: SignupRequest): Promise<SignupResponse> {
+    const res = await apiClient.post<SignupResponse>('/auth/signup', payload);
+    if (!res?.user || !res?.token) throw new Error('Invalid signup response');
+    return res;
   },
 };

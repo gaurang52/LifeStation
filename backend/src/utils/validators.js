@@ -34,7 +34,7 @@ function isValidUserType(userType) {
  * @returns {boolean} - True if valid
  */
 function isValidIdType(idType) {
-  const validTypes = ['imei', 'serial', 'uuid'];
+  const validTypes = ['imei', 'serial', 'uuid', 'iccid'];
   return validTypes.includes(idType);
 }
 

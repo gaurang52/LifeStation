@@ -105,13 +105,16 @@ All endpoints follow RESTful conventions.
   ```
 
 - `GET /devices` - List all accessible devices (with pagination)
+
   - Query params: `page`, `limit`
 
 - `GET /devices/:id_type/:id` - Get specific device by ID
+
   - `id_type`: `imei`, `serial`, or `uuid`
   - Example: `GET /devices/imei/861475032341820`
 
 - `GET /devices/:id_type/:id/fall-detection` - Get fall detection status
+
   - Example: `GET /devices/imei/861475032341820/fall-detection`
 
 - `PUT /devices/:id_type/:id/fall-detection` - Enable/disable fall detection

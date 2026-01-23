@@ -1,5 +1,6 @@
 import React from 'react';
-import { SafeAreaView, StyleSheet, View, ViewProps } from 'react-native';
+import { StyleSheet, View, ViewProps } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, spacing } from '@shared/theme';
 
 type Props = ViewProps & {

@@ -1,3 +1,19 @@
+/**
+ * External API Configuration
+ *
+ * ARCHITECTURE NOTE:
+ * ==================
+ * The external system is treated as an INTEGRATION SERVICE (device/reports provider),
+ * NOT a user management platform.
+ *
+ * All external API calls use SERVICE-LEVEL credentials from environment variables:
+ * - EXTERNAL_API_USERNAME: Service account username
+ * - EXTERNAL_API_PASSWORD: Service account password
+ *
+ * These credentials are shared across Account, Device, and Reports APIs and are NOT
+ * associated with individual internal users.
+ */
+
 require('dotenv').config();
 
 /**

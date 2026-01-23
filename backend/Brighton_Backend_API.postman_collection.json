@@ -299,6 +299,26 @@
             "description": "Disable fall detection for a device"
           },
           "response": []
+        },
+        {
+          "name": "Request Device Signal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/devices/{{device_id_type}}/{{device_id}}/signal",
+              "host": ["{{base_url}}"],
+              "path": ["devices", "{{device_id_type}}", "{{device_id}}", "signal"]
+            },
+            "description": "Request a signal from the device. This can help verify device connectivity and location."
+          },
+          "response": []
         }
       ],
       "description": "Device management endpoints"

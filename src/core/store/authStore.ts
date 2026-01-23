@@ -1,16 +1,30 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import type { User } from '@core/types';
 import { authApi } from '@core/api/authApi';
 
 interface AuthState {
   user: User | null;
   token: string | null;
+  refreshToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   _hasHydrated: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, fcmToken?: string) => Promise<void>;
+  signup: (payload: {
+    name: string;
+    email: string;
+    password: string;
+    user_type: 'ADMIN' | 'SUPER_ADMIN' | 'caregiver' | 'senior';
+    mobile?: string;
+    address?: string;
+    gender?: string;
+    fcm_token?: string;
+    privacy_accepted: boolean;
+    terms_accepted: boolean;
+  }) => Promise<void>;
   logout: () => void;
   setUser: (user: User) => void;
   setToken: (token: string) => void;
@@ -21,22 +35,53 @@ export const useAuthStore = create<AuthState>()(
     set => ({
       user: null,
       token: null,
+      refreshToken: null,
       isAuthenticated: false,
       isLoading: false,
       _hasHydrated: false,
-      login: async (email: string, password: string) => {
+      login: async (email: string, password: string, fcmToken?: string) => {
         set({ isLoading: true });
         try {
-          const { user, token } = await authApi.login({ email, password });
-          set({ user, token, isAuthenticated: true, isLoading: false });
+          const response = await authApi.login({
+            email,
+            password,
+            fcm_token: fcmToken,
+            platform: Platform.OS,
+          });
+          set({
+            user: response.user,
+            token: response.token,
+            refreshToken: response.refresh_token,
+            isAuthenticated: true,
+            isLoading: false,
+          });
+        } catch (error) {
+          set({ isLoading: false });
+          throw error;
+        }
+      },
+      signup: async payload => {
+        set({ isLoading: true });
+        try {
+          const response = await authApi.signup({
+            ...payload,
+            fcm_token: payload.fcm_token,
+            platform: Platform.OS,
+          });
+          set({
+            user: response.user,
+            token: response.token,
+            refreshToken: response.refresh_token,
+            isAuthenticated: true,
+            isLoading: false,
+          });
         } catch (error) {
           set({ isLoading: false });
           throw error;
         }
       },
       logout: () => {
-        set({ user: null, token: null, isAuthenticated: false });
-        authApi.logout().catch(() => {});
+        set({ user: null, token: null, refreshToken: null, isAuthenticated: false });
       },
       setUser: (user: User) => {
         set({ user, isAuthenticated: true });
@@ -51,6 +96,7 @@ export const useAuthStore = create<AuthState>()(
       partialize: state => ({
         user: state.user,
         token: state.token,
+        refreshToken: state.refreshToken,
         isAuthenticated: state.isAuthenticated,
       }),
       onRehydrateStorage: () => (state, error) => {

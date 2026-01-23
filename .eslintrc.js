@@ -35,13 +35,17 @@ module.exports = {
   overrides: [
     {
       files: ['*.config.js', '.eslintrc.js'],
-      rules: { '@typescript-eslint/no-var-requires': 'off' },
+      rules: {
+        '@typescript-eslint/no-var-requires': 'off',
+        '@typescript-eslint/no-require-imports': 'off',
+      },
     },
     {
       files: ['backend/**/*.js'],
       env: { node: true },
       rules: {
         '@typescript-eslint/no-var-requires': 'off',
+        '@typescript-eslint/no-require-imports': 'off',
         '@typescript-eslint/no-unused-vars': 'warn',
         'no-undef': 'off',
         radix: 'off',

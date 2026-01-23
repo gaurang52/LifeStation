@@ -34,10 +34,16 @@ app.use(auditLogger);
 const authRoutes = require('./routes/auth.routes');
 const devicesRoutes = require('./routes/devices.routes');
 const vitalsRoutes = require('./routes/vitals.routes');
+const caregiversRoutes = require('./routes/caregivers.routes');
+const eventsRoutes = require('./routes/events.routes');
+const reportsRoutes = require('./routes/reports.routes');
 
 app.use('/auth', authRoutes);
 app.use('/devices', devicesRoutes);
 app.use('/vitals', vitalsRoutes);
+app.use('/events', eventsRoutes);
+app.use('/reports', reportsRoutes);
+app.use('/', caregiversRoutes); // Caregiver routes use root path (e.g., /senior/...)
 
 // Health check endpoint
 app.get('/health', (req, res) => {

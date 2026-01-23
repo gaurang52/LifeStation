@@ -4,6 +4,8 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const logger = require('../../utils/logger');
 const { isValidEmail } = require('../../utils/validators');
+const externalApiTokenService = require('../../services/external-api-token.service');
+const externalApiConfig = require('../../config/external-apis');
 
 const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY;
 const REFRESH_SECRET_KEY = process.env.REFRESH_SECRET_KEY;
@@ -64,6 +66,29 @@ const login = async (req, res) => {
         expiresIn: '7 Days',
       },
     );
+
+    // Trigger external API authentication using service-level credentials from .env
+    // This ensures external API tokens are available for subsequent API calls
+    // Note: External system is treated as a token-based service dependency, not a user management system
+    // We use EXTERNAL_API_USERNAME and EXTERNAL_API_PASSWORD from .env, NOT internal user credentials
+    try {
+      // Authenticate with Device API (brighton-api client)
+      await externalApiTokenService.getToken('device', externalApiConfig.device.clientId);
+      logger.debug('External Device API authentication successful on login');
+
+      // Authenticate with Account API (affiliated-api client)
+      await externalApiTokenService.getToken('account', externalApiConfig.account.clientId);
+      logger.debug('External Account API authentication successful on login');
+    } catch (externalAuthError) {
+      // Log external authentication errors but don't fail the login
+      // Internal login should succeed even if external API authentication fails
+      logger.error('External API authentication failed on login (non-blocking):', {
+        error: externalAuthError.message,
+        user_id: user.id,
+        email: user.email,
+      });
+      // Continue with login - external API failures should not block internal authentication
+    }
 
     // Prepare user data (exclude password)
     const userData = {

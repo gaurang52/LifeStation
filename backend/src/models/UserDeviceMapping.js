@@ -33,7 +33,7 @@ module.exports = sequelize => {
           'External device identifier (IMEI, serial, or UUID) - kept for backward compatibility',
       },
       id_type: {
-        type: DataTypes.ENUM('imei', 'serial', 'uuid'),
+        type: DataTypes.ENUM('imei', 'serial', 'uuid', 'iccid'),
         allowNull: false,
       },
       cs_no: {

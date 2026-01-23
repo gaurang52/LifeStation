@@ -17,7 +17,7 @@ module.exports = sequelize => {
         comment: 'Primary device identifier (IMEI, serial, or UUID)',
       },
       id_type: {
-        type: DataTypes.ENUM('imei', 'serial', 'uuid'),
+        type: DataTypes.ENUM('imei', 'serial', 'uuid', 'iccid'),
         allowNull: false,
         comment: 'Type of device identifier',
       },

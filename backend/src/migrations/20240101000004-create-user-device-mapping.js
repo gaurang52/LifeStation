@@ -36,7 +36,7 @@ module.exports = {
         comment: 'External device identifier (IMEI, serial, or UUID) - kept for API compatibility',
       },
       id_type: {
-        type: Sequelize.ENUM('imei', 'serial', 'uuid'),
+        type: Sequelize.ENUM('imei', 'serial', 'uuid', 'iccid'),
         allowNull: false,
       },
       cs_no: {

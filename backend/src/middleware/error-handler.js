@@ -59,11 +59,23 @@ function errorHandler(err, req, res, next) {
   }
 
   // Axios errors (external API errors)
+  // Note: External system is an integration service (device/reports provider), not a user management platform
+  // All external API calls use service-level credentials from .env
   if (err.response) {
-    return res.status(err.response.status || 500).json({
-      error: 'External API Error',
-      message: err.response.data?.message || err.message,
-      status: err.response.status,
+    const status = err.response.status || 500;
+    const isClientError = status >= 400 && status < 500;
+
+    // Provide user-friendly error messages without exposing external system details
+    return res.status(status).json({
+      error: 'Service Unavailable',
+      message: isClientError
+        ? 'The external service is currently unavailable. Please try again later.'
+        : 'An error occurred while communicating with an external service. Please try again later.',
+      // Only include status in development for debugging
+      ...(process.env.NODE_ENV === 'development' && {
+        status: status,
+        details: err.response.data?.message || err.message,
+      }),
     });
   }
 

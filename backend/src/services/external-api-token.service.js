@@ -73,21 +73,19 @@ class ExternalApiTokenService {
       throw new Error(`Invalid URL format: ${tokenURL}`);
     }
 
-    const formData = new URLSearchParams();
-    formData.append('grant_type', 'password');
-    formData.append('username', config.username);
-    formData.append('password', config.password);
-    formData.append('client_id', clientId);
+    const authRequest = this.buildAuthRequest(apiName, config, clientId);
 
-    logger.debug(`Authenticating with ${apiName} API at ${tokenURL}`);
+    logger.info('External API auth initiated', {
+      external_api: apiName,
+      client_id: clientId,
+      url: tokenURL,
+    });
 
     try {
       const response = await retry(
         async () => {
-          return await axios.post(tokenURL, formData.toString(), {
-            headers: {
-              'Content-Type': 'application/x-www-form-urlencoded',
-            },
+          return await axios.post(tokenURL, authRequest.body, {
+            headers: authRequest.headers,
             timeout: 30000,
           });
         },
@@ -115,10 +113,20 @@ class ExternalApiTokenService {
         expires_at: expiresAt,
       });
 
-      logger.info(`Authenticated with ${apiName} API`);
+      logger.info('External API auth succeeded', {
+        external_api: apiName,
+        client_id: clientId,
+        expires_at: expiresAt.toISOString(),
+      });
       return access_token;
     } catch (error) {
-      logger.error(`Error authenticating with ${apiName} API:`, error);
+      logger.error('External API auth failed', {
+        external_api: apiName,
+        client_id: clientId,
+        status: error.response?.status,
+        error_code: error.code,
+        message: error.message,
+      });
       throw new Error(`Failed to authenticate with ${apiName} API: ${error.message}`);
     }
   }
@@ -144,6 +152,10 @@ class ExternalApiTokenService {
     }
 
     try {
+      logger.info('External API token refresh initiated', {
+        external_api: apiName,
+        client_id: clientId,
+      });
       const refreshToken = encryption.decrypt(tokenRecord.refresh_token_encrypted);
 
       const formData = new URLSearchParams();
@@ -189,13 +201,62 @@ class ExternalApiTokenService {
         },
       );
 
-      logger.info(`Refreshed token for ${apiName} API`);
+      logger.info('External API token refresh succeeded', {
+        external_api: apiName,
+        client_id: clientId,
+        expires_at: expiresAt.toISOString(),
+      });
       return access_token;
     } catch (error) {
-      logger.error(`Error refreshing token for ${apiName} API:`, error);
+      logger.error('External API token refresh failed', {
+        external_api: apiName,
+        client_id: clientId,
+        status: error.response?.status,
+        error_code: error.code,
+        message: error.message,
+      });
       // If refresh fails, try to authenticate again
       return await this.authenticate(apiName, clientId);
     }
+  }
+
+  /**
+   * Build auth request payload and headers based on Postman collections
+   * @param {string} apiName - API name
+   * @param {object} config - API config
+   * @param {string} clientId - Client ID
+   * @returns {{ body: string, headers: object }}
+   */
+  buildAuthRequest(apiName, config, clientId) {
+    if (apiName === 'reports') {
+      // Reports API Postman collection uses "grant type" (with space) and JSON content-type
+      const payload = {
+        'grant type': 'password',
+        username: config.username,
+        password: config.password,
+        client_id: clientId,
+      };
+
+      return {
+        body: JSON.stringify(payload),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      };
+    }
+
+    const formData = new URLSearchParams();
+    formData.append('grant_type', 'password');
+    formData.append('username', config.username);
+    formData.append('password', config.password);
+    formData.append('client_id', clientId);
+
+    return {
+      body: formData.toString(),
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    };
   }
 }
 

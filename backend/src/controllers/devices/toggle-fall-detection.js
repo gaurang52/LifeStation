@@ -4,6 +4,7 @@ const db = require('../../models');
 const auditLogService = require('../../services/audit-log.service');
 const logger = require('../../utils/logger');
 const { isValidIdType } = require('../../utils/validators');
+const { sanitizeResponseBody } = require('../../utils/audit-sanitizer');
 
 const toggleFallDetection = async (req, res) => {
   try {
@@ -24,7 +25,9 @@ const toggleFallDetection = async (req, res) => {
     }
 
     if (!isValidIdType(id_type)) {
-      return res.status(400).json({ error: 'Invalid id_type. Must be: imei, serial, or uuid' });
+      return res
+        .status(400)
+        .json({ error: 'Invalid id_type. Must be: imei, serial, uuid, or iccid' });
     }
 
     // Check access control
@@ -63,8 +66,10 @@ const toggleFallDetection = async (req, res) => {
         resource_type: 'device',
         resource_id: id,
         external_api: 'device',
-        request_method: 'PUT',
-        request_path: `/devices/${id_type}/${id}/fall-detection`,
+        request_method: enabled ? 'PUT' : 'DELETE',
+        request_path: `/device/${id_type}/${id}/falldetection`,
+        request_body: { id_type, id, enabled },
+        response_body: sanitizeResponseBody(result),
         response_status: 200,
         ip_address: req.ip,
         user_agent: req.get('user-agent'),

@@ -1,3 +1,27 @@
+/**
+ * Account API Service
+ *
+ * IMPORTANT ARCHITECTURE NOTE:
+ * =============================
+ * The external system is treated as an INTEGRATION SERVICE (device/reports provider),
+ * NOT a user management platform.
+ *
+ * Key Principles:
+ * - Users are managed ONLY within our internal system
+ * - NO external API calls create, update, or delete users
+ * - All external API calls use SERVICE-LEVEL credentials from .env
+ * - External API credentials are used solely for accessing devices, reports, or related data
+ * - Do NOT associate external API calls with individual internal users
+ * - Do NOT pass internal user identifiers to the external system unless explicitly required
+ *
+ * This service provides methods for Account API operations, but these should ONLY be used
+ * for device/report-related account lookups, NOT for user management.
+ *
+ * WARNING: Methods like createAccount(), updateAccount(), activateAccount(), deactivateAccount(),
+ * and linkAccounts() exist but should NOT be called for internal user management.
+ * These are provided for potential device/report account operations only.
+ */
+
 const axios = require('axios');
 const externalApiTokenService = require('./external-api-token.service');
 const { retry } = require('../utils/retry');
@@ -11,7 +35,8 @@ class AccountApiService {
   }
 
   /**
-   * Get OAuth2 access token
+   * Get OAuth2 access token using service-level credentials
+   * Note: Uses EXTERNAL_API_USERNAME and EXTERNAL_API_PASSWORD from .env
    * @returns {Promise<string>} - Access token
    */
   async getAccessToken() {
@@ -28,6 +53,7 @@ class AccountApiService {
    */
   async makeRequest(method, endpoint, data = null, retries = 3) {
     const token = await this.getAccessToken();
+    const startTime = Date.now();
 
     const config = {
       method,
@@ -51,23 +77,52 @@ class AccountApiService {
       }
     }
 
-    return await retry(
-      async () => {
-        try {
-          const response = await axios(config);
-          return response.data;
-        } catch (error) {
-          if (error.response?.status === 401) {
-            // Token expired, refresh and retry
-            await externalApiTokenService.refreshToken('account', this.clientId);
-            throw error; // Retry will use new token
+    logger.info('External API request initiated', {
+      external_api: 'account',
+      method,
+      endpoint,
+    });
+
+    try {
+      const result = await retry(
+        async () => {
+          try {
+            const response = await axios(config);
+            return { data: response.data, status: response.status };
+          } catch (error) {
+            if (error.response?.status === 401) {
+              // Token expired, refresh and retry
+              await externalApiTokenService.refreshToken('account', this.clientId);
+              throw error; // Retry will use new token
+            }
+            throw error;
           }
-          throw error;
-        }
-      },
-      retries,
-      1000,
-    );
+        },
+        retries,
+        1000,
+      );
+
+      logger.info('External API request succeeded', {
+        external_api: 'account',
+        method,
+        endpoint,
+        status: result.status,
+        duration_ms: Date.now() - startTime,
+      });
+
+      return result.data;
+    } catch (error) {
+      logger.error('External API request failed', {
+        external_api: 'account',
+        method,
+        endpoint,
+        status: error.response?.status,
+        error_code: error.code,
+        message: error.message,
+        duration_ms: Date.now() - startTime,
+      });
+      throw error;
+    }
   }
 
   /**
@@ -90,10 +145,19 @@ class AccountApiService {
 
   /**
    * Create account
+   *
+   * WARNING: This method should NOT be used for internal user management.
+   * Internal users are managed only within our system and are NOT synced to external system.
+   *
+   * This method exists only for potential device/report account operations if needed.
+   *
    * @param {object} accountData - Account data
    * @returns {Promise<object>} - Created account
    */
   async createAccount(accountData) {
+    logger.warn(
+      'AccountApiService.createAccount() called - ensure this is not for internal user management',
+    );
     return await this.makeRequest('PUT', '/acct/', accountData);
   }
 

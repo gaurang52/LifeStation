@@ -1,3 +1,15 @@
+/**
+ * Signup Controller
+ *
+ * ARCHITECTURE NOTE:
+ * ==================
+ * This controller creates users ONLY in our internal system.
+ * NO external API calls are made to create or sync users.
+ *
+ * The external system is treated as an integration service (device/reports provider),
+ * NOT a user management platform.
+ */
+
 require('dotenv').config();
 const db = require('../../models');
 const bcrypt = require('bcrypt');

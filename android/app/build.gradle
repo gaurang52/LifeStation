@@ -72,6 +72,9 @@ def enableProguardInReleaseBuilds = false
  */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
+// Apply fonts from react-native-vector-icons
+apply from: file("../../node_modules/react-native-vector-icons/fonts.gradle")
+
 android {
     ndkVersion rootProject.ext.ndkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
@@ -84,6 +87,8 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+        // Google Maps API Key - set in gradle.properties or .env
+        resValue "string", "google_maps_api_key", project.findProperty("GOOGLE_PLACE_API_KEY") ?: ""
     }
     signingConfigs {
         debug {

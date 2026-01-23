@@ -5,6 +5,7 @@ const auditLogService = require('../../services/audit-log.service');
 const dataNormalizationService = require('../../services/data-normalization.service');
 const logger = require('../../utils/logger');
 const { isValidIdType, isValidIMEI } = require('../../utils/validators');
+const { sanitizeResponseBody, sanitizeRequestBody } = require('../../utils/audit-sanitizer');
 
 const addDevice = async (req, res) => {
   try {
@@ -75,14 +76,26 @@ const addDevice = async (req, res) => {
       deviceData.device_type = device_type;
     }
 
+    // Register device with external Device API using service-level credentials
+    // Note: External system is an integration service (device provider), not a user management platform
+    // This call uses service credentials from .env, not user-specific authentication
     let externalDevice;
     try {
       externalDevice = await deviceApiService.addDevice(deviceData);
     } catch (error) {
-      logger.error('Error adding device via Device API:', error);
+      logger.error('Error adding device via Device API:', {
+        error: error.message,
+        device_imei: device_imei,
+        user_id: userId,
+      });
+
+      // Differentiate between external service errors and internal errors
+      const isExternalError = error.response?.status >= 400 && error.response?.status < 500;
       return res.status(500).json({
-        error: 'Failed to register device with external service',
-        message: error.message,
+        error: 'Unable to register device',
+        message: isExternalError
+          ? 'The device service is currently unavailable. Please try again later.'
+          : 'An error occurred while registering the device. Please try again later.',
       });
     }
 
@@ -150,8 +163,10 @@ const addDevice = async (req, res) => {
       resource_type: 'device',
       resource_id: device_imei,
       external_api: 'device',
-      request_method: 'POST',
-      request_path: '/devices',
+      request_method: 'PUT',
+      request_path: '/device/',
+      request_body: sanitizeRequestBody(deviceData),
+      response_body: sanitizeResponseBody(externalDevice),
       response_status: 200,
       ip_address: req.ip,
       user_agent: req.get('user-agent'),
@@ -173,9 +188,23 @@ const addDevice = async (req, res) => {
     });
   } catch (error) {
     logger.error('Error in add-device:', error);
+
+    // Differentiate internal errors from external API errors
+    if (error.response) {
+      // External API error
+      return res.status(500).json({
+        error: 'Unable to register device',
+        message: 'The device service encountered an error. Please try again later.',
+      });
+    }
+
+    // Internal error
     res.status(500).json({
       error: 'Internal server error',
-      message: error.message,
+      message:
+        process.env.NODE_ENV === 'production'
+          ? 'An unexpected error occurred. Please try again later.'
+          : error.message,
     });
   }
 };
