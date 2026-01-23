@@ -9,7 +9,7 @@
     "build": "echo 'No build step required for this application'",
     "test": "mocha src/tests/**/*.test.js --exit",
     "create-db": "node src/scripts/create-database.js",
-    "migrate": "npm run create-db && sequelize-cli db:migrate",
+    "migrate": "node src/scripts/generate-sequelize-config.js && npm run create-db && sequelize-cli db:migrate",
     "migrate:undo": "sequelize-cli db:migrate:undo",
     "migrate:undo:all": "sequelize-cli db:migrate:undo:all",
     "migrate:status": "sequelize-cli db:migrate:status"
