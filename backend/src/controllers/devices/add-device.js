@@ -147,13 +147,17 @@ const addDevice = async (req, res) => {
       });
     }
 
+    // Extract cs_no from Device API response
+    // cs_no is used to fetch account details and reports from external APIs
+    const csNo = externalDevice.cs_no || externalDevice.csNo || null;
+
     // Create user-device mapping
     await db.UserDeviceMapping.create({
       user_id: userId,
       device_id: device.id,
       external_device_id: device_imei,
       id_type: 'imei',
-      cs_no: user.cs_no || null,
+      cs_no: csNo,
     });
 
     // Log audit entry
