@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const db = require('../../models');
 const logger = require('../../utils/logger');
 const { isValidEmail } = require('../../utils/validators');
@@ -117,11 +118,24 @@ const createInvitation = async (req, res) => {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
 
-    // Create invitation (token field set to null as we use email-based matching)
+    // Generate a unique invitation token
+    let invitationToken;
+    let isUnique = false;
+    while (!isUnique) {
+      invitationToken = crypto.randomBytes(32).toString('hex');
+      const existingToken = await db.CaregiverInvitations.findOne({
+        where: { invitation_token: invitationToken },
+      });
+      if (!existingToken) {
+        isUnique = true;
+      }
+    }
+
+    // Create invitation
     const invitation = await db.CaregiverInvitations.create({
       inviter_user_id: userId,
       caregiver_email: normalizedEmail,
-      invitation_token: null, // Not used - email-based matching only
+      invitation_token: invitationToken,
       status: 'PENDING',
       relationship_with_senior,
       expires_at: expiresAt,

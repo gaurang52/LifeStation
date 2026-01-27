@@ -26,8 +26,8 @@ module.exports = sequelize => {
       },
       invitation_token: {
         type: DataTypes.STRING,
-        allowNull: true, // Not used - email-based matching only
-        unique: false, // Removed unique constraint as token is not used
+        allowNull: false,
+        unique: true,
       },
       status: {
         type: DataTypes.ENUM('PENDING', 'ACCEPTED', 'EXPIRED', 'REVOKED'),
