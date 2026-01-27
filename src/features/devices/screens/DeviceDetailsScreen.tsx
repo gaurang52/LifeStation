@@ -44,7 +44,7 @@ const DeviceDetailsScreen: React.FC<DeviceDetailsScreenProps> = ({ route }) => {
   const [lastUpdate, setLastUpdate] = useState<string | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
-  const [requestingSignal, setRequestingSignal] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [downloadingReport, setDownloadingReport] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -86,79 +86,89 @@ const DeviceDetailsScreen: React.FC<DeviceDetailsScreenProps> = ({ route }) => {
     }
   }, [fetchingFirstDevice, deviceId, idType]);
 
-  const fetchDeviceRecent = useCallback(async () => {
-    if (!deviceId || !idType) {
-      return;
-    }
+  const fetchDeviceRecent = useCallback(
+    async (forceRefresh = false) => {
+      if (!deviceId || !idType) {
+        return;
+      }
 
-    // Prevent duplicate calls - if already fetching, skip this call
-    if (isFetchingDeviceRecent.current) {
-      console.log('Skipping duplicate fetchDeviceRecent call - already in progress');
-      return;
-    }
+      // Prevent duplicate calls - if already fetching, skip this call (unless forced refresh)
+      if (isFetchingDeviceRecent.current && !forceRefresh) {
+        console.log('Skipping duplicate fetchDeviceRecent call - already in progress');
+        return;
+      }
 
-    // Create a unique identifier for this device
-    const deviceKey = `${idType}:${deviceId}`;
+      // Create a unique identifier for this device
+      const deviceKey = `${idType}:${deviceId}`;
 
-    // Prevent duplicate calls - if already fetched for this device, skip
-    if (fetchedDeviceRecentId.current === deviceKey) {
-      console.log('Skipping fetchDeviceRecent - already fetched for this device:', deviceKey);
-      return;
-    }
+      // Prevent duplicate calls - if already fetched for this device, skip (unless forced refresh)
+      if (fetchedDeviceRecentId.current === deviceKey && !forceRefresh) {
+        console.log('Skipping fetchDeviceRecent - already fetched for this device:', deviceKey);
+        return;
+      }
 
-    try {
-      isFetchingDeviceRecent.current = true;
-      setLoading(true);
-      setError(null);
-
-      console.log('Calling Get Recent Device Info API:', {
-        id_type: idType,
-        device_id: deviceId,
-        api_endpoint: `/devices/${idType}/${deviceId}/recent`,
-      });
-
-      const response = await deviceApi.getDeviceRecent(idType, deviceId);
-      const deviceData = response.device;
-
-      console.log('Device recent response received:', {
-        device: deviceData,
-        battery_level: deviceData.battery_level,
-        signal_strength: deviceData.signal_strength,
-        last_seen: deviceData.last_seen,
-      });
-
-      // Update device state with recent data
-      setDevice(deviceData);
-      setBattery(deviceData.battery_level || undefined);
-      setSignal(deviceData.signal_strength || undefined);
-      setLastUpdate(deviceData.last_seen || undefined);
-
-      // Fetch fall detection status
       try {
-        const fallResponse = await deviceApi.getFallDetection(idType, deviceId);
-        setFallDetectionEnabled(fallResponse.fall_detection_enabled || false);
-      } catch (e) {
-        console.warn('Failed to fetch fall detection:', e);
-      }
+        isFetchingDeviceRecent.current = true;
+        // Only show main loading state if not a forced refresh (forced refresh uses refresh button loading)
+        if (!forceRefresh) {
+          setLoading(true);
+        }
+        setError(null);
 
-      // Mark this device as fetched
-      fetchedDeviceRecentId.current = deviceKey;
-    } catch (err) {
-      console.error('Error fetching device recent info:', err);
-      const errorMessage = ErrorHandler.getErrorMessage(err) || 'Failed to load device details.';
-      setError(errorMessage);
+        console.log('Calling Get Recent Device Info API:', {
+          id_type: idType,
+          device_id: deviceId,
+          api_endpoint: `/devices/${idType}/${deviceId}/recent`,
+          forceRefresh,
+        });
 
-      // If the call failed, try using iccid as fallback if available
-      // This matches HomeScreen behavior
-      if (idType !== 'iccid') {
-        // Note: We don't have access to device.sim_iccid here, so we'll just show error
-        // The fallback logic would require the device object which we don't have yet
+        const response = await deviceApi.getDeviceRecent(idType, deviceId);
+        const deviceData = response.device;
+
+        console.log('Device recent response received:', {
+          device: deviceData,
+          battery_level: deviceData.battery_level,
+          signal_strength: deviceData.signal_strength,
+          last_seen: deviceData.last_seen,
+        });
+
+        // Update device state with recent data
+        setDevice(deviceData);
+        setBattery(deviceData.battery_level || undefined);
+        setSignal(deviceData.signal_strength || undefined);
+        setLastUpdate(deviceData.last_seen || undefined);
+
+        // Fetch fall detection status
+        try {
+          const fallResponse = await deviceApi.getFallDetection(idType, deviceId);
+          setFallDetectionEnabled(fallResponse.fall_detection_enabled || false);
+        } catch (e) {
+          console.warn('Failed to fetch fall detection:', e);
+        }
+
+        // Mark this device as fetched
+        fetchedDeviceRecentId.current = deviceKey;
+      } catch (err) {
+        console.error('Error fetching device recent info:', err);
+        const errorMessage = ErrorHandler.getErrorMessage(err) || 'Failed to load device details.';
+        setError(errorMessage);
+
+        // If the call failed, try using iccid as fallback if available
+        // This matches HomeScreen behavior
+        if (idType !== 'iccid') {
+          // Note: We don't have access to device.sim_iccid here, so we'll just show error
+          // The fallback logic would require the device object which we don't have yet
+        }
+      } finally {
+        isFetchingDeviceRecent.current = false;
+        // Only clear main loading state if not a forced refresh
+        if (!forceRefresh) {
+          setLoading(false);
+        }
       }
-    } finally {
-      isFetchingDeviceRecent.current = false;
-      setLoading(false);
-    }
-  }, [idType, deviceId]);
+    },
+    [idType, deviceId],
+  );
 
   useEffect(() => {
     if (deviceId && idType && !fetchingFirstDevice) {
@@ -182,30 +192,33 @@ const DeviceDetailsScreen: React.FC<DeviceDetailsScreenProps> = ({ route }) => {
     }
   };
 
-  const handleRequestSignal = async () => {
+  const handleRefresh = async () => {
     if (!idType || !deviceId) return;
-    Alert.alert('Request Signal', 'This will send a signal request to the device. Continue?', [
-      {
-        text: 'Cancel',
-        style: 'cancel',
-      },
-      {
-        text: 'Request',
-        onPress: async () => {
-          try {
-            setRequestingSignal(true);
-            await deviceApi.requestSignal(idType, deviceId);
-            Alert.alert('Success', 'Signal request sent successfully to the device.');
-          } catch (err) {
-            const errorMessage =
-              ErrorHandler.getErrorMessage(err) || 'Failed to request signal from device.';
-            Alert.alert('Error', errorMessage);
-          } finally {
-            setRequestingSignal(false);
-          }
-        },
-      },
-    ]);
+
+    try {
+      setRefreshing(true);
+      setError(null);
+
+      // First, request signal from device to trigger update
+      try {
+        await deviceApi.requestSignal(idType, deviceId);
+      } catch (err) {
+        // Log but don't fail - device might still have updated data
+        console.warn('Signal request failed, but continuing with refresh:', err);
+      }
+
+      // Then fetch the latest device data
+      // Reset the fetched flag to allow refresh
+      fetchedDeviceRecentId.current = null;
+      await fetchDeviceRecent(true);
+    } catch (err) {
+      const errorMessage =
+        ErrorHandler.getErrorMessage(err) || 'Failed to refresh device data. Please try again.';
+      setError(errorMessage);
+      Alert.alert('Refresh Failed', errorMessage);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const handleDownloadReport = async (format: 'csv' | 'json' | 'pdf' = 'pdf') => {
@@ -430,7 +443,20 @@ const DeviceDetailsScreen: React.FC<DeviceDetailsScreenProps> = ({ route }) => {
                 </AppText>
               </View>
             </View>
-            <StatusBadge status={device.status} />
+            <View style={styles.deviceHeaderRight}>
+              <TouchableOpacity
+                style={[styles.refreshButton, refreshing && styles.refreshButtonDisabled]}
+                onPress={handleRefresh}
+                disabled={refreshing}
+                activeOpacity={0.7}>
+                {refreshing ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <MaterialIcons name="refresh" size={24} color={colors.primary} />
+                )}
+              </TouchableOpacity>
+              <StatusBadge status={device.status} />
+            </View>
           </View>
 
           {/* Device Information */}
@@ -533,27 +559,6 @@ const DeviceDetailsScreen: React.FC<DeviceDetailsScreenProps> = ({ route }) => {
             )}
           </View>
 
-          {/* Device Signal */}
-          <View style={styles.sectionDivider}>
-            <View style={styles.sectionHeader}>
-              <MaterialIcons name="wifi-tethering" size={20} color={colors.primary} />
-              <AppText variant="bodyBold" color={colors.textSecondary}>
-                Device Signal
-              </AppText>
-            </View>
-            <AppText variant="caption" color={colors.textSecondary} style={styles.signalDesc}>
-              Request the device to send a signal to verify connectivity.
-            </AppText>
-            <View style={styles.buttonContainer}>
-              <Button
-                label={requestingSignal ? 'Requesting...' : 'Request Signal'}
-                onPress={handleRequestSignal}
-                loading={requestingSignal}
-                disabled={requestingSignal}
-              />
-            </View>
-          </View>
-
           {/* Reports */}
           <View style={styles.sectionDivider}>
             <View style={styles.sectionHeader}>
@@ -603,6 +608,20 @@ const styles = StyleSheet.create({
   },
   deviceHeaderInfo: {
     flex: 1,
+  },
+  deviceHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  refreshButton: {
+    padding: spacing.xs,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  refreshButtonDisabled: {
+    opacity: 0.5,
   },
   deviceName: {
     marginBottom: spacing.xs,
@@ -689,10 +708,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
     marginTop: spacing.sm,
-  },
-  signalDesc: {
-    marginTop: spacing.xs,
-    marginBottom: spacing.md,
   },
   reportDesc: {
     marginTop: spacing.xs,
