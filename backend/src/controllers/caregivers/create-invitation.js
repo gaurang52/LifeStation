@@ -4,23 +4,21 @@ const { isValidEmail } = require('../../utils/validators');
 const emailService = require('../../services/email.service');
 
 /**
- * POST /senior/add-caregiver
- * Add a caregiver to the authenticated senior user by email
- * If caregiver exists: creates mapping directly
- * If caregiver doesn't exist: creates invitation
+ * POST /senior/caregivers/invite
+ * Create a caregiver invitation
  * Body: { email: string, relationship_with_senior?: string }
  */
-const addCaregiver = async (req, res) => {
+const createInvitation = async (req, res) => {
   try {
     const userId = req.user_id;
     const userType = req.user_type;
     const { email, relationship_with_senior = 'other' } = req.body;
 
-    // Only seniors can add caregivers
+    // Only seniors can invite caregivers
     if (userType !== 'senior') {
       return res.status(403).json({
         error: 'Forbidden',
-        message: 'Only seniors can add caregivers',
+        message: 'Only seniors can invite caregivers',
       });
     }
 
@@ -60,26 +58,24 @@ const addCaregiver = async (req, res) => {
       });
     }
 
-    // Prevent self-invitation
+    // Check if user is trying to invite themselves
     if (inviterUser.email === normalizedEmail) {
       return res.status(400).json({
         error: 'Invalid input',
-        message: 'You cannot add yourself as a caregiver',
+        message: 'You cannot invite yourself as a caregiver',
       });
     }
 
-    // Find the caregiver user by email
-    const caregiverUser = await db.Users.findOne({
+    // Check if caregiver already exists and is already mapped
+    const existingCaregiver = await db.Users.findOne({
       where: { email: normalizedEmail, user_type: 'caregiver' },
     });
 
-    // If caregiver exists, create mapping directly
-    if (caregiverUser) {
-      // Check if caregiver is already mapped
+    if (existingCaregiver) {
       const existingMapping = await db.SeniorCaregiverMapping.findOne({
         where: {
           senior_id: userId,
-          caregiver_id: caregiverUser.id,
+          caregiver_id: existingCaregiver.id,
         },
       });
 
@@ -89,41 +85,8 @@ const addCaregiver = async (req, res) => {
           message: 'This caregiver is already added to your care circle',
         });
       }
-
-      // Prevent self-mapping
-      if (userId === caregiverUser.id) {
-        return res.status(400).json({
-          error: 'Invalid input',
-          message: 'You cannot add yourself as a caregiver',
-        });
-      }
-
-      // Create the mapping
-      const mapping = await db.SeniorCaregiverMapping.create({
-        senior_id: userId,
-        caregiver_id: caregiverUser.id,
-        relationship_with_senior,
-      });
-
-      logger.info(`Caregiver ${caregiverUser.id} added to senior ${userId}`);
-
-      return res.status(201).json({
-        message: 'Caregiver added successfully',
-        data: {
-          id: mapping.id,
-          caregiver_id: caregiverUser.id,
-          caregiver: {
-            id: caregiverUser.id,
-            name: caregiverUser.name,
-            email: caregiverUser.email,
-            mobile: caregiverUser.mobile,
-          },
-          relationship_with_senior: mapping.relationship_with_senior,
-        },
-      });
     }
 
-    // Caregiver doesn't exist - create invitation
     // Check for existing pending invitation
     const existingInvitation = await db.CaregiverInvitations.findOne({
       where: {
@@ -145,7 +108,6 @@ const addCaregiver = async (req, res) => {
           data: {
             invitation_id: existingInvitation.id,
             expires_at: existingInvitation.expires_at,
-            status: 'PENDING',
           },
         });
       }
@@ -172,12 +134,13 @@ const addCaregiver = async (req, res) => {
     } catch (emailError) {
       logger.error(`Failed to send invitation email for invitation ${invitation.id}:`, emailError);
       // Don't fail the request if email fails, but log it
+      // The invitation is still created and can be resent later
     }
 
     res.status(201).json({
       message: 'Invitation sent successfully',
       data: {
-        invitation_id: invitation.id,
+        id: invitation.id,
         caregiver_email: invitation.caregiver_email,
         status: invitation.status,
         expires_at: invitation.expires_at,
@@ -185,7 +148,7 @@ const addCaregiver = async (req, res) => {
       },
     });
   } catch (error) {
-    logger.error('Error in add-caregiver:', error);
+    logger.error('Error in create-invitation:', error);
     res.status(500).json({
       error: 'Internal server error',
       message: error.message,
@@ -193,4 +156,4 @@ const addCaregiver = async (req, res) => {
   }
 };
 
-module.exports = addCaregiver;
+module.exports = createInvitation;

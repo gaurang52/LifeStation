@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { StyleSheet, View, ScrollView, KeyboardAvoidingView, Platform, Alert } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { Screen, AppText, Button, Input } from '@shared/components';
 import { spacing, colors } from '@shared/theme';
 import { caregiverApi } from '@core/api/caregiverApi';
 import { ErrorHandler } from '@core/utils/errorHandler';
 import { useNavigation } from '@react-navigation/native';
+
+const ERROR_BACKGROUND_COLOR = '#fef2f2';
 
 const AddCaregiverScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -36,14 +38,64 @@ const AddCaregiverScreen: React.FC = () => {
 
     try {
       setLoading(true);
-      await caregiverApi.addCaregiver({
+      const response = await caregiverApi.addCaregiver({
         email: trimmedEmail,
         relationship_with_senior: 'other',
       });
 
-      // Success - navigate back
-      navigation.goBack();
-    } catch (err) {
+      // Check if it's an invitation or direct mapping
+      if (response.data.invitation_id) {
+        // Invitation was sent
+        Alert.alert(
+          'Invitation Sent',
+          `An invitation has been sent to ${trimmedEmail}. They will receive an email with instructions to join your care circle.`,
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.goBack(),
+            },
+          ],
+        );
+      } else {
+        // Direct mapping (caregiver already exists)
+        Alert.alert(
+          'Caregiver Added',
+          `${response.data.caregiver?.name || trimmedEmail} has been added to your care circle.`,
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.goBack(),
+            },
+          ],
+        );
+      }
+    } catch (err: unknown) {
+      // Handle conflict errors (existing invitation)
+      const errorResponse = err as {
+        response?: {
+          status?: number;
+          data?: { data?: { invitation_id?: number; expires_at?: string } };
+        };
+      };
+      if (
+        errorResponse?.response?.status === 409 &&
+        errorResponse?.response?.data?.data?.invitation_id
+      ) {
+        Alert.alert(
+          'Invitation Already Sent',
+          `An invitation has already been sent to ${trimmedEmail}. It expires on ${new Date(
+            errorResponse.response.data.data.expires_at || '',
+          ).toLocaleDateString()}.`,
+          [
+            {
+              text: 'OK',
+              onPress: () => navigation.goBack(),
+            },
+          ],
+        );
+        return;
+      }
+
       const errorMessage =
         ErrorHandler.getErrorMessage(err) ||
         'Failed to add caregiver. Please check the email and try again.';
@@ -64,7 +116,8 @@ const AddCaregiverScreen: React.FC = () => {
             Add Caregiver
           </AppText>
           <AppText variant="body" color={colors.textSecondary} style={styles.headerSubtitle}>
-            Enter the email address of the caregiver you want to add to your care circle
+            Enter the email address of the caregiver you want to add to your care circle. If they
+            don&apos;t have an account, an invitation will be sent.
           </AppText>
         </View>
 
@@ -142,7 +195,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.xs,
     padding: spacing.sm,
-    backgroundColor: '#fef2f2',
+    backgroundColor: ERROR_BACKGROUND_COLOR,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: colors.error,

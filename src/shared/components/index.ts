@@ -2,6 +2,7 @@ export { AppText } from './AppText';
 export { Button } from './Button';
 export { Card } from './Card';
 export { CaregiverCard } from './CaregiverCard';
+export { InvitationCard } from './InvitationCard';
 export { DeviceCard } from './DeviceCard';
 export { DeviceStatusBar, BatteryStatus, SignalStatus, LastSyncStatus } from './DeviceStatusBar';
 export { ErrorBoundary } from './ErrorBoundary';

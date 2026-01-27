@@ -74,15 +74,101 @@ const signup = async (req, res) => {
       });
     }
 
+    const normalizedEmail = email.toLowerCase().trim();
+    let invitation = null;
+
+    // For caregiver signup, check if invitation exists by email match
+    if (user_type === 'caregiver') {
+      // Find invitation by email (case-insensitive match)
+      invitation = await db.CaregiverInvitations.findOne({
+        where: {
+          caregiver_email: normalizedEmail,
+          status: 'PENDING',
+        },
+        include: [
+          {
+            model: db.Users,
+            as: 'inviter',
+            attributes: ['id', 'name', 'email'],
+          },
+        ],
+      });
+
+      if (!invitation) {
+        return res.status(400).json({
+          error: 'No invitation found',
+          message:
+            'No pending invitation found for this email address. Please contact the person who invited you.',
+        });
+      }
+
+      // Check if invitation is expired
+      if (new Date(invitation.expires_at) < new Date()) {
+        await invitation.update({ status: 'EXPIRED' });
+        return res.status(400).json({
+          error: 'Invitation expired',
+          message:
+            'This invitation has expired. Please contact the person who invited you for a new invitation.',
+        });
+      }
+
+      // Check if invitation is revoked
+      if (invitation.status === 'REVOKED') {
+        return res.status(400).json({
+          error: 'Invitation revoked',
+          message: 'This invitation has been revoked. Please contact the person who invited you.',
+        });
+      }
+    }
+
     // Check if user already exists
     const existingUser = await db.Users.findOne({
-      where: { email: email.toLowerCase() },
+      where: { email: normalizedEmail },
     });
 
     if (existingUser) {
-      return res.status(409).json({
-        error: 'User with this email already exists',
-      });
+      // If invitation exists, check if they're already mapped
+      if (invitation) {
+        const existingMapping = await db.SeniorCaregiverMapping.findOne({
+          where: {
+            senior_id: invitation.inviter_user_id,
+            caregiver_id: existingUser.id,
+          },
+        });
+
+        if (existingMapping) {
+          return res.status(409).json({
+            error: 'Already mapped',
+            message: 'This caregiver is already added to the care circle',
+          });
+        }
+        // User exists with valid invitation - they should log in instead
+        // But we'll still create the mapping for them
+        await invitation.update({
+          status: 'ACCEPTED',
+          accepted_at: new Date(),
+        });
+
+        await db.SeniorCaregiverMapping.create({
+          senior_id: invitation.inviter_user_id,
+          caregiver_id: existingUser.id,
+          relationship_with_senior: invitation.relationship_with_senior,
+        });
+
+        logger.info(
+          `Mapping created for existing user: Senior ${invitation.inviter_user_id} -> Caregiver ${existingUser.id}`,
+        );
+
+        return res.status(200).json({
+          message: 'You already have an account. Please log in to continue.',
+          error: 'User already exists',
+          requires_login: true,
+        });
+      } else {
+        return res.status(409).json({
+          error: 'User with this email already exists',
+        });
+      }
     }
 
     // Hash password
@@ -92,7 +178,7 @@ const signup = async (req, res) => {
     // Create user
     const user = await db.Users.create({
       name: name.trim(),
-      email: email.toLowerCase().trim(),
+      email: normalizedEmail,
       password: hashedPassword,
       user_type: user_type,
       mobile: mobile ? mobile.trim() : null,
@@ -108,6 +194,38 @@ const signup = async (req, res) => {
         isPro: false,
       },
     });
+
+    // Handle invitation acceptance and mapping creation (for caregiver signup)
+    if (invitation && user_type === 'caregiver') {
+      // Mark invitation as accepted
+      await invitation.update({
+        status: 'ACCEPTED',
+        accepted_at: new Date(),
+      });
+
+      // Create caregiver-senior mapping automatically
+      const mappingExists = await db.SeniorCaregiverMapping.findOne({
+        where: {
+          senior_id: invitation.inviter_user_id,
+          caregiver_id: user.id,
+        },
+      });
+
+      if (!mappingExists) {
+        await db.SeniorCaregiverMapping.create({
+          senior_id: invitation.inviter_user_id,
+          caregiver_id: user.id,
+          relationship_with_senior: invitation.relationship_with_senior,
+        });
+        logger.info(
+          `Automatic mapping created: Senior ${invitation.inviter_user_id} -> Caregiver ${user.id}`,
+        );
+      } else {
+        logger.warn(
+          `Mapping already exists: Senior ${invitation.inviter_user_id} -> Caregiver ${user.id}`,
+        );
+      }
+    }
 
     // Generate JWT tokens
     const token = jwt.sign({ user_id: user.id, user_type: user.user_type }, JWT_SECRET_KEY, {

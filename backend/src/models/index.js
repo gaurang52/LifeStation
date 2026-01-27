@@ -31,6 +31,7 @@ const db = {};
 // Import models
 db.Users = require('./Users')(sequelize);
 db.SeniorCaregiverMapping = require('./SeniorCaregiverMapping')(sequelize);
+db.CaregiverInvitations = require('./CaregiverInvitations')(sequelize);
 db.Devices = require('./Devices')(sequelize);
 db.UserDeviceMapping = require('./UserDeviceMapping')(sequelize);
 db.ExternalApiTokens = require('./ExternalApiTokens')(sequelize);

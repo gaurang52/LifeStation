@@ -2,9 +2,9 @@ module.exports = db => {
   const {
     Users,
     SeniorCaregiverMapping,
+    CaregiverInvitations,
     Devices,
     UserDeviceMapping,
-    ExternalApiTokens,
     AuditLogs,
     NotificationLogs,
     MedicationReminders,
@@ -54,6 +54,12 @@ module.exports = db => {
     Users.hasMany(Goals, {
       foreignKey: 'user_id',
       as: 'goals',
+    });
+  }
+  if (!Users.associations.sentInvitations) {
+    Users.hasMany(CaregiverInvitations, {
+      foreignKey: 'inviter_user_id',
+      as: 'sentInvitations',
     });
   }
 
@@ -122,6 +128,14 @@ module.exports = db => {
     Goals.belongsTo(Users, {
       foreignKey: 'user_id',
       as: 'user',
+    });
+  }
+
+  // CaregiverInvitations associations
+  if (!CaregiverInvitations.associations.inviter) {
+    CaregiverInvitations.belongsTo(Users, {
+      foreignKey: 'inviter_user_id',
+      as: 'inviter',
     });
   }
 };

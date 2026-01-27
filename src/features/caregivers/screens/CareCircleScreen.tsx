@@ -8,9 +8,9 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { Screen, AppText, CaregiverCard, TopNavbar } from '@shared/components';
+import { Screen, AppText, CaregiverCard, InvitationCard, TopNavbar } from '@shared/components';
 import { spacing, colors } from '@shared/theme';
-import { caregiverApi, type Caregiver } from '@core/api/caregiverApi';
+import { caregiverApi, type Caregiver, type CaregiverInvitation } from '@core/api/caregiverApi';
 import { ErrorHandler } from '@core/utils/errorHandler';
 import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '@core/store';
@@ -20,10 +20,13 @@ import type { StackNavigationProp } from '@react-navigation/stack';
 
 type NavigationProp = StackNavigationProp<AppStackParamList>;
 
+const WARNING_BACKGROUND_COLOR = '#fffbeb';
+
 const CareCircleScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const user = useAuthStore(state => state.user);
   const [caregivers, setCaregivers] = useState<Caregiver[]>([]);
+  const [invitations, setInvitations] = useState<CaregiverInvitation[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +46,17 @@ const CareCircleScreen: React.FC = () => {
         ? await caregiverApi.getCaregivers()
         : await caregiverApi.getSeniors();
       setCaregivers(response.data || []);
+
+      // Load invitations if senior
+      if (isSenior) {
+        try {
+          const invitationsResponse = await caregiverApi.listInvitations();
+          setInvitations(invitationsResponse.data || []);
+        } catch (invErr) {
+          // Don't fail the whole request if invitations fail
+          console.warn('Failed to load invitations:', invErr);
+        }
+      }
     } catch (err) {
       const errorMessage =
         ErrorHandler.getErrorMessage(err) || 'Failed to load care circle. Please try again.';
@@ -55,6 +69,7 @@ const CareCircleScreen: React.FC = () => {
 
   useEffect(() => {
     loadCaregivers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleRefresh = () => {
@@ -71,6 +86,28 @@ const CareCircleScreen: React.FC = () => {
     } catch (err) {
       const errorMessage =
         ErrorHandler.getErrorMessage(err) || 'Failed to remove caregiver. Please try again.';
+      setError(errorMessage);
+    }
+  };
+
+  const handleResendInvitation = async (invitationId: number) => {
+    try {
+      await caregiverApi.resendInvitation(invitationId);
+      await loadCaregivers();
+    } catch (err) {
+      const errorMessage =
+        ErrorHandler.getErrorMessage(err) || 'Failed to resend invitation. Please try again.';
+      setError(errorMessage);
+    }
+  };
+
+  const handleRevokeInvitation = async (invitationId: number) => {
+    try {
+      await caregiverApi.revokeInvitation(invitationId);
+      await loadCaregivers();
+    } catch (err) {
+      const errorMessage =
+        ErrorHandler.getErrorMessage(err) || 'Failed to revoke invitation. Please try again.';
       setError(errorMessage);
     }
   };
@@ -127,7 +164,7 @@ const CareCircleScreen: React.FC = () => {
             </AppText>
           </TouchableOpacity>
         </View>
-      ) : caregivers.length === 0 ? (
+      ) : caregivers.length === 0 && invitations.length === 0 ? (
         <View style={styles.centerContainer}>
           <MaterialIcons name="people-outline" size={64} color={colors.icon} />
           <AppText variant="h3" style={styles.emptyTitle}>
@@ -169,6 +206,19 @@ const CareCircleScreen: React.FC = () => {
               </AppText>
             </View>
           )}
+          {/* Show pending invitations first */}
+          {isSenior &&
+            invitations
+              .filter(inv => inv.status === 'PENDING')
+              .map(invitation => (
+                <InvitationCard
+                  key={invitation.id}
+                  invitation={invitation}
+                  onResend={() => handleResendInvitation(invitation.id)}
+                  onRevoke={() => handleRevokeInvitation(invitation.id)}
+                />
+              ))}
+          {/* Show accepted caregivers */}
           {caregivers.map(caregiver => (
             <CaregiverCard
               key={caregiver.id}
@@ -177,6 +227,21 @@ const CareCircleScreen: React.FC = () => {
               onDelete={() => handleDelete(caregiver.id)}
             />
           ))}
+          {/* Show other invitation statuses (expired, revoked) */}
+          {isSenior &&
+            invitations
+              .filter(inv => inv.status !== 'PENDING')
+              .map(invitation => (
+                <InvitationCard
+                  key={invitation.id}
+                  invitation={invitation}
+                  onResend={
+                    invitation.status === 'EXPIRED'
+                      ? () => handleResendInvitation(invitation.id)
+                      : undefined
+                  }
+                />
+              ))}
         </ScrollView>
       )}
     </Screen>
@@ -184,41 +249,6 @@ const CareCircleScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    flex: 1,
-    minWidth: 0,
-  },
-  headerTitle: {
-    flex: 1,
-    minWidth: 0,
-  },
-  addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.sm,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    backgroundColor: colors.lightPrimary,
-    flexShrink: 0,
-    marginLeft: spacing.sm,
-  },
   scrollView: {
     flex: 1,
   },
@@ -279,7 +309,7 @@ const styles = StyleSheet.create({
   errorBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fffbeb',
+    backgroundColor: WARNING_BACKGROUND_COLOR,
     padding: spacing.sm,
     borderRadius: 8,
     marginBottom: spacing.md,
