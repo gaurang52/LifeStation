@@ -42,6 +42,8 @@ const DeviceDetailsScreen: React.FC<DeviceDetailsScreenProps> = ({ route }) => {
   const [battery, setBattery] = useState<number | undefined>(undefined);
   const [signal, setSignal] = useState<number | undefined>(undefined);
   const [lastUpdate, setLastUpdate] = useState<string | undefined>(undefined);
+  const [heartRate, setHeartRate] = useState<number | undefined>(undefined);
+  const [steps, setSteps] = useState<number | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -138,6 +140,34 @@ const DeviceDetailsScreen: React.FC<DeviceDetailsScreenProps> = ({ route }) => {
         setSignal(deviceData.signal_strength || undefined);
         setLastUpdate(deviceData.last_seen || undefined);
 
+        // Extract steps and heartrate from device data
+        // Check if they exist as direct properties or in metadata
+        const deviceWithAny = deviceData as Device & {
+          steps?: number | null;
+          heart_rate?: number | null;
+          heartrate?: number | null;
+          device_metadata?: {
+            steps?: number | null;
+            heart_rate?: number | null;
+            heartrate?: number | null;
+          };
+        };
+
+        // Try to get steps from direct property or metadata
+        const stepsValue = deviceWithAny.steps ?? deviceWithAny.device_metadata?.steps ?? undefined;
+        setSteps(stepsValue !== null && stepsValue !== undefined ? stepsValue : undefined);
+
+        // Try to get heartrate from direct property or metadata (check both heart_rate and heartrate)
+        const heartRateValue =
+          deviceWithAny.heart_rate ??
+          deviceWithAny.heartrate ??
+          deviceWithAny.device_metadata?.heart_rate ??
+          deviceWithAny.device_metadata?.heartrate ??
+          undefined;
+        setHeartRate(
+          heartRateValue !== null && heartRateValue !== undefined ? heartRateValue : undefined,
+        );
+
         // Fetch fall detection status
         try {
           const fallResponse = await deviceApi.getFallDetection(idType, deviceId);
@@ -152,6 +182,9 @@ const DeviceDetailsScreen: React.FC<DeviceDetailsScreenProps> = ({ route }) => {
         console.error('Error fetching device recent info:', err);
         const errorMessage = ErrorHandler.getErrorMessage(err) || 'Failed to load device details.';
         setError(errorMessage);
+        // Reset steps and heartrate on error
+        setSteps(undefined);
+        setHeartRate(undefined);
 
         // If the call failed, try using iccid as fallback if available
         // This matches HomeScreen behavior
@@ -465,24 +498,22 @@ const DeviceDetailsScreen: React.FC<DeviceDetailsScreenProps> = ({ route }) => {
                 Signal
               </AppText>
             </View>
-            {battery !== null && battery !== undefined && (
-              <View style={styles.statusGridItem}>
-                <View style={styles.statusGridItemHeader}>
-                  <MaterialIcons name="favorite" size={20} color={colors.white} />
-                  <AppText variant="h3" style={styles.statusGridValue}>
-                    {Math.floor(Math.random() * 20) + 60}
-                  </AppText>
-                </View>
-                <AppText variant="small" color="rgba(255, 255, 255, 0.7)">
-                  Heart Rate
+            <View style={styles.statusGridItem}>
+              <View style={styles.statusGridItemHeader}>
+                <MaterialIcons name="favorite" size={20} color={colors.white} />
+                <AppText variant="h3" style={styles.statusGridValue}>
+                  {heartRate !== null && heartRate !== undefined ? `${heartRate}` : 'N/A'}
                 </AppText>
               </View>
-            )}
+              <AppText variant="small" color="rgba(255, 255, 255, 0.7)">
+                Heart Rate
+              </AppText>
+            </View>
             <View style={styles.statusGridItem}>
               <View style={styles.statusGridItemHeader}>
                 <MaterialIcons name="directions-walk" size={20} color={colors.white} />
                 <AppText variant="h3" style={styles.statusGridValue}>
-                  {Math.floor(Math.random() * 2000) + 3000}
+                  {steps !== null && steps !== undefined ? `${steps}` : 'N/A'}
                 </AppText>
               </View>
               <AppText variant="small" color="rgba(255, 255, 255, 0.7)">
