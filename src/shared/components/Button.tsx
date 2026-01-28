@@ -38,7 +38,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   buttonDisabled: {
-    backgroundColor: colors.border,
+    backgroundColor: colors.lightGray,
+    opacity: 0.6,
   },
   label: {
     ...typography.bodyBold,

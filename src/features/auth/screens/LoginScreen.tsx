@@ -8,7 +8,7 @@ import {
   Platform,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { Screen, AppText, Button, Input } from '@shared/components';
+import { Screen, AppText, Button, Input, Logo } from '@shared/components';
 import { useAuthStore } from '@core/store';
 import { spacing, colors } from '@shared/theme';
 import { ErrorHandler } from '@core/utils/errorHandler';
@@ -83,8 +83,8 @@ const LoginScreen: React.FC = () => {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
-            <View style={styles.iconContainer}>
-              <MaterialIcons name="lock" size={48} color={colors.primary} />
+            <View style={styles.logoContainer}>
+              <Logo size={120} />
             </View>
             <AppText variant="h1" style={styles.title}>
               Welcome Back
@@ -186,13 +186,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.xl,
   },
-  iconContainer: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: colors.lightPrimary,
-    justifyContent: 'center',
+  logoContainer: {
     alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: spacing.md,
   },
   title: {
@@ -229,7 +225,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    backgroundColor: '#fef2f2',
+    backgroundColor: colors.errorBackground,
     padding: spacing.sm,
     borderRadius: 8,
     borderWidth: 1,

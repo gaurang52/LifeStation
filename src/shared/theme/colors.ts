@@ -1,58 +1,77 @@
-// Colors matching old-src design system
+// LifeStation Brand Color Theme
 export const colors = {
-  white: 'rgb(255,255,255)',
-  black: '#000000',
-  tabBg: 'rgba(100, 116, 139, .12)',
-  primary: '#f15e5e', // Allwell theme primary
-  lightPrimary: 'rgba(241, 94, 94, 0.5)',
-  secondary: 'rgb(40,41,42)',
-  blue: 'rgb(168,199,250)',
-  orange: 'rgb(80,66,43)',
-  darkBlue: 'rgb(58,63,80)',
+  // Primary Brand Colors
+  primary: '#C2185B', // Magenta / Deep Pink - Primary brand color
+  lightPrimary: 'rgba(194, 24, 91, 0.5)', // Light version of primary for backgrounds
+  white: '#FFFFFF', // White for backgrounds and cards
+  black: '#000000', // Fallback black
+
+  // Text Colors
+  text: '#1A1A1A', // Primary dark text (fallback to #000000)
+  textSecondary: '#888888', // Secondary text, helper text, placeholders
+  label: '#1A1A1A', // Form labels
+  value: '#1A1A1A', // Value text (same as primary text)
+
+  // Background & Neutral Colors
+  background: '#FFFFFF', // Main page backgrounds
+  surface: '#FFFFFF', // Cards and containers
+  lightGray: '#F5F5F5', // Section backgrounds, disabled containers, table headers
+  midGray: '#888888', // Secondary text, helper text, placeholders
+
+  // Semantic Colors (maintained for compatibility)
+  success: '#22C55E',
+  warning: '#FF8F3A',
+  error: '#DC2626', // Better contrast red
+  errorBackground: '#fef2f2', // Light red background for error containers
   green: '#22C55E',
-  red: 'red',
-  icon: 'rgb(156,156,156)',
-  search: 'rgb(51,52,56)',
-  button: '#21292B',
-  background: '#F9FAFB',
-  border: '#dee2e6',
-  placeholder: '#7F7F7F',
-  checkBoxBg: '#454545',
-  textForgot: '#454545',
-  outlineButtonBg: '#EDEDED',
-  divider: '#D9D9D9',
-  btnBorder: '#D7D7D7',
-  gray: '#767676',
+  red: '#DC2626',
+
+  // UI Element Colors
+  border: '#E5E5E5', // Borders (lighter for better contrast)
+  divider: '#E5E5E5', // Dividers
+  placeholder: '#888888', // Input placeholders
+  icon: '#888888', // Icons (using mid gray)
+
+  // Legacy colors (mapped to new theme for backward compatibility)
+  secondary: '#1A1A1A',
+  button: '#C2185B', // Primary button color
+  tabBg: 'rgba(194, 24, 91, 0.12)', // Tab background with primary color
+  outlineButtonBg: '#F5F5F5', // Outline button background
+  btnBorder: '#E5E5E5',
+  checkBoxBg: '#C2185B', // Checkbox background
+  textForgot: '#1A1A1A',
+  card: '#F5F5F5',
+  bgTab: '#1A1A1A',
+
+  // Functional colors (kept for specific use cases)
+  blue: '#3B82F6',
+  darkBlue: '#1E40AF',
+  orange: '#FF8F3A',
   star: '#FF8F3A',
   battery: '#16A34A',
   lightYellow: '#CA8A04',
-  unFilledStar: '#C5C8D2',
-  bgTab: '#21292B',
-  carBg: '#f0f0f0',
-  purple: '#592466',
-  crossBg: '#141B34',
+  unFilledStar: '#E5E5E5',
+  carBg: '#F5F5F5',
+  purple: '#9333EA',
+  crossBg: '#1A1A1A',
   badgeBg: '#3B82F6',
   footSteps: '#2563EB',
-  card: '#E0E0E0',
+  search: '#1A1A1A',
+  gray: '#888888',
+
+  // Device-specific colors
   deivceId: {
     text: '#15803D',
     bg: '#f0fdf4',
   },
-  text: '#6B7280',
-  label: '#4B5563',
-  value: '#374151',
+
+  // Legacy card colors
   visaCard: {
-    primary: '#000000',
-    secondary: '#1c1c1c',
-    gray: '#2e2e2e',
-    gray2: '#3a3a3a',
+    primary: '#1A1A1A',
+    secondary: '#1A1A1A',
+    gray: '#888888',
+    gray2: '#F5F5F5',
   },
-  // Additional semantic colors for compatibility
-  success: '#22C55E',
-  warning: '#FF8F3A',
-  error: 'red',
-  surface: '#FFFFFF',
-  textSecondary: '#6B7280',
 };
 
 export type Colors = typeof colors;

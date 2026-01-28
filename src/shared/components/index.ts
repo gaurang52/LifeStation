@@ -7,6 +7,7 @@ export { DeviceCard } from './DeviceCard';
 export { DeviceStatusBar, BatteryStatus, SignalStatus, LastSyncStatus } from './DeviceStatusBar';
 export { ErrorBoundary } from './ErrorBoundary';
 export { Input } from './Input';
+export { Logo } from './Logo';
 export { MapPlaceholder } from './MapPlaceholder';
 export { MapViewComponent } from './MapViewComponent';
 export { Screen } from './Screen';
