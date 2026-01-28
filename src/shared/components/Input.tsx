@@ -1,6 +1,6 @@
 import React from 'react';
 import { TextInput, TextInputProps, StyleSheet, View } from 'react-native';
-import { colors, spacing, typography } from '@shared/theme';
+import { colors, spacing, borderRadius, typography } from '@shared/theme';
 import { AppText } from './AppText';
 
 type Props = TextInputProps & {
@@ -29,15 +29,18 @@ export const Input: React.FC<Props> = ({ label, error, style, ...rest }) => (
 );
 
 const styles = StyleSheet.create({
-  wrap: { gap: spacing.xs },
-  label: {},
+  wrap: { gap: spacing.sm }, // mb-2 in Figma = 8px
+  label: {
+    fontWeight: '500', // font-medium in Figma
+  },
   input: {
-    height: 48,
+    height: 56, // py-4 in Figma = 16px top + 16px bottom + 24px line height = 56px
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
+    borderColor: colors.lightGray, // border-[#F5F5F5] in Figma
+    borderRadius: borderRadius.lg, // rounded-xl = 16px
     paddingHorizontal: spacing.md,
-    backgroundColor: colors.surface,
+    paddingVertical: spacing.md, // py-4 = 16px
+    backgroundColor: colors.lightGray, // bg-[#F5F5F5] in Figma
     ...typography.body,
     color: colors.text,
   },

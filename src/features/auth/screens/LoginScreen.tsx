@@ -8,9 +8,9 @@ import {
   Platform,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { Screen, AppText, Button, Input, Logo } from '@shared/components';
+import { Screen, AppText, Button, Input } from '@shared/components';
 import { useAuthStore } from '@core/store';
-import { spacing, colors } from '@shared/theme';
+import { spacing, colors, borderRadius } from '@shared/theme';
 import { ErrorHandler } from '@core/utils/errorHandler';
 import { useNavigation } from '@react-navigation/native';
 import type { AuthStackParamList } from '@core/constants/routes';
@@ -83,22 +83,18 @@ const LoginScreen: React.FC = () => {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
-            <View style={styles.logoContainer}>
-              <Logo size={120} />
-            </View>
             <AppText variant="h1" style={styles.title}>
               Welcome Back
             </AppText>
             <AppText variant="body" color={colors.textSecondary} style={styles.subtitle}>
-              Sign in to continue to LifeStation
+              Sign in to continue
             </AppText>
           </View>
 
           <View style={styles.form}>
             <View style={styles.inputContainer}>
-              <MaterialIcons name="email" size={20} color={colors.icon} style={styles.inputIcon} />
               <Input
-                label="Email"
+                label="Email Address"
                 placeholder="Enter your email"
                 autoCapitalize="none"
                 keyboardType="email-address"
@@ -111,15 +107,12 @@ const LoginScreen: React.FC = () => {
                 onBlur={() => validateEmail(email)}
                 style={styles.input}
               />
+              <View style={styles.inputIconContainer}>
+                <MaterialIcons name="email" size={20} color={colors.textSecondary} />
+              </View>
             </View>
 
             <View style={styles.inputContainer}>
-              <MaterialIcons
-                name="lock-outline"
-                size={20}
-                color={colors.icon}
-                style={styles.inputIcon}
-              />
               <Input
                 label="Password"
                 placeholder="Enter your password"
@@ -133,6 +126,9 @@ const LoginScreen: React.FC = () => {
                 onBlur={() => validatePassword(password)}
                 style={styles.input}
               />
+              <View style={styles.inputIconContainer}>
+                <MaterialIcons name="lock-outline" size={20} color={colors.textSecondary} />
+              </View>
               <TouchableOpacity
                 style={styles.eyeIcon}
                 onPress={() => setShowPassword(!showPassword)}
@@ -140,7 +136,7 @@ const LoginScreen: React.FC = () => {
                 <MaterialIcons
                   name={showPassword ? 'visibility' : 'visibility-off'}
                   size={20}
-                  color={colors.icon}
+                  color={colors.textSecondary}
                 />
               </TouchableOpacity>
             </View>
@@ -153,6 +149,14 @@ const LoginScreen: React.FC = () => {
                 </AppText>
               </View>
             ) : null}
+
+            <View style={styles.forgotPasswordContainer}>
+              <TouchableOpacity activeOpacity={0.7}>
+                <AppText variant="bodyBold" color={colors.primary}>
+                  Forgot Password?
+                </AppText>
+              </TouchableOpacity>
+            </View>
 
             <Button label="Sign In" onPress={onSubmit} loading={isLoading} disabled={isLoading} />
 
@@ -179,45 +183,42 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg, // px-6 in Figma = 24px
+    paddingVertical: spacing.xxl, // py-12 in Figma = 48px
     justifyContent: 'center',
   },
   header: {
     alignItems: 'center',
-    marginBottom: spacing.xl,
-  },
-  logoContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg, // slightly tighter now that logo is removed
   },
   title: {
-    marginBottom: spacing.sm,
+    marginBottom: spacing.sm, // mb-2 in Figma = 8px
     textAlign: 'center',
+    fontSize: 30, // text-3xl in Figma
+    fontWeight: '600', // font-semibold
   },
   subtitle: {
-    marginBottom: spacing.xs,
     textAlign: 'center',
   },
   form: {
-    gap: spacing.md,
+    gap: spacing.md, // space-y-4 in Figma = 16px
   },
   inputContainer: {
     position: 'relative',
   },
-  inputIcon: {
+  inputIconContainer: {
     position: 'absolute',
-    left: spacing.md,
-    top: 38, // Label height (20) + gap (4) + input center (24) - icon center (10) = 38
+    left: spacing.md, // left-4 in Figma = 16px
+    top: 48, // Adjusted for new input height (56px) - icon center (10px) = 48px
     zIndex: 1,
   },
   input: {
-    paddingLeft: spacing.xl + spacing.md,
+    paddingLeft: spacing.xl + spacing.md, // pl-12 in Figma = 48px (12*4)
   },
   eyeIcon: {
     position: 'absolute',
     right: spacing.md,
-    top: 38, // Aligned with inputIcon for consistency
+    top: 48, // Aligned with inputIconContainer
     zIndex: 1,
     padding: spacing.xs,
   },
@@ -227,17 +228,21 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
     backgroundColor: colors.errorBackground,
     padding: spacing.sm,
-    borderRadius: 8,
+    borderRadius: borderRadius.sm,
     borderWidth: 1,
     borderColor: colors.error,
   },
   error: {
     flex: 1,
   },
+  forgotPasswordContainer: {
+    alignItems: 'flex-end',
+    marginTop: spacing.xs,
+  },
   signupContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: spacing.sm,
+    marginTop: spacing.lg, // mt-6 in Figma = 24px
   },
 });
 

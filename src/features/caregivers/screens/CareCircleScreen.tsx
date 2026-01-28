@@ -8,7 +8,16 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { Screen, AppText, CaregiverCard, InvitationCard, TopNavbar } from '@shared/components';
+import { Clock, UserPlus, Users } from 'lucide-react-native';
+import {
+  Screen,
+  AppText,
+  CaregiverCard,
+  InvitationCard,
+  TopNavbar,
+  Card,
+  Button,
+} from '@shared/components';
 import { spacing, colors } from '@shared/theme';
 import { caregiverApi, type Caregiver, type CaregiverInvitation } from '@core/api/caregiverApi';
 import { ErrorHandler } from '@core/utils/errorHandler';
@@ -22,6 +31,12 @@ type NavigationProp = StackNavigationProp<AppStackParamList>;
 
 const WARNING_BACKGROUND_COLOR = '#fffbeb';
 
+const isCaregiverActiveStatus = (status?: string | null): boolean => {
+  const normalized = (status || '').trim().toLowerCase();
+  // Backend defaults caregivers.status to "ACTIVATED"
+  return normalized === 'active' || normalized === 'activated';
+};
+
 const CareCircleScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const user = useAuthStore(state => state.user);
@@ -32,6 +47,9 @@ const CareCircleScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const isSenior = user?.user_type === 'senior';
+  const activeCaregivers = isSenior
+    ? caregivers.filter(c => isCaregiverActiveStatus(c.status))
+    : caregivers;
 
   const loadCaregivers = async (isRefresh: boolean = false) => {
     try {
@@ -133,17 +151,9 @@ const CareCircleScreen: React.FC = () => {
   return (
     <Screen padded={false}>
       <TopNavbar
-        title={isSenior ? 'Care Circle' : 'My Seniors'}
-        icon="people"
-        rightAction={
-          isSenior
-            ? {
-                label: 'Add',
-                icon: 'add',
-                onPress: handleAddPress,
-              }
-            : undefined
-        }
+        title="Care Circle"
+        subtitle="Manage your caregivers and contacts"
+        variant="figma"
       />
 
       {error && caregivers.length === 0 ? (
@@ -164,7 +174,8 @@ const CareCircleScreen: React.FC = () => {
             </AppText>
           </TouchableOpacity>
         </View>
-      ) : caregivers.length === 0 && invitations.length === 0 ? (
+      ) : (isSenior ? activeCaregivers.length === 0 : caregivers.length === 0) &&
+        invitations.length === 0 ? (
         <View style={styles.centerContainer}>
           <MaterialIcons name="people-outline" size={64} color={colors.icon} />
           <AppText variant="h3" style={styles.emptyTitle}>
@@ -180,7 +191,7 @@ const CareCircleScreen: React.FC = () => {
               style={styles.addCaregiverButton}
               onPress={handleAddPress}
               activeOpacity={0.7}>
-              <MaterialIcons name="add-circle" size={24} color={colors.primary} />
+              <UserPlus size={20} color={colors.primary} />
               <AppText variant="bodyBold" color={colors.primary}>
                 Add Caregiver
               </AppText>
@@ -206,6 +217,65 @@ const CareCircleScreen: React.FC = () => {
               </AppText>
             </View>
           )}
+
+          {/* Summary Cards */}
+          {isSenior && (
+            <View style={styles.summaryCards}>
+              <Card style={styles.summaryCard}>
+                <View style={styles.summaryCardContent}>
+                  <View
+                    style={[
+                      styles.summaryIconContainer,
+                      { backgroundColor: colors.success + '20' },
+                    ]}>
+                    <View style={[styles.summaryIconCircle, { backgroundColor: colors.success }]}>
+                      <Users size={16} color={colors.white} />
+                    </View>
+                    <AppText variant="h2" style={styles.summaryNumber}>
+                      {activeCaregivers.length}
+                    </AppText>
+                  </View>
+                  <AppText variant="small" color={colors.textSecondary}>
+                    Active Caregivers
+                  </AppText>
+                </View>
+              </Card>
+              <Card style={styles.summaryCard}>
+                <View style={styles.summaryCardContent}>
+                  <View
+                    style={[
+                      styles.summaryIconContainer,
+                      { backgroundColor: colors.warning + '20' },
+                    ]}>
+                    <View style={[styles.summaryIconCircle, { backgroundColor: colors.warning }]}>
+                      <Clock size={16} color={colors.white} />
+                    </View>
+                    <AppText variant="h2" style={styles.summaryNumber}>
+                      {invitations.filter(inv => inv.status === 'PENDING').length}
+                    </AppText>
+                  </View>
+                  <AppText variant="small" color={colors.textSecondary}>
+                    Pending Invites
+                  </AppText>
+                </View>
+              </Card>
+            </View>
+          )}
+
+          {/* Add Caregiver Button */}
+          {isSenior && (
+            <View style={styles.addButtonContainer}>
+              <Button label="Add Caregiver" onPress={handleAddPress} disabled={false} />
+            </View>
+          )}
+
+          {/* Care Team Section */}
+          <View style={styles.careTeamSection}>
+            <AppText variant="h3" style={styles.careTeamTitle}>
+              Your Care Team
+            </AppText>
+          </View>
+
           {/* Show pending invitations first */}
           {isSenior &&
             invitations
@@ -219,7 +289,7 @@ const CareCircleScreen: React.FC = () => {
                 />
               ))}
           {/* Show accepted caregivers */}
-          {caregivers.map(caregiver => (
+          {activeCaregivers.map(caregiver => (
             <CaregiverCard
               key={caregiver.id}
               caregiver={caregiver}
@@ -253,8 +323,47 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: spacing.md,
+    padding: spacing.lg, // px-6 in Figma
     paddingBottom: spacing.lg,
+  },
+  summaryCards: {
+    flexDirection: 'row',
+    gap: spacing.sm, // gap-3 in Figma
+    marginBottom: spacing.lg, // mb-6 in Figma
+  },
+  summaryCard: {
+    flex: 1,
+    padding: spacing.md, // p-4 in Figma
+  },
+  summaryCardContent: {
+    gap: spacing.sm, // mb-2 equivalent
+  },
+  summaryIconContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm, // space-x-2 in Figma
+    marginBottom: spacing.sm, // mb-2 in Figma
+  },
+  summaryIconCircle: {
+    width: 32, // w-8 in Figma
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  summaryNumber: {
+    fontSize: 24, // text-2xl in Figma
+    fontWeight: '600', // font-semibold
+    color: colors.text,
+  },
+  addButtonContainer: {
+    marginBottom: spacing.lg, // mb-6 in Figma
+  },
+  careTeamSection: {
+    marginBottom: spacing.md, // mb-4 in Figma
+  },
+  careTeamTitle: {
+    color: colors.text,
   },
   centerContainer: {
     flex: 1,

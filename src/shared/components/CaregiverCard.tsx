@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import { Mail, Phone, Trash2 } from 'lucide-react-native';
 import { Card } from './Card';
 import { AppText } from './AppText';
 import { colors, spacing } from '@shared/theme';
@@ -25,6 +25,15 @@ export const CaregiverCard: React.FC<CaregiverCardProps> = ({
   onDelete,
   showDelete = false,
 }) => {
+  const initials =
+    caregiver.name
+      ?.trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(part => part[0]?.toUpperCase())
+      .join('') || 'U';
+
   const handleDelete = () => {
     Alert.alert(
       'Remove Caregiver',
@@ -45,7 +54,9 @@ export const CaregiverCard: React.FC<CaregiverCardProps> = ({
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <View style={styles.avatar}>
-            <MaterialIcons name="person" size={24} color={colors.primary} />
+            <AppText variant="bodyBold" style={styles.avatarText}>
+              {initials}
+            </AppText>
           </View>
           <View style={styles.caregiverInfo}>
             <AppText variant="h3" style={styles.caregiverName}>
@@ -61,21 +72,21 @@ export const CaregiverCard: React.FC<CaregiverCardProps> = ({
             onPress={handleDelete}
             style={styles.deleteButton}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <MaterialIcons name="delete-outline" size={20} color={colors.error} />
+            <Trash2 size={18} color={colors.error} />
           </TouchableOpacity>
         )}
       </View>
 
       <View style={styles.details}>
         <View style={styles.detailItem}>
-          <MaterialIcons name="email" size={16} color={colors.icon} />
+          <Mail size={16} color={colors.icon} />
           <AppText variant="small" color={colors.textSecondary} style={styles.detailText}>
             {caregiver.email}
           </AppText>
         </View>
         {caregiver.mobile && (
           <View style={styles.detailItem}>
-            <MaterialIcons name="phone" size={16} color={colors.icon} />
+            <Phone size={16} color={colors.icon} />
             <AppText variant="small" color={colors.textSecondary} style={styles.detailText}>
               {caregiver.mobile}
             </AppText>
@@ -115,9 +126,12 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: colors.lightPrimary,
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  avatarText: {
+    color: colors.white,
   },
   caregiverInfo: {
     marginLeft: spacing.sm,

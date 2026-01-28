@@ -9,9 +9,9 @@ import {
   Alert,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { Screen, AppText, Button, Input, Logo } from '@shared/components';
+import { Screen, AppText, Button, Input } from '@shared/components';
 import { useAuthStore } from '@core/store';
-import { spacing, colors } from '@shared/theme';
+import { spacing, colors, borderRadius } from '@shared/theme';
 import { ErrorHandler } from '@core/utils/errorHandler';
 import { useNavigation } from '@react-navigation/native';
 import type { AuthStackParamList } from '@core/constants/routes';
@@ -181,14 +181,11 @@ const SignupScreen: React.FC = () => {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
-            <View style={styles.logoContainer}>
-              <Logo size={120} />
-            </View>
             <AppText variant="h1" style={styles.title}>
               Create Account
             </AppText>
             <AppText variant="body" color={colors.textSecondary} style={styles.subtitle}>
-              Sign up to get started with LifeStation
+              Join our care community
             </AppText>
           </View>
 
@@ -322,8 +319,8 @@ const SignupScreen: React.FC = () => {
             </View>
 
             <View style={styles.userTypeContainer}>
-              <AppText variant="caption" color={colors.textSecondary} style={styles.userTypeLabel}>
-                Account Type *
+              <AppText variant="bodyBold" color={colors.text} style={styles.userTypeLabel}>
+                I am a:
               </AppText>
               <View style={styles.userTypeButtons}>
                 <TouchableOpacity
@@ -333,15 +330,13 @@ const SignupScreen: React.FC = () => {
                   ]}
                   onPress={() => setUserType('senior')}
                   activeOpacity={0.7}>
-                  <MaterialIcons
-                    name="elderly"
-                    size={20}
-                    color={userType === 'senior' ? colors.primary : colors.icon}
-                  />
                   <AppText
                     variant="bodyBold"
-                    color={userType === 'senior' ? colors.primary : colors.textSecondary}>
+                    color={userType === 'senior' ? colors.text : colors.text}>
                     Senior
+                  </AppText>
+                  <AppText variant="small" color={colors.textSecondary}>
+                    Using device
                   </AppText>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -351,15 +346,13 @@ const SignupScreen: React.FC = () => {
                   ]}
                   onPress={() => setUserType('caregiver')}
                   activeOpacity={0.7}>
-                  <MaterialIcons
-                    name="favorite"
-                    size={20}
-                    color={userType === 'caregiver' ? colors.primary : colors.icon}
-                  />
                   <AppText
                     variant="bodyBold"
-                    color={userType === 'caregiver' ? colors.primary : colors.textSecondary}>
+                    color={userType === 'caregiver' ? colors.text : colors.text}>
                     Caregiver
+                  </AppText>
+                  <AppText variant="small" color={colors.textSecondary}>
+                    Monitoring
                   </AppText>
                 </TouchableOpacity>
               </View>
@@ -429,27 +422,24 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg, // px-6 in Figma
+    paddingVertical: spacing.xxl, // py-12 in Figma
   },
   header: {
     alignItems: 'center',
-    marginBottom: spacing.xl,
-  },
-  logoContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.md,
+    marginBottom: spacing.lg, // slightly tighter now that logo is removed
   },
   title: {
-    marginBottom: spacing.sm,
+    marginBottom: spacing.sm, // mb-2 in Figma
     textAlign: 'center',
+    fontSize: 30, // text-3xl in Figma
+    fontWeight: '600', // font-semibold
   },
   subtitle: {
-    marginBottom: spacing.xs,
     textAlign: 'center',
   },
   form: {
-    gap: spacing.md,
+    gap: spacing.md, // space-y-4 in Figma
   },
   inputContainer: {
     position: 'relative',
@@ -457,44 +447,43 @@ const styles = StyleSheet.create({
   inputIcon: {
     position: 'absolute',
     left: spacing.md,
-    top: 38, // Label height (20) + gap (4) + input center (24) - icon center (10) = 38
+    top: 48, // Adjusted for new input height
     zIndex: 1,
   },
   input: {
-    paddingLeft: spacing.xl + spacing.md,
+    paddingLeft: spacing.xl + spacing.md, // pl-12 in Figma
   },
   eyeIcon: {
     position: 'absolute',
     right: spacing.md,
-    top: 38, // Aligned with inputIcon for consistency
+    top: 48, // Aligned with inputIcon
     zIndex: 1,
     padding: spacing.xs,
   },
   userTypeContainer: {
-    gap: spacing.sm,
+    gap: spacing.sm, // mb-6 in Figma
+    marginBottom: spacing.lg,
   },
   userTypeLabel: {
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm, // mb-3 in Figma
   },
   userTypeButtons: {
     flexDirection: 'row',
-    gap: spacing.md,
+    gap: spacing.sm, // gap-3 in Figma
   },
   userTypeButton: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'center',
-    gap: spacing.xs,
-    padding: spacing.md,
-    borderRadius: 8,
+    padding: spacing.md, // p-4 in Figma
+    borderRadius: borderRadius.lg, // rounded-xl in Figma
     borderWidth: 2,
-    borderColor: colors.border,
+    borderColor: colors.lightGray, // border-[#F5F5F5] in Figma
     backgroundColor: colors.surface,
   },
   userTypeButtonActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.lightPrimary,
+    borderColor: colors.primary, // border-[#C2185B] in Figma
+    backgroundColor: colors.lightPrimary, // bg-[#C2185B]/5 in Figma
   },
   checkboxContainer: {
     gap: spacing.sm,

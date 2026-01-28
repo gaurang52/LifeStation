@@ -1,6 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
-import { colors, spacing, typography } from '@shared/theme';
+import { colors, spacing, borderRadius, typography } from '@shared/theme';
 import { AppText } from './AppText';
 
 type Props = {
@@ -32,10 +32,15 @@ export const Button: React.FC<Props> = ({ label, onPress, loading, disabled }) =
 const styles = StyleSheet.create({
   button: {
     backgroundColor: colors.primary,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.md, // 16px to match Figma py-4
     paddingHorizontal: spacing.lg,
-    borderRadius: 8,
+    borderRadius: borderRadius.lg, // 16px rounded-xl to match Figma
     alignItems: 'center',
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
   buttonDisabled: {
     backgroundColor: colors.lightGray,

@@ -13,12 +13,10 @@ import {
   Screen,
   AppText,
   Card,
-  TopNavbar,
-  DeviceStatusBar,
   // MapViewComponent, // TODO: Uncomment after fixing Google Maps API key configuration
 } from '@shared/components';
 import { useAuthStore } from '@core/store';
-import { spacing, colors } from '@shared/theme';
+import { spacing, colors, borderRadius } from '@shared/theme';
 import { deviceApi, type Device } from '@core/api/deviceApi';
 import { eventsApi, type DeviceEvent } from '@core/api/eventsApi';
 import { ErrorHandler } from '@core/utils/errorHandler';
@@ -588,24 +586,8 @@ const HomeScreen: React.FC = () => {
     // show content anyway using basic device data
     if (activeDevice && !deviceInfo && !loading) {
       // Use basic device data as fallback
-      const fallbackDeviceInfo: DeviceRecentInfo = {
-        device: activeDevice,
-        battery: activeDevice.battery_level || undefined,
-        signal: activeDevice.signal_strength || undefined,
-        lastUpdate: activeDevice.last_seen || undefined,
-      };
-
-      // const location = getLastLocation(); // TODO: Uncomment when MapViewComponent is re-enabled
       return (
         <>
-          {/* Device Status Bar */}
-          <DeviceStatusBar
-            battery={fallbackDeviceInfo.battery}
-            signal={fallbackDeviceInfo.signal}
-            lastSeen={fallbackDeviceInfo.lastUpdate}
-            style={styles.statusBarContainer}
-          />
-
           {/* Device Details Section */}
           <Card style={styles.deviceDetailsCard}>
             {/* Device Name and User Name */}
@@ -790,16 +772,6 @@ const HomeScreen: React.FC = () => {
 
     return (
       <>
-        {/* Device Status Bar */}
-        {activeDevice && (
-          <DeviceStatusBar
-            battery={deviceInfo?.battery ?? activeDevice.battery_level ?? undefined}
-            signal={deviceInfo?.signal ?? activeDevice.signal_strength ?? undefined}
-            lastSeen={deviceInfo?.lastUpdate ?? activeDevice.last_seen ?? undefined}
-            style={styles.statusBarContainer}
-          />
-        )}
-
         {/* Device Details Section */}
         <Card style={styles.deviceDetailsCard}>
           {/* Device Name and User Name */}
@@ -979,22 +951,6 @@ const HomeScreen: React.FC = () => {
 
   return (
     <Screen padded={false}>
-      <TopNavbar
-        title="Home"
-        icon="home"
-        rightAction={
-          user?.user_type === 'senior'
-            ? {
-                label: 'Help',
-                icon: 'help-outline',
-                onPress: () => {
-                  // Handle help/notification to caregivers
-                },
-              }
-            : undefined
-        }
-      />
-
       {error && devices.length === 0 ? (
         <View style={styles.centerContainer}>
           <MaterialIcons name="error-outline" size={64} color={colors.error} />
@@ -1016,6 +972,118 @@ const HomeScreen: React.FC = () => {
               tintColor={colors.primary}
             />
           }>
+          {/* Header with gradient background */}
+          <View style={styles.header}>
+            <View style={styles.headerContent}>
+              <View style={styles.headerLeft}>
+                <AppText
+                  variant="small"
+                  color="rgba(255, 255, 255, 0.8)"
+                  style={styles.welcomeText}>
+                  Welcome back
+                </AppText>
+                <AppText variant="h2" style={styles.userName}>
+                  {user?.name || 'User'}
+                </AppText>
+              </View>
+              <TouchableOpacity
+                style={styles.refreshButton}
+                onPress={handleRefresh}
+                activeOpacity={0.7}>
+                <MaterialIcons
+                  name="refresh"
+                  size={20}
+                  color={colors.white}
+                  style={refreshing && styles.refreshIconSpinning}
+                />
+              </TouchableOpacity>
+            </View>
+            {/* Device Status Bar on colored background */}
+            {activeDevice && (
+              <View style={styles.statusBarWrapper}>
+                <View style={styles.statusBarOnHeader}>
+                  <View style={styles.statusBarTop}>
+                    <View>
+                      <AppText variant="small" color={colors.textSecondary}>
+                        Device
+                      </AppText>
+                      <AppText variant="bodyBold" color={colors.text} style={styles.deviceName}>
+                        {activeDevice.name || 'Unnamed Device'}
+                      </AppText>
+                    </View>
+                    <View style={styles.statusIndicators}>
+                      {deviceInfo?.battery !== undefined && (
+                        <>
+                          <View style={styles.statusIndicator}>
+                            <MaterialIcons
+                              name="battery-full"
+                              size={16}
+                              color={
+                                deviceInfo.battery >= 50
+                                  ? colors.battery
+                                  : deviceInfo.battery >= 20
+                                  ? colors.warning
+                                  : colors.red
+                              }
+                            />
+                            <AppText variant="small" color={colors.text} style={styles.statusText}>
+                              {deviceInfo.battery}%
+                            </AppText>
+                          </View>
+                          <View style={styles.statusDot} />
+                        </>
+                      )}
+                      {deviceInfo?.signal !== undefined && (
+                        <View style={styles.statusIndicator}>
+                          <MaterialIcons
+                            name="signal-cellular-alt"
+                            size={16}
+                            color={colors.primary}
+                          />
+                          <AppText variant="small" color={colors.text} style={styles.statusText}>
+                            {deviceInfo.signal >= 75
+                              ? 'Excellent'
+                              : deviceInfo.signal >= 50
+                              ? 'Good'
+                              : deviceInfo.signal >= 25
+                              ? 'Fair'
+                              : 'Poor'}
+                          </AppText>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                  <View style={styles.statusBarBottom}>
+                    <MaterialIcons name="access-time" size={16} color={colors.textSecondary} />
+                    <AppText
+                      variant="small"
+                      color={colors.textSecondary}
+                      style={styles.lastSyncText}>
+                      Last sync:{' '}
+                      {deviceInfo?.lastUpdate
+                        ? (() => {
+                            try {
+                              const date = new Date(deviceInfo.lastUpdate);
+                              const now = new Date();
+                              const diffMs = now.getTime() - date.getTime();
+                              const diffMins = Math.floor(diffMs / 60000);
+                              if (diffMins < 1) return 'Just now';
+                              if (diffMins < 60) return `${diffMins} minutes ago`;
+                              const diffHours = Math.floor(diffMs / 3600000);
+                              if (diffHours < 24) return `${diffHours} hours ago`;
+                              return date.toLocaleDateString();
+                            } catch {
+                              return 'Unknown';
+                            }
+                          })()
+                        : 'Never'}
+                    </AppText>
+                  </View>
+                </View>
+              </View>
+            )}
+          </View>
+
           {error && (
             <View style={styles.errorBanner}>
               <MaterialIcons name="info-outline" size={20} color={colors.warning} />
@@ -1038,8 +1106,92 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: spacing.lg,
   },
+  header: {
+    backgroundColor: colors.primary, // Gradient-like solid color
+    paddingHorizontal: spacing.lg, // px-6 in Figma
+    paddingTop: spacing.xxl, // pt-12 in Figma
+    paddingBottom: spacing.lg, // pb-6 in Figma
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: spacing.lg, // mb-6 in Figma
+  },
+  headerLeft: {
+    flex: 1,
+  },
+  welcomeText: {
+    marginBottom: spacing.xs / 2, // mt-1 equivalent
+  },
+  userName: {
+    color: colors.white,
+    marginTop: spacing.xs / 2,
+    fontSize: 24, // text-2xl in Figma
+    fontWeight: '600', // font-semibold
+  },
+  refreshButton: {
+    width: 40, // w-10 in Figma
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)', // bg-white/20 in Figma
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  refreshIconSpinning: {
+    transform: [{ rotate: '180deg' }], // Simple rotation, could be animated
+  },
+  statusBarWrapper: {
+    marginTop: 0,
+  },
+  statusBarOnHeader: {
+    backgroundColor: colors.white,
+    borderRadius: borderRadius.xl, // rounded-2xl in Figma
+    padding: spacing.md, // p-4 in Figma
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  statusBarTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.sm, // mb-3 in Figma
+  },
+  deviceName: {
+    marginTop: spacing.xs / 2,
+  },
+  statusIndicators: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm, // space-x-2 in Figma
+  },
+  statusIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs / 2, // mr-1 equivalent
+  },
+  statusText: {
+    fontWeight: '500', // font-medium
+  },
+  statusDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: colors.textSecondary,
+  },
+  statusBarBottom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs / 2, // mr-1 equivalent
+  },
+  lastSyncText: {
+    fontSize: 14, // text-sm in Figma
+  },
   paddedContent: {
-    padding: spacing.md,
+    padding: spacing.lg, // px-6 in Figma
   },
   centerContainer: {
     flex: 1,
@@ -1169,10 +1321,6 @@ const styles = StyleSheet.create({
   },
   statusText: {
     textTransform: 'capitalize',
-  },
-  statusBarContainer: {
-    marginBottom: spacing.md,
-    marginTop: 0,
   },
 });
 
