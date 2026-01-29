@@ -9,12 +9,7 @@ import {
   FlatList,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import {
-  Screen,
-  AppText,
-  Card,
-  // MapViewComponent, // TODO: Uncomment after fixing Google Maps API key configuration
-} from '@shared/components';
+import { Screen, AppText, Card, MapViewComponent } from '@shared/components';
 import { useAuthStore } from '@core/store';
 import { spacing, colors, borderRadius } from '@shared/theme';
 import { deviceApi, type Device } from '@core/api/deviceApi';
@@ -545,57 +540,56 @@ const HomeScreen: React.FC = () => {
     return 'event';
   };
 
-  // TODO: Uncomment when MapViewComponent is re-enabled
-  // const getLastLocation = (): { latitude: number; longitude: number } => {
-  //   // Priority 1: Use GPS location from telemetry (device recent endpoint)
-  //   if (deviceInfo?.location?.latitude && deviceInfo.location.longitude) {
-  //     const lat =
-  //       typeof deviceInfo.location.latitude === 'string'
-  //         ? parseFloat(deviceInfo.location.latitude)
-  //         : deviceInfo.location.latitude;
-  //     const lng =
-  //       typeof deviceInfo.location.longitude === 'string'
-  //         ? parseFloat(deviceInfo.location.longitude)
-  //         : deviceInfo.location.longitude;
+  const getLastLocation = (): { latitude: number; longitude: number } => {
+    // Priority 1: Use GPS location from telemetry (device recent endpoint)
+    if (deviceInfo?.location?.latitude && deviceInfo.location.longitude) {
+      const lat =
+        typeof deviceInfo.location.latitude === 'string'
+          ? parseFloat(deviceInfo.location.latitude)
+          : deviceInfo.location.latitude;
+      const lng =
+        typeof deviceInfo.location.longitude === 'string'
+          ? parseFloat(deviceInfo.location.longitude)
+          : deviceInfo.location.longitude;
 
-  //     if (!isNaN(lat) && !isNaN(lng) && lat !== null && lng !== null) {
-  //       console.log('HomeScreen - Using deviceInfo location:', {
-  //         lat,
-  //         lng,
-  //         original: deviceInfo.location,
-  //       });
-  //       return { latitude: lat, longitude: lng };
-  //     }
-  //   }
+      if (!isNaN(lat) && !isNaN(lng) && lat !== null && lng !== null) {
+        console.log('HomeScreen - Using deviceInfo location:', {
+          lat,
+          lng,
+          original: deviceInfo.location,
+        });
+        return { latitude: lat, longitude: lng };
+      }
+    }
 
-  //   // Priority 2: Find the most recent location event
-  //   const locationEvent = events.find(
-  //     e => e.eventtype?.toLowerCase().includes('location') && e.rawevent?.location,
-  //   );
-  //   if (locationEvent?.rawevent?.location) {
-  //     const lat =
-  //       typeof locationEvent.rawevent.location.latitude === 'string'
-  //         ? parseFloat(locationEvent.rawevent.location.latitude)
-  //         : locationEvent.rawevent.location.latitude;
-  //     const lng =
-  //       typeof locationEvent.rawevent.location.longitude === 'string'
-  //         ? parseFloat(locationEvent.rawevent.location.longitude)
-  //         : locationEvent.rawevent.location.longitude;
+    // Priority 2: Find the most recent location event
+    const locationEvent = events.find(
+      e => e.eventtype?.toLowerCase().includes('location') && e.rawevent?.location,
+    );
+    if (locationEvent?.rawevent?.location) {
+      const lat =
+        typeof locationEvent.rawevent.location.latitude === 'string'
+          ? parseFloat(locationEvent.rawevent.location.latitude)
+          : locationEvent.rawevent.location.latitude;
+      const lng =
+        typeof locationEvent.rawevent.location.longitude === 'string'
+          ? parseFloat(locationEvent.rawevent.location.longitude)
+          : locationEvent.rawevent.location.longitude;
 
-  //     if (!isNaN(lat) && !isNaN(lng) && lat !== null && lng !== null) {
-  //       console.log('HomeScreen - Using location event:', { lat, lng, event: locationEvent });
-  //       return { latitude: lat, longitude: lng };
-  //     }
-  //   }
+      if (!isNaN(lat) && !isNaN(lng) && lat !== null && lng !== null) {
+        console.log('HomeScreen - Using location event:', { lat, lng, event: locationEvent });
+        return { latitude: lat, longitude: lng };
+      }
+    }
 
-  //   // Temporary default location (San Francisco) when no location is available
-  //   console.log('HomeScreen - Using default location (no valid location found)', {
-  //     deviceInfoLocation: deviceInfo?.location,
-  //     eventsCount: events.length,
-  //     locationEvents: events.filter(e => e.eventtype?.toLowerCase().includes('location')),
-  //   });
-  //   return { latitude: 37.78825, longitude: -122.4324 };
-  // };
+    // Temporary default location (San Francisco) when no location is available
+    console.log('HomeScreen - Using default location (no valid location found)', {
+      deviceInfoLocation: deviceInfo?.location,
+      eventsCount: events.length,
+      locationEvents: events.filter(e => e.eventtype?.toLowerCase().includes('location')),
+    });
+    return { latitude: 37.78825, longitude: -122.4324 };
+  };
 
   const renderContent = () => {
     if (loading && !refreshing) {
@@ -830,7 +824,7 @@ const HomeScreen: React.FC = () => {
       return null;
     }
 
-    // const location = getLastLocation(); // TODO: Uncomment when MapViewComponent is re-enabled
+    const location = getLastLocation();
 
     return (
       <>
@@ -957,15 +951,14 @@ const HomeScreen: React.FC = () => {
           </View>
         </Card>
 
-        {/* Map Section - TODO: Temporarily commented out - uncomment after fixing Google Maps API key configuration
+        {/* Map Section */}
         <MapViewComponent
-          latitude={location?.latitude}
-          longitude={location?.longitude}
+          latitude={location.latitude}
+          longitude={location.longitude}
           height={250}
           showMarker={true}
           markerTitle="Device Location"
         />
-        */}
 
         {/* Recent Events Section */}
         <Card style={styles.eventsCard}>
