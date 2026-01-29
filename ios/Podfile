@@ -16,7 +16,14 @@ end
 
 target 'Lifestation' do
   config = use_native_modules!
+  
+  pod 'Firebase/Core'
+  pod 'Firebase/Messaging'
+  pod 'GoogleMaps'
 
+  use_frameworks! :linkage => :static
+  $RNFirebaseAsStaticFramework = true
+  
   use_react_native!(
     :path => config[:reactNativePath],
     # An absolute path to your application root.

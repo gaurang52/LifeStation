@@ -13,6 +13,7 @@ import { Screen, AppText, Button, Input } from '@shared/components';
 import { useAuthStore } from '@core/store';
 import { spacing, colors, borderRadius } from '@shared/theme';
 import { ErrorHandler } from '@core/utils/errorHandler';
+import { getFCMToken } from '@core/services/fcmService';
 import { useNavigation } from '@react-navigation/native';
 import type { AuthStackParamList, RootStackParamList } from '@core/constants/routes';
 import { ROUTES } from '@core/constants/routes';
@@ -152,6 +153,16 @@ const SignupScreen: React.FC = () => {
     }
 
     try {
+      // Automatically retrieve FCM token before signup
+      // If FCM token retrieval fails, signup will still proceed without it
+      let fcmToken: string | null = null;
+      try {
+        fcmToken = await getFCMToken();
+      } catch (fcmError) {
+        // Log but don't block signup if FCM token retrieval fails
+        console.warn('Failed to retrieve FCM token:', fcmError);
+      }
+
       await signup({
         name: name.trim(),
         email: email.toLowerCase().trim(),
@@ -159,6 +170,7 @@ const SignupScreen: React.FC = () => {
         user_type: userType,
         mobile: mobile.trim() || undefined,
         address: address.trim() || undefined,
+        fcm_token: fcmToken || undefined,
         privacy_accepted: true,
         terms_accepted: true,
       });

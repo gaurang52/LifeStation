@@ -2,6 +2,9 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     
+    <!-- Notification permission for Android 13+ (API 33+) -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    
     <!-- Storage permissions for saving PDF files to Downloads folder -->
     <!-- Required only for Android 9 and below (API 28 and below) -->
     <!-- Android 10+ (API 29+) uses scoped storage and can write to Downloads without permission -->
@@ -34,5 +37,14 @@
             <category android:name="android.intent.category.LAUNCHER" />
         </intent-filter>
       </activity>
+
+      <!-- Firebase Cloud Messaging Service -->
+      <service
+        android:name="com.google.firebase.messaging.FirebaseMessagingService"
+        android:exported="false">
+        <intent-filter>
+          <action android:name="com.google.firebase.MESSAGING_EVENT" />
+        </intent-filter>
+      </service>
     </application>
 </manifest>

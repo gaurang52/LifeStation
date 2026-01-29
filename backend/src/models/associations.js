@@ -7,6 +7,7 @@ module.exports = db => {
     UserDeviceMapping,
     AuditLogs,
     NotificationLogs,
+    EventNotificationLogs,
     MedicationReminders,
     Goals,
   } = db;
@@ -112,6 +113,32 @@ module.exports = db => {
     NotificationLogs.belongsTo(Users, {
       foreignKey: 'recipient_id',
       as: 'recipient',
+    });
+  }
+
+  // EventNotificationLogs associations
+  if (!EventNotificationLogs.associations.caregiver) {
+    EventNotificationLogs.belongsTo(Users, {
+      foreignKey: 'caregiver_id',
+      as: 'caregiver',
+    });
+  }
+  if (!EventNotificationLogs.associations.senior) {
+    EventNotificationLogs.belongsTo(Users, {
+      foreignKey: 'senior_id',
+      as: 'senior',
+    });
+  }
+  if (!Users.associations.eventNotificationsAsCaregiver) {
+    Users.hasMany(EventNotificationLogs, {
+      foreignKey: 'caregiver_id',
+      as: 'eventNotificationsAsCaregiver',
+    });
+  }
+  if (!Users.associations.eventNotificationsAsSenior) {
+    Users.hasMany(EventNotificationLogs, {
+      foreignKey: 'senior_id',
+      as: 'eventNotificationsAsSenior',
     });
   }
 

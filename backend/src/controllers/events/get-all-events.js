@@ -6,6 +6,7 @@ const db = require('../../models');
 const auditLogService = require('../../services/audit-log.service');
 const cacheService = require('../../services/cache.service');
 const logger = require('../../utils/logger');
+const criticalEventNotificationService = require('../../services/critical-event-notification.service');
 
 /**
  * Calculate date range based on frequency
@@ -379,6 +380,37 @@ const getAllEvents = async (req, res) => {
 
     // Cache for 5 minutes
     await cacheService.set(cacheKey, eventsData, 300);
+
+    // Process critical events asynchronously (don't block response)
+    // Check for critical events in the fetched data
+    const criticalEvents = eventsData.filter(event =>
+      criticalEventNotificationService.isCriticalEvent(event),
+    );
+
+    if (criticalEvents.length > 0) {
+      // Process critical events in background (non-blocking)
+      setImmediate(async () => {
+        try {
+          for (const criticalEvent of criticalEvents) {
+            try {
+              await criticalEventNotificationService.processCriticalEvent(
+                criticalEvent,
+                targetDevice.device_id,
+                targetDevice.id_type,
+              );
+            } catch (error) {
+              logger.error('Error processing critical event notification:', {
+                error: error.message,
+                event: criticalEvent,
+                device_id: targetDevice.device_id,
+              });
+            }
+          }
+        } catch (error) {
+          logger.error('Error in critical event processing background task:', error);
+        }
+      });
+    }
 
     // Log audit entry
     await auditLogService.log({

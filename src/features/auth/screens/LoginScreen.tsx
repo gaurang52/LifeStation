@@ -12,6 +12,7 @@ import { Screen, AppText, Button, Input } from '@shared/components';
 import { useAuthStore } from '@core/store';
 import { spacing, colors, borderRadius } from '@shared/theme';
 import { ErrorHandler } from '@core/utils/errorHandler';
+import { getFCMToken } from '@core/services/fcmService';
 import { useNavigation } from '@react-navigation/native';
 import type { AuthStackParamList, RootStackParamList } from '@core/constants/routes';
 import { ROUTES } from '@core/constants/routes';
@@ -63,7 +64,17 @@ const LoginScreen: React.FC = () => {
     }
 
     try {
-      await login(email.toLowerCase().trim(), password);
+      // Automatically retrieve FCM token before login
+      // If FCM token retrieval fails, login will still proceed without it
+      let fcmToken: string | null = null;
+      try {
+        fcmToken = await getFCMToken();
+      } catch (fcmError) {
+        // Log but don't block login if FCM token retrieval fails
+        console.warn('Failed to retrieve FCM token:', fcmError);
+      }
+      console.log('fcmToken ----   ', fcmToken);
+      await login(email.toLowerCase().trim(), password, fcmToken || undefined);
       const rootNav = navigation.getParent() as StackNavigationProp<RootStackParamList> | undefined;
       rootNav?.replace(ROUTES.APP);
     } catch (err: unknown) {
