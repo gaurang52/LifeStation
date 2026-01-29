@@ -1,76 +1,92 @@
-// LifeStation Brand Color Theme
+// LifeStation Brand Color Theme — PMS colors only (per brand guidelines)
+// PRIMARY: PMS 675 | SECONDARY: PMS 676, PMS 649 | TAGLINE (logo): PMS 7540
+
+const PMS_675 = '#B42472'; // Primary (RGB 180, 36, 114)
+const PMS_676 = '#960051'; // Secondary — darker magenta
+const PMS_649 = '#DBE2E9'; // Secondary — light gray-blue
+const PMS_7540 = '#4B4F54'; // Tagline of logo (ECS/MAS), dark grey
+
 export const colors = {
-  // Primary Brand Colors
-  primary: '#C2185B', // Magenta / Deep Pink - Primary brand color
-  lightPrimary: 'rgba(194, 24, 91, 0.5)', // Light version of primary for backgrounds
-  white: '#FFFFFF', // White for backgrounds and cards
-  black: '#000000', // Fallback black
+  // Primary — PMS 675
+  primary: PMS_675,
+  lightPrimary: 'rgba(180, 36, 114, 0.5)',
+  white: '#FFFFFF',
+  black: '#000000',
 
-  // Text Colors
-  text: '#1A1A1A', // Primary dark text (fallback to #000000)
-  textSecondary: '#888888', // Secondary text, helper text, placeholders
-  label: '#1A1A1A', // Form labels
-  value: '#1A1A1A', // Value text (same as primary text)
+  // Secondary — PMS 676, PMS 649
+  secondary: PMS_676,
+  secondaryLight: PMS_649,
 
-  // Background & Neutral Colors
-  background: '#FFFFFF', // Main page backgrounds
-  surface: '#FFFFFF', // Cards and containers
-  lightGray: '#F5F5F5', // Section backgrounds, disabled containers, table headers
-  midGray: '#888888', // Secondary text, helper text, placeholders
+  // Tagline (logo) — PMS 7540
+  tagline: PMS_7540,
 
-  // Semantic Colors (maintained for compatibility)
-  success: '#22C55E',
-  warning: '#FF8F3A',
-  error: '#DC2626', // Better contrast red
-  errorBackground: '#fef2f2', // Light red background for error containers
-  green: '#22C55E',
-  red: '#DC2626',
+  // Text (using brand neutrals)
+  text: PMS_7540,
+  textSecondary: PMS_7540,
+  label: PMS_7540,
+  value: PMS_7540,
 
-  // UI Element Colors
-  border: '#E5E5E5', // Borders (lighter for better contrast)
-  divider: '#E5E5E5', // Dividers
-  placeholder: '#888888', // Input placeholders
-  icon: '#888888', // Icons (using mid gray)
+  // Background & surfaces
+  background: '#FFFFFF',
+  surface: '#FFFFFF',
+  welcomeBg: '#FFFFFF', // Light bg so logo shows in original colors (LifeStationLogo.png)
+  welcomeRingBorder: 'rgba(180, 36, 114, 0.2)',
+  welcomeRingBg: 'rgba(180, 36, 114, 0.04)',
+  lightGray: PMS_649,
+  midGray: PMS_7540,
 
-  // Legacy colors (mapped to new theme for backward compatibility)
-  secondary: '#1A1A1A',
-  button: '#C2185B', // Primary button color
-  tabBg: 'rgba(194, 24, 91, 0.12)', // Tab background with primary color
-  outlineButtonBg: '#F5F5F5', // Outline button background
-  btnBorder: '#E5E5E5',
-  checkBoxBg: '#C2185B', // Checkbox background
-  textForgot: '#1A1A1A',
-  card: '#F5F5F5',
-  bgTab: '#1A1A1A',
+  // Semantic (minimal; use primary/secondary where possible)
+  success: PMS_675,
+  warning: PMS_676,
+  error: PMS_676,
+  errorBackground: 'rgba(150, 0, 81, 0.1)',
+  green: PMS_675,
+  red: PMS_676,
 
-  // Functional colors (kept for specific use cases)
-  blue: '#3B82F6',
-  darkBlue: '#1E40AF',
-  orange: '#FF8F3A',
-  star: '#FF8F3A',
-  battery: '#16A34A',
-  lightYellow: '#CA8A04',
-  unFilledStar: '#E5E5E5',
-  carBg: '#F5F5F5',
-  purple: '#9333EA',
-  crossBg: '#1A1A1A',
-  badgeBg: '#3B82F6',
-  footSteps: '#2563EB',
-  search: '#1A1A1A',
-  gray: '#888888',
+  // UI elements
+  border: PMS_649,
+  divider: PMS_649,
+  placeholder: PMS_7540,
+  icon: PMS_7540,
 
-  // Device-specific colors
+  // Buttons & tabs (primary = PMS 675)
+  button: PMS_675,
+  tabBg: 'rgba(180, 36, 114, 0.12)',
+  outlineButtonBg: PMS_649,
+  btnBorder: PMS_649,
+  checkBoxBg: PMS_675,
+  textForgot: PMS_7540,
+  card: PMS_649,
+  bgTab: PMS_7540,
+
+  // Functional
+  blue: PMS_649,
+  darkBlue: PMS_676,
+  orange: PMS_676,
+  star: PMS_676,
+  battery: PMS_675,
+  lightYellow: PMS_649,
+  unFilledStar: PMS_649,
+  carBg: PMS_649,
+  purple: PMS_676,
+  crossBg: PMS_7540,
+  badgeBg: PMS_675,
+  footSteps: PMS_676,
+  search: PMS_7540,
+  gray: PMS_7540,
+
+  // Device-specific
   deivceId: {
-    text: '#15803D',
-    bg: '#f0fdf4',
+    text: PMS_675,
+    bg: 'rgba(180, 36, 114, 0.08)',
   },
 
-  // Legacy card colors
+  // Legacy card
   visaCard: {
-    primary: '#1A1A1A',
-    secondary: '#1A1A1A',
-    gray: '#888888',
-    gray2: '#F5F5F5',
+    primary: PMS_7540,
+    secondary: PMS_7540,
+    gray: PMS_7540,
+    gray2: PMS_649,
   },
 };
 
