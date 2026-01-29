@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: spacing.lg, // slightly tighter now that logo is removed
+    marginBottom: spacing.lg,
   },
   title: {
     marginBottom: spacing.sm, // mb-2 in Figma = 8px

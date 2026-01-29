@@ -6,3 +6,9 @@ declare module '@env' {
   export const APP_VERSION: string;
   export const GOOGLE_PLACE_API_KEY: string;
 }
+
+declare module '*.png' {
+  import { ImageSourcePropType } from 'react-native';
+  const value: ImageSourcePropType;
+  export default value;
+}

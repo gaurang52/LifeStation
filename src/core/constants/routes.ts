@@ -3,6 +3,7 @@ import type { NavigatorScreenParams } from '@react-navigation/native';
 /** Central route names for type-safe navigation. */
 export const ROUTES = {
   // Root
+  WELCOME: 'Welcome',
   AUTH: 'Auth',
   APP: 'App',
 
@@ -49,6 +50,7 @@ export type AppStackParamList = {
 };
 
 export type RootStackParamList = {
-  [ROUTES.AUTH]: NavigatorScreenParams<AuthStackParamList>;
-  [ROUTES.APP]: NavigatorScreenParams<AppStackParamList>;
+  [ROUTES.WELCOME]: undefined;
+  [ROUTES.AUTH]: NavigatorScreenParams<AuthStackParamList> | undefined;
+  [ROUTES.APP]: NavigatorScreenParams<AppStackParamList> | undefined;
 };

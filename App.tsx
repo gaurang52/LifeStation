@@ -11,6 +11,7 @@ import HomeScreen from '@features/home/screens/HomeScreen';
 import ProfileScreen from '@features/profile/screens/ProfileScreen';
 import LoginScreen from '@features/auth/screens/LoginScreen';
 import SignupScreen from '@features/auth/screens/SignupScreen';
+import WelcomeScreen from '@features/auth/screens/WelcomeScreen';
 import RecentEventsScreen from '@features/events/screens/RecentEventsScreen';
 import AddDeviceScreen from '@features/devices/screens/AddDeviceScreen';
 import DeviceDetailsScreen from '@features/devices/screens/DeviceDetailsScreen';
@@ -60,10 +61,12 @@ const CustomTabBarButton = ({
   ...props
 }: BottomTabBarButtonProps) => {
   const isSelected = accessibilityState?.selected;
+  // BottomTabBarButtonProps allows null for some optional props; TouchableOpacity expects undefined.
+  const touchableProps = props as React.ComponentProps<typeof TouchableOpacity>;
 
   return (
     <TouchableOpacity
-      {...props}
+      {...touchableProps}
       onPress={onPress}
       activeOpacity={0.7}
       style={[tabBarStyles.tabBarButton, isSelected && tabBarStyles.tabBarButtonSelected, style]}>
@@ -91,6 +94,29 @@ const getTabBarIcon = (routeName: string, color: string, size: number) => {
   }
 
   return <MaterialIcons name={iconName} size={size || 24} color={color} />;
+};
+
+// Stable tab icon components (defined outside Tabs to satisfy react/no-unstable-nested-components)
+const HomeTabIcon = (props: { color: string; size?: number }) =>
+  getTabBarIcon(ROUTES.HOME, props.color, props.size || 24);
+const EventsTabIcon = (props: { color: string; size?: number }) =>
+  getTabBarIcon(ROUTES.RECENT_EVENTS, props.color, props.size || 24);
+const DeviceTabIcon = (props: { color: string; size?: number }) =>
+  getTabBarIcon(ROUTES.DEVICE_DETAILS_TAB, props.color, props.size || 24);
+const CareCircleTabIcon = (props: { color: string; size?: number }) =>
+  getTabBarIcon(ROUTES.CARE_CIRCLE, props.color, props.size || 24);
+const ProfileTabIcon = (props: { color: string; size?: number }) =>
+  getTabBarIcon(ROUTES.PROFILE, props.color, props.size || 24);
+
+const tabBarIconByRoute: Record<
+  string,
+  (props: { color: string; size?: number }) => React.ReactElement
+> = {
+  [ROUTES.HOME]: HomeTabIcon,
+  [ROUTES.RECENT_EVENTS]: EventsTabIcon,
+  [ROUTES.DEVICE_DETAILS_TAB]: DeviceTabIcon,
+  [ROUTES.CARE_CIRCLE]: CareCircleTabIcon,
+  [ROUTES.PROFILE]: ProfileTabIcon,
 };
 
 const Tabs = () => {
@@ -127,8 +153,8 @@ const Tabs = () => {
             },
           }),
         },
-        tabBarButton: props => <CustomTabBarButton {...props} />,
-        tabBarIcon: ({ color, size }) => getTabBarIcon(route.name, color, size || 24),
+        tabBarButton: CustomTabBarButton,
+        tabBarIcon: tabBarIconByRoute[route.name] ?? ProfileTabIcon,
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '500',
@@ -195,7 +221,6 @@ const Auth = () => (
 );
 
 const App = (): React.JSX.Element => {
-  const isAuthenticated = useAuthStore(state => state.isAuthenticated);
   const hasHydrated = useAuthStore(state => state._hasHydrated);
 
   // Safety fallback: if hydration doesn't complete within 3 seconds, force it
@@ -227,12 +252,12 @@ const App = (): React.JSX.Element => {
         <StatusBar barStyle="dark-content" />
         <ErrorBoundary>
           <NavigationContainer>
-            <RootStack.Navigator screenOptions={{ headerShown: false }}>
-              {isAuthenticated ? (
-                <RootStack.Screen name={ROUTES.APP} component={AppNavigator} />
-              ) : (
-                <RootStack.Screen name={ROUTES.AUTH} component={Auth} />
-              )}
+            <RootStack.Navigator
+              screenOptions={{ headerShown: false }}
+              initialRouteName={ROUTES.WELCOME}>
+              <RootStack.Screen name={ROUTES.WELCOME} component={WelcomeScreen} />
+              <RootStack.Screen name={ROUTES.AUTH} component={Auth} />
+              <RootStack.Screen name={ROUTES.APP} component={AppNavigator} />
             </RootStack.Navigator>
           </NavigationContainer>
         </ErrorBoundary>
