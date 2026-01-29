@@ -13,7 +13,8 @@ import { useAuthStore } from '@core/store';
 import { spacing, colors, borderRadius } from '@shared/theme';
 import { ErrorHandler } from '@core/utils/errorHandler';
 import { useNavigation } from '@react-navigation/native';
-import type { AuthStackParamList } from '@core/constants/routes';
+import type { AuthStackParamList, RootStackParamList } from '@core/constants/routes';
+import { ROUTES } from '@core/constants/routes';
 import type { StackNavigationProp } from '@react-navigation/stack';
 
 type NavigationProp = StackNavigationProp<AuthStackParamList>;
@@ -63,6 +64,8 @@ const LoginScreen: React.FC = () => {
 
     try {
       await login(email.toLowerCase().trim(), password);
+      const rootNav = navigation.getParent() as StackNavigationProp<RootStackParamList> | undefined;
+      rootNav?.replace(ROUTES.APP);
     } catch (err: unknown) {
       // API client returns { message: string, statusCode: number, originalError: AxiosError }
       const errorMessage =

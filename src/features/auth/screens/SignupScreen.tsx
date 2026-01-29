@@ -14,7 +14,8 @@ import { useAuthStore } from '@core/store';
 import { spacing, colors, borderRadius } from '@shared/theme';
 import { ErrorHandler } from '@core/utils/errorHandler';
 import { useNavigation } from '@react-navigation/native';
-import type { AuthStackParamList } from '@core/constants/routes';
+import type { AuthStackParamList, RootStackParamList } from '@core/constants/routes';
+import { ROUTES } from '@core/constants/routes';
 import type { StackNavigationProp } from '@react-navigation/stack';
 
 type NavigationProp = StackNavigationProp<AuthStackParamList>;
@@ -161,6 +162,8 @@ const SignupScreen: React.FC = () => {
         privacy_accepted: true,
         terms_accepted: true,
       });
+      const rootNav = navigation.getParent() as StackNavigationProp<RootStackParamList> | undefined;
+      rootNav?.replace(ROUTES.APP);
     } catch (err: unknown) {
       const errorResponse = err as { response?: { data?: { error?: string } } };
       const errorMessage =
