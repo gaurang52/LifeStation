@@ -23,7 +23,7 @@ import { Screen, AppText, Card, TopNavbar, Input, Button } from '@shared/compone
 import { useAuthStore } from '@core/store';
 import { authApi } from '@core/api/authApi';
 import { spacing, colors, borderRadius } from '@shared/theme';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, CommonActions } from '@react-navigation/native';
 import type { AppStackParamList } from '@core/constants/routes';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { ROUTES } from '@core/constants/routes';
@@ -45,6 +45,21 @@ const ProfileScreen: React.FC = () => {
 
   const handleLogout = () => {
     logout();
+    // Reset root to Auth stack with Signup screen
+    const rootNav = navigation.getParent()?.getParent();
+    if (rootNav) {
+      rootNav.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [
+            {
+              name: ROUTES.AUTH,
+              state: { routes: [{ name: ROUTES.SIGNUP }], index: 0 },
+            },
+          ],
+        }),
+      );
+    }
   };
 
   const handleDevicePress = () => {
@@ -93,7 +108,7 @@ const ProfileScreen: React.FC = () => {
       setPasswordSuccess(true);
       setTimeout(() => {
         closeUpdatePassword();
-        logout();
+        handleLogout();
       }, 1500);
     } catch (e: unknown) {
       const message =

@@ -59,8 +59,15 @@ const signup = async (req, res) => {
       return res.status(400).json({ error: 'Invalid email format' });
     }
 
-    // Validate user type
-    if (!isValidUserType(user_type)) {
+    // Normalize user_type (accept Caregiver/caregiver etc.) then validate
+    const rawUserType = user_type;
+    const user_type_normalized =
+      typeof rawUserType === 'string'
+        ? rawUserType === 'ADMIN' || rawUserType === 'SUPER_ADMIN'
+          ? rawUserType
+          : rawUserType.toLowerCase()
+        : rawUserType;
+    if (!isValidUserType(user_type_normalized)) {
       return res.status(400).json({
         error: 'Invalid user_type. Must be one of: ADMIN, SUPER_ADMIN, caregiver, senior',
       });
@@ -89,7 +96,7 @@ const signup = async (req, res) => {
     let invitation = null;
 
     // For caregiver signup, check if invitation exists by email match
-    if (user_type === 'caregiver') {
+    if (user_type_normalized === 'caregiver') {
       // Find invitation by email (case-insensitive match)
       invitation = await db.CaregiverInvitations.findOne({
         where: {
@@ -186,12 +193,12 @@ const signup = async (req, res) => {
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    // Create user
+    // Create user (store normalized user_type for consistent access control)
     const user = await db.Users.create({
       name: name.trim(),
       email: normalizedEmail,
       password: hashedPassword,
-      user_type: user_type,
+      user_type: user_type_normalized,
       mobile: mobile ? mobile.trim() : null,
       address: address ? address.trim() : null,
       gender: gender || null,
@@ -219,7 +226,7 @@ const signup = async (req, res) => {
     }
 
     // Handle invitation acceptance and mapping creation (for caregiver signup)
-    if (invitation && user_type === 'caregiver') {
+    if (invitation && user_type_normalized === 'caregiver') {
       // Mark invitation as accepted
       await invitation.update({
         status: 'ACCEPTED',

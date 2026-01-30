@@ -35,11 +35,15 @@ class AccessControlService {
     try {
       const user = await db.Users.findByPk(userId);
       if (!user) {
+        logger.debug('canUserAccessDevice: user not found', { userId });
         return false;
       }
 
+      // Normalize user_type for case-insensitive comparison (DB may store 'Caregiver' or 'caregiver')
+      const userType = (user.user_type && String(user.user_type).toLowerCase()) || '';
+
       // Admins have full access
-      if (user.user_type === 'ADMIN' || user.user_type === 'SUPER_ADMIN') {
+      if (userType === 'admin' || userType === 'super_admin') {
         return true;
       }
 
@@ -52,11 +56,17 @@ class AccessControlService {
       });
 
       if (!device) {
+        logger.debug('canUserAccessDevice: device not found', {
+          userId,
+          deviceId,
+          idType,
+          user_type: user.user_type,
+        });
         return false;
       }
 
       // Seniors can only access their own devices
-      if (user.user_type === 'senior') {
+      if (userType === 'senior') {
         const mapping = await db.UserDeviceMapping.findOne({
           where: {
             user_id: userId,
@@ -67,7 +77,7 @@ class AccessControlService {
       }
 
       // Caregivers can access devices of linked seniors
-      if (user.user_type === 'caregiver') {
+      if (userType === 'caregiver') {
         const deviceMapping = await db.UserDeviceMapping.findOne({
           where: {
             device_id: device.id,
@@ -75,12 +85,31 @@ class AccessControlService {
         });
 
         if (!deviceMapping) {
+          logger.debug('canUserAccessDevice: no user-device mapping for device (caregiver)', {
+            userId,
+            deviceId,
+            idType,
+            device_internal_id: device.id,
+          });
           return false;
         }
 
-        return await this.canCaregiverAccessSenior(userId, deviceMapping.user_id);
+        const canAccess = await this.canCaregiverAccessSenior(userId, deviceMapping.user_id);
+        if (!canAccess) {
+          logger.debug('canUserAccessDevice: caregiver not linked to senior', {
+            caregiver_id: userId,
+            senior_id: deviceMapping.user_id,
+            deviceId,
+            idType,
+          });
+        }
+        return canAccess;
       }
 
+      logger.debug('canUserAccessDevice: unknown user_type', {
+        userId,
+        user_type: user.user_type,
+      });
       return false;
     } catch (error) {
       logger.error('Error checking device access:', error);
@@ -119,8 +148,10 @@ class AccessControlService {
         return [];
       }
 
+      const userType = (user.user_type && String(user.user_type).toLowerCase()) || '';
+
       // Admins can access all devices
-      if (user.user_type === 'ADMIN' || user.user_type === 'SUPER_ADMIN') {
+      if (userType === 'admin' || userType === 'super_admin') {
         const allDevices = await db.Devices.findAll({
           attributes: ['device_id', 'id_type'],
         });
@@ -131,7 +162,7 @@ class AccessControlService {
       }
 
       // Seniors can access their own devices
-      if (user.user_type === 'senior') {
+      if (userType === 'senior') {
         const mappings = await db.UserDeviceMapping.findAll({
           where: { user_id: userId },
           include: [
@@ -151,7 +182,7 @@ class AccessControlService {
       }
 
       // Caregivers can access devices of linked seniors
-      if (user.user_type === 'caregiver') {
+      if (userType === 'caregiver') {
         const seniorIds = await this.getAccessibleSeniorsForCaregiver(userId);
         if (seniorIds.length === 0) {
           return [];
@@ -195,18 +226,20 @@ class AccessControlService {
         return false;
       }
 
+      const userType = (user.user_type && String(user.user_type).toLowerCase()) || '';
+
       // Admins have full access
-      if (user.user_type === 'ADMIN' || user.user_type === 'SUPER_ADMIN') {
+      if (userType === 'admin' || userType === 'super_admin') {
         return true;
       }
 
       // Seniors can only access their own data
-      if (user.user_type === 'senior') {
+      if (userType === 'senior') {
         return parseInt(userId) === parseInt(seniorId);
       }
 
       // Caregivers can access data of linked seniors
-      if (user.user_type === 'caregiver') {
+      if (userType === 'caregiver') {
         return await this.canCaregiverAccessSenior(userId, seniorId);
       }
 
