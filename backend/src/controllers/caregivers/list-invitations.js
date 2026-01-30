@@ -8,9 +8,8 @@ const logger = require('../../utils/logger');
 const listInvitations = async (req, res) => {
   try {
     const userId = req.user_id;
-    const userType = req.user_type;
+    const userType = (req.user_type && String(req.user_type).toLowerCase()) || '';
 
-    // Only seniors can view their invitations
     if (userType !== 'senior') {
       return res.status(403).json({
         error: 'Forbidden',

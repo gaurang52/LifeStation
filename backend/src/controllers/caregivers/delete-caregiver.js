@@ -9,10 +9,9 @@ const logger = require('../../utils/logger');
 const deleteCaregiver = async (req, res) => {
   try {
     const userId = req.user_id;
-    const userType = req.user_type;
+    const userType = (req.user_type && String(req.user_type).toLowerCase()) || '';
     const { caregiver_id } = req.body;
 
-    // Only seniors can remove caregivers
     if (userType !== 'senior') {
       return res.status(403).json({
         error: 'Forbidden',

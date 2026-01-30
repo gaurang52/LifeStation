@@ -288,15 +288,31 @@ const HomeScreen: React.FC = () => {
       console.error('Error fetching device recent info:', err);
       const errorMessage = (err as { message?: string })?.message || '';
       const errorDetails = err as {
+        statusCode?: number;
         response?: { status?: number; data?: unknown };
         message?: string;
       };
+      const statusCode = errorDetails.statusCode ?? errorDetails.response?.status;
       console.error('Error details:', {
         message: errorMessage,
-        status: errorDetails.response?.status,
+        status: statusCode,
         data: errorDetails.response?.data,
         fullError: err,
       });
+
+      // On 403 Access denied: clear stale device and refetch device list (e.g. caregiver viewing wrong device)
+      if (statusCode === 403 && errorMessage.toLowerCase().includes('access denied')) {
+        logger.error('Device access denied – clearing active device and refetching list', {
+          device_id: deviceId,
+          id_type: idType,
+        });
+        fetchedDeviceRecentId.current = null;
+        setDeviceInfo(null);
+        setActiveDevice(null);
+        hasFetchedDevices.current = false;
+        fetchDevices(true);
+        return;
+      }
 
       // If the call failed and device has sim_iccid, try using iccid as id_type
       if (device.sim_iccid && idType !== 'iccid') {

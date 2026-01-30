@@ -19,7 +19,12 @@ import {
   Button,
 } from '@shared/components';
 import { spacing, colors } from '@shared/theme';
-import { caregiverApi, type Caregiver, type CaregiverInvitation } from '@core/api/caregiverApi';
+import {
+  caregiverApi,
+  type Caregiver,
+  type CaregiverInvitation,
+  type InvitedCaregiverItem,
+} from '@core/api/caregiverApi';
 import { ErrorHandler } from '@core/utils/errorHandler';
 import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '@core/store';
@@ -63,17 +68,31 @@ const CareCircleScreen: React.FC = () => {
       const response = isSenior
         ? await caregiverApi.getCaregivers()
         : await caregiverApi.getSeniors();
-      setCaregivers(response.data || []);
+      const rawData = response.data || [];
 
-      // Load invitations if senior
       if (isSenior) {
-        try {
-          const invitationsResponse = await caregiverApi.listInvitations();
-          setInvitations(invitationsResponse.data || []);
-        } catch (invErr) {
-          // Don't fail the whole request if invitations fail
-          console.warn('Failed to load invitations:', invErr);
-        }
+        const caregiversOnly = rawData.filter(
+          (x): x is Caregiver => x.id != null && !(x as InvitedCaregiverItem).is_invited,
+        );
+        const invitedOnly = rawData.filter(
+          (x): x is InvitedCaregiverItem => (x as InvitedCaregiverItem).is_invited === true,
+        );
+        setCaregivers(caregiversOnly);
+        setInvitations(
+          invitedOnly.map(
+            (inv): CaregiverInvitation => ({
+              id: inv.invitation_id,
+              caregiver_email: inv.email,
+              status: 'PENDING',
+              relationship_with_senior: inv.relationship_with_senior,
+              created_at: inv.invitation_date || '',
+              expires_at: inv.expires_at || '',
+            }),
+          ),
+        );
+      } else {
+        setCaregivers(rawData as Caregiver[]);
+        setInvitations([]);
       }
     } catch (err) {
       const errorMessage =

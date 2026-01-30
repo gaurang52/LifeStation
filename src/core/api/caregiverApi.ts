@@ -14,10 +14,28 @@ export interface Caregiver {
   };
   status: string;
   relationship_with_senior?: string;
+  is_invited?: false;
 }
 
+/** Pending invitation item returned in same list as caregivers (reference: umbrella get.mapped.caregiver.list.v2) */
+export interface InvitedCaregiverItem {
+  invitation_id: number;
+  id: null;
+  name: null;
+  email: string;
+  mobile: string;
+  user_type: string;
+  status: 'INVITED';
+  relationship_with_senior: string;
+  is_invited: true;
+  invitation_date?: string;
+  expires_at?: string;
+}
+
+export type CaregiverOrInvited = Caregiver | InvitedCaregiverItem;
+
 export interface CaregiversResponse {
-  data: Caregiver[];
+  data: CaregiverOrInvited[];
   message: string;
 }
 

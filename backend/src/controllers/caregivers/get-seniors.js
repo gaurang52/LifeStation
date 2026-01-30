@@ -8,9 +8,8 @@ const logger = require('../../utils/logger');
 const getSeniors = async (req, res) => {
   try {
     const userId = req.user_id;
-    const userType = req.user_type;
+    const userType = (req.user_type && String(req.user_type).toLowerCase()) || '';
 
-    // Only caregivers can view their seniors
     if (userType !== 'caregiver') {
       return res.status(403).json({
         error: 'Forbidden',

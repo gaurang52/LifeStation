@@ -12,10 +12,9 @@ const emailService = require('../../services/email.service');
 const createInvitation = async (req, res) => {
   try {
     const userId = req.user_id;
-    const userType = req.user_type;
+    const userType = (req.user_type && String(req.user_type).toLowerCase()) || '';
     const { email, relationship_with_senior = 'other' } = req.body;
 
-    // Only seniors can invite caregivers
     if (userType !== 'senior') {
       return res.status(403).json({
         error: 'Forbidden',

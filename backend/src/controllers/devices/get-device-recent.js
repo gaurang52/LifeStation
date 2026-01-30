@@ -23,17 +23,30 @@ const getDeviceRecent = async (req, res) => {
       return res.status(400).json({ error: 'Device ID is required' });
     }
 
+    // Normalize for consistent DB lookup (device_id stored as string, id_type lowercase)
+    const deviceId = String(id).trim();
+    const idTypeNormalized = (id_type && String(id_type).toLowerCase()) || id_type;
+
     // Check access control
-    const canAccess = await accessControlService.canUserAccessDevice(userId, id, id_type);
+    const canAccess = await accessControlService.canUserAccessDevice(
+      userId,
+      deviceId,
+      idTypeNormalized,
+    );
 
     if (!canAccess) {
+      logger.info('Device access denied (get-device-recent)', {
+        user_id: userId,
+        id_type: idTypeNormalized,
+        device_id: deviceId,
+      });
       return res.status(403).json({
         error: 'Access denied: You do not have permission to access this device',
       });
     }
 
     try {
-      const deviceRecent = await deviceApiService.getDeviceRecent(id_type, id);
+      const deviceRecent = await deviceApiService.getDeviceRecent(idTypeNormalized, deviceId);
 
       // Extract cs_no from Device Read API response
       // cs_no is used to fetch account details (device name, user name) from Account API
@@ -105,12 +118,12 @@ const getDeviceRecent = async (req, res) => {
         });
       }
 
-      // Normalize device data - pass id_type and id from request params since response may not include them
+      // Normalize device data - pass id_type and device_id from normalized params
       const normalized = dataNormalizationService.normalizeDevice(deviceRecent, {
         accountName: accountName,
         cs_no: csNo,
-        id_type: id_type,
-        device_id: id,
+        id_type: idTypeNormalized,
+        device_id: deviceId,
       });
 
       // Add account name to normalized device data if available
@@ -133,11 +146,11 @@ const getDeviceRecent = async (req, res) => {
         user_id: userId,
         action: 'device_recent_access',
         resource_type: 'device',
-        resource_id: id,
+        resource_id: deviceId,
         external_api: 'device',
         request_method: 'GET',
-        request_path: `/device/${id_type}/${id}/recent`,
-        request_body: { id_type, id },
+        request_path: `/device/${idTypeNormalized}/${deviceId}/recent`,
+        request_body: { id_type: idTypeNormalized, id: deviceId },
         response_body: sanitizeResponseBody(deviceRecent),
         response_status: 200,
         ip_address: req.ip,
@@ -150,8 +163,8 @@ const getDeviceRecent = async (req, res) => {
     } catch (error) {
       logger.error('Error fetching recent device from Device API:', {
         error: error.message,
-        id_type: id_type,
-        id: id,
+        id_type: idTypeNormalized,
+        id: deviceId,
         user_id: userId,
       });
 

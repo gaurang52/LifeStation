@@ -47,19 +47,23 @@ class AccessControlService {
         return true;
       }
 
+      // Normalize device lookup params (device_id stored as string, id_type lowercase)
+      const deviceIdStr = deviceId != null ? String(deviceId).trim() : '';
+      const idTypeStr = (idType != null && String(idType).toLowerCase()) || '';
+
       // Find device by external identifier
       const device = await db.Devices.findOne({
         where: {
-          device_id: deviceId,
-          id_type: idType,
+          device_id: deviceIdStr,
+          id_type: idTypeStr,
         },
       });
 
       if (!device) {
         logger.debug('canUserAccessDevice: device not found', {
           userId,
-          deviceId,
-          idType,
+          deviceId: deviceIdStr,
+          idType: idTypeStr,
           user_type: user.user_type,
         });
         return false;
@@ -87,8 +91,8 @@ class AccessControlService {
         if (!deviceMapping) {
           logger.debug('canUserAccessDevice: no user-device mapping for device (caregiver)', {
             userId,
-            deviceId,
-            idType,
+            deviceId: deviceIdStr,
+            idType: idTypeStr,
             device_internal_id: device.id,
           });
           return false;
@@ -99,8 +103,8 @@ class AccessControlService {
           logger.debug('canUserAccessDevice: caregiver not linked to senior', {
             caregiver_id: userId,
             senior_id: deviceMapping.user_id,
-            deviceId,
-            idType,
+            deviceId: deviceIdStr,
+            idType: idTypeStr,
           });
         }
         return canAccess;
