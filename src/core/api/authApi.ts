@@ -36,6 +36,15 @@ export interface SignupResponse {
   user: User;
 }
 
+export interface UpdatePasswordRequest {
+  current_password: string;
+  new_password: string;
+}
+
+export interface UpdatePasswordResponse {
+  result: string;
+}
+
 /** Auth API matching backend routes exactly */
 export const authApi = {
   async login(payload: LoginRequest): Promise<LoginResponse> {
@@ -47,6 +56,12 @@ export const authApi = {
   async signup(payload: SignupRequest): Promise<SignupResponse> {
     const res = await apiClient.post<SignupResponse>('/auth/signup', payload);
     if (!res?.user || !res?.token) throw new Error('Invalid signup response');
+    return res;
+  },
+
+  /** Update password for authenticated user. Requires Bearer token. */
+  async updatePassword(payload: UpdatePasswordRequest): Promise<UpdatePasswordResponse> {
+    const res = await apiClient.post<UpdatePasswordResponse>('/auth/update-password', payload);
     return res;
   },
 };

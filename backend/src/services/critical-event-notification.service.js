@@ -68,6 +68,35 @@ const getActiveCaregivers = async seniorId => {
 };
 
 /**
+ * Get senior user and device associated with a cs_no (Affiliated account number).
+ * Used when webhook payload has cs_no but no device_id/imei (e.g. Affiliated emergency format).
+ * @param {string} csNo - Customer service number (cs_no) from Affiliated
+ * @returns {Promise<{ senior: object, device: object }|null>} - { senior, device } or null
+ */
+const getSeniorForCsNo = async csNo => {
+  try {
+    if (!csNo) return null;
+
+    const mapping = await db.UserDeviceMapping.findOne({
+      where: { cs_no: csNo },
+      include: [
+        { model: db.Devices, as: 'device' },
+        { model: db.Users, as: 'user', where: { user_type: 'senior' }, required: true },
+      ],
+    });
+
+    if (!mapping || !mapping.device || !mapping.user) {
+      return null;
+    }
+
+    return { senior: mapping.user, device: mapping.device };
+  } catch (error) {
+    logger.error('Error fetching senior for cs_no:', error);
+    return null;
+  }
+};
+
+/**
  * Get senior user associated with a device
  * @param {string} deviceId - Device ID (IMEI, serial, or UUID)
  * @param {string} idType - Device ID type (imei, serial, uuid, iccid)
@@ -439,6 +468,7 @@ module.exports = {
   isCriticalEvent,
   getEventDescription,
   getActiveCaregivers,
+  getSeniorForCsNo,
   getSeniorForDevice,
   processCriticalEvent,
   notifyCaregiversOfCriticalEvent,

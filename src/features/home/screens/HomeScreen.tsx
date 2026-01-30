@@ -898,6 +898,81 @@ const HomeScreen: React.FC = () => {
           </View>
         </Card>
 
+        {/* Device Status Cards - Battery, Signal (matching reference app) */}
+        {(deviceInfo?.battery !== undefined || deviceInfo?.signal !== undefined) && (
+          <View style={[styles.statusCardsRow, styles.firstStatusRow]}>
+            {deviceInfo?.battery !== undefined && (
+              <Card style={styles.statusCard} padding={0}>
+                <View style={styles.statusCardHeader}>
+                  <MaterialIcons
+                    name="battery-full"
+                    size={14}
+                    color={
+                      deviceInfo.battery >= 50
+                        ? colors.battery || colors.green
+                        : deviceInfo.battery >= 20
+                        ? colors.warning
+                        : colors.red
+                    }
+                  />
+                  <AppText variant="h3" style={styles.statusCardValue}>
+                    {deviceInfo.battery}%
+                  </AppText>
+                </View>
+                <AppText variant="body" color={colors.text} style={styles.statusCardLabel}>
+                  Battery
+                </AppText>
+              </Card>
+            )}
+            {deviceInfo?.signal !== undefined && (
+              <Card style={styles.statusCard} padding={0}>
+                <View style={styles.statusCardHeader}>
+                  <MaterialIcons name="signal-cellular-alt" size={18} color={colors.primary} />
+                  <AppText variant="h3" style={styles.statusCardValue}>
+                    {deviceInfo.signal >= 75
+                      ? 'Excellent'
+                      : deviceInfo.signal >= 50
+                      ? 'Good'
+                      : deviceInfo.signal >= 25
+                      ? 'Fair'
+                      : 'Poor'}
+                  </AppText>
+                </View>
+                <AppText variant="body" color={colors.text} style={styles.statusCardLabel}>
+                  Signal
+                </AppText>
+              </Card>
+            )}
+          </View>
+        )}
+        {/* Spacing between rows - Match reference app: renderMarginBottom(12) */}
+        <View style={styles.rowSpacing} />
+        {/* Fall Detection Card - Always visible in its own row (matching reference app) */}
+        <View style={styles.statusCardsRow}>
+          <Card style={styles.statusCard} padding={0}>
+            <View style={styles.statusCardHeader}>
+              <MaterialIcons
+                name="security"
+                size={18}
+                color={deviceInfo?.fallDetection ? colors.green : colors.red}
+              />
+              <AppText
+                variant="body"
+                color={deviceInfo?.fallDetection ? colors.green : colors.red}
+                style={styles.statusCardValue}>
+                {deviceInfo?.fallDetection ? 'ON' : 'OFF'}
+              </AppText>
+            </View>
+            <AppText variant="body" color={colors.text} style={styles.statusCardLabel}>
+              Fall Detection
+            </AppText>
+          </Card>
+          <View style={styles.emptyCard} />
+        </View>
+
+        {/* Spacing before Recent Events - Match reference app: renderMarginBottom(12) */}
+        <View style={styles.rowSpacing} />
+
         {/* Recent Events Section */}
         <Card style={styles.eventsCard}>
           <View style={styles.eventsHeader}>
@@ -1136,10 +1211,12 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: spacing.lg,
+    paddingHorizontal: 8, // Reduced from 12 - less left/right padding
+    paddingTop: 0, // No top padding - header handles its own spacing
   },
   header: {
     backgroundColor: colors.primary, // Gradient-like solid color
-    paddingHorizontal: spacing.lg, // px-6 in Figma
+    paddingHorizontal: 12, // Reduced from spacing.lg (24px) - less left/right padding
     paddingTop: spacing.xxl, // pt-12 in Figma
     paddingBottom: spacing.lg, // pb-6 in Figma
   },
@@ -1242,7 +1319,8 @@ const styles = StyleSheet.create({
     fontSize: 14, // text-sm in Figma
   },
   paddedContent: {
-    padding: spacing.lg, // px-6 in Figma
+    paddingHorizontal: 8,
+    paddingVertical: spacing.md,
   },
   centerContainer: {
     flex: 1,
@@ -1261,7 +1339,7 @@ const styles = StyleSheet.create({
   },
   errorMessage: {
     textAlign: 'center',
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.sm,
     marginBottom: spacing.md,
   },
   addButton: {
@@ -1283,7 +1361,7 @@ const styles = StyleSheet.create({
     padding: spacing.sm,
     borderRadius: 8,
     marginBottom: spacing.md,
-    marginHorizontal: spacing.md,
+    marginHorizontal: 0, // No extra margin - scrollContent already has padding
     borderWidth: 1,
     borderColor: colors.warning,
   },
@@ -1298,7 +1376,7 @@ const styles = StyleSheet.create({
     padding: spacing.sm,
     borderRadius: 8,
     marginBottom: spacing.md,
-    marginHorizontal: spacing.md,
+    marginHorizontal: 0, // No extra margin - scrollContent already has padding
     borderWidth: 1,
     borderColor: colors.success,
   },
@@ -1338,6 +1416,45 @@ const styles = StyleSheet.create({
   noEvents: {
     textAlign: 'center',
     marginVertical: spacing.md,
+  },
+  statusCardsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    columnGap: 18, // Match reference app: scale(18)
+  },
+  firstStatusRow: {
+    marginTop: 16, // Match reference app: scale(16) - first row after device details
+  },
+  rowSpacing: {
+    height: 12, // Match reference app: renderMarginBottom(12)
+  },
+  statusCard: {
+    flex: 1,
+    paddingHorizontal: 10, // Slightly reduced for tighter cards
+    paddingVertical: 10, // Match reference app: scale(10) - card default
+    height: 100, // Match reference app: scale(100)
+    justifyContent: 'flex-start',
+  },
+  statusCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between', // Match reference app: rowSb style
+  },
+  statusCardValue: {
+    fontSize: 20, // Match reference app: FontSize.FONT_20Px
+    fontWeight: '600', // Match reference app: fontFamily: typography.semiBold
+    color: colors.text,
+  },
+  statusCardLabel: {
+    marginTop: 4, // Match reference app: scale(4)
+    fontSize: 14, // Match reference app: FontSize.FONT_11Px but using 14 for readability
+    color: colors.text, // Match reference app: colors.black
+    fontFamily: 'System', // Match reference app: typography.regular
+  },
+  emptyCard: {
+    flex: 1,
+    height: 100, // Match statusCard height
   },
   deviceDetailsCard: {
     marginBottom: spacing.md,

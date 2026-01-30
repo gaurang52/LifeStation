@@ -76,24 +76,41 @@ class ApiClient {
   }
 
   private isExpectedError(error: AxiosError, _appError: unknown): boolean {
-    // Check if this is a 404 error that's expected/handled gracefully
-    if (error.response?.status === 404) {
+    // Check if this is a 404/400 error that's expected/handled gracefully
+    if (error.response?.status === 404 || error.response?.status === 400) {
       const errorMessage =
         (error.response.data as { error?: string })?.error ||
         (error.response.data as { message?: string })?.message ||
         '';
 
       const lowerMessage = errorMessage.toLowerCase();
+      const url = error.config?.url || '';
 
       // Expected errors for vitals when account is not linked to external system
       if (
-        error.config?.url?.includes('/vitals/') &&
+        url.includes('/vitals/') &&
         (lowerMessage.includes('not found') ||
           lowerMessage.includes('not linked') ||
           lowerMessage.includes('external system'))
       ) {
         return true;
       }
+
+      // Expected errors for geofence when settings are not configured yet
+      if (
+        url.includes('geo-fence-settings') &&
+        (lowerMessage.includes('not found') ||
+          lowerMessage.includes('geo fence') ||
+          lowerMessage.includes('geofence'))
+      ) {
+        return true;
+      }
+    }
+
+    // Rate limit errors (429) should be logged but not as critical errors
+    // They're handled by the calling code
+    if (error.response?.status === 429) {
+      return true; // Treat as expected/expected to be handled
     }
 
     return false;

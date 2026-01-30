@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
-import { colors, spacing, borderRadius } from '@shared/theme';
+import { colors, spacing } from '@shared/theme';
 
 interface CardProps {
   children: React.ReactNode;
@@ -15,13 +15,13 @@ export const Card: React.FC<CardProps> = ({ children, style, padding = spacing.m
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
-    borderRadius: borderRadius.xl, // rounded-2xl = 20px to match Figma
+    borderRadius: 6, // Match reference app: scale(6) instead of borderRadius.xl (20px)
     borderWidth: 1,
-    borderColor: colors.lightGray, // border-[#F5F5F5] in Figma
+    borderColor: colors.lightGray || '#E0E0E0', // Match reference app: colors.card
     shadowColor: colors.black,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
+    shadowRadius: 4, // Match reference app: shadowRadius: 4
+    elevation: 1, // Match reference app: elevation: 1
   },
 });

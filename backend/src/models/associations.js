@@ -10,6 +10,7 @@ module.exports = db => {
     EventNotificationLogs,
     MedicationReminders,
     Goals,
+    DeviceGeoFenceSettings,
   } = db;
 
   // Users associations
@@ -97,6 +98,22 @@ module.exports = db => {
     Devices.hasMany(UserDeviceMapping, {
       foreignKey: 'device_id',
       as: 'userMappings',
+    });
+  }
+  if (!Devices.associations.geofenceSettings) {
+    Devices.hasOne(DeviceGeoFenceSettings, {
+      foreignKey: 'device_id',
+      sourceKey: 'device_id',
+      as: 'geofenceSettings',
+    });
+  }
+
+  // DeviceGeoFenceSettings associations
+  if (!DeviceGeoFenceSettings.associations.device) {
+    DeviceGeoFenceSettings.belongsTo(Devices, {
+      foreignKey: 'device_id',
+      targetKey: 'device_id',
+      as: 'device',
     });
   }
 

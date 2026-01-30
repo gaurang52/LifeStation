@@ -1,0 +1,717 @@
+{
+  "info": {
+    "_postman_id": "20474682-802f-4656-9106-125571b7dc63",
+    "name": "Account API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "6527061"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = JSON.parse(pm.response.text());",
+              "pm.environment.set(\"access_token\", jsonData.access_token);",
+              "pm.environment.set(\"refresh_token\", jsonData.refresh_token);"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "grant_type",
+              "value": "password",
+              "type": "text"
+            },
+            {
+              "key": "username",
+              "value": "{{username}}",
+              "type": "text"
+            },
+            {
+              "key": "password",
+              "value": "{{vault:accountAPIpassword}}",
+              "type": "text"
+            },
+            {
+              "key": "client_id",
+              "value": "affiliated-api",
+              "type": "text"
+            }
+          ]
+        },
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/token",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["token"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Refresh",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = JSON.parse(pm.response.text());",
+              "pm.environment.set(\"access_token\", jsonData.access_token);",
+              "pm.environment.set(\"refresh_token\", jsonData.refresh_token);"
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [],
+        "body": {
+          "mode": "formdata",
+          "formdata": [
+            {
+              "key": "grant_type",
+              "value": "password",
+              "type": "text"
+            },
+            {
+              "key": "client_id",
+              "value": "affiliated-api",
+              "type": "text"
+            },
+            {
+              "key": "refresh_token",
+              "value": "{{refresh_token}}",
+              "type": "text"
+            }
+          ]
+        },
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/token/refresh",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["token", "refresh"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Accounts",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "var jsonData = JSON.parse(responseBody);",
+              "for (var i in jsonData.accounts) {",
+              "    var acct = jsonData.accounts[i];",
+              "    if (acct.status == \"A\") {",
+              "        postman.setEnvironmentVariable(\"cs_no\", acct.cs_no);",
+              "        break;",
+              "    }",
+              "}",
+              ""
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/acct/",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["acct", ""]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Account Read",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/acct/{{cs_no}}",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["acct", "{{cs_no}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Account Create",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = JSON.parse(responseBody);",
+              "postman.setEnvironmentVariable(\"cs_no\", jsonData.cs_no);"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"name\": \"Testington, Tester\",\n    \"addr1\": \"1234 W Test Way\",\n    \"city\": \"Anytown\",\n    \"state\": \"NJ\",\n    \"zip\": \"12345\",\n    \"phone1\": \"5555555555\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/acct/",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["acct", ""]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Account Update",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n\t\"location_type\": \"PMOB\"\n\t\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/acct/{{cs_no}}",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["acct", "{{cs_no}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Account Activate",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": ""
+        },
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/acct/{{cs_no}}/activate",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["acct", "{{cs_no}}", "activate"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Account Deactivate",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": ""
+        },
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/acct/{{cs_no}}/deactivate",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["acct", "{{cs_no}}", "deactivate"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Account Link",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/acct/link/{{cs_no}}/{{cs_no_to_link}}",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["acct", "link", "{{cs_no}}", "{{cs_no_to_link}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Languages",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/acct/languages",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["acct", "languages"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Account Delete",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"copyzones\" : false\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/acct/{{cs_no}}",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["acct", "{{cs_no}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Available Contact Lists",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/lists",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["lists"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Contact Update",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{       \n    \"first_name\": \"Alpha\",\n    \"last_name\": \"Omega\"\n            \n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/acct/{{cs_no}}/contacts/{{contact_no}}",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["acct", "{{cs_no}}", "contacts", "{{contact_no}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Contact Create",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\t\t\t\t\n\t\t\t\t\"last_name\": \"Kringle\",\n                \"first_name\": \"Kris\",\n                \"phones\": [\n                    {\n                        \"phone\": \"7328675309\",\n                        \"phonetype\": \"C\"\n                    }\n                    ]\n            }",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/acct/{{cs_no}}/contacts/",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["acct", "{{cs_no}}", "contacts", ""]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Contact Delete",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": ""
+        },
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/acct/{{cs_no}}/contacts/{{contact_no}}",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["acct", "{{cs_no}}", "contacts", "{{contact_no}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Contacts",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/acct/{{cs_no}}/contacts",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["acct", "{{cs_no}}", "contacts"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Contact Lists",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/acct/{{cs_no}}/contacts/lists",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["acct", "{{cs_no}}", "contacts", "lists"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Contact Lists Reorder",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n    \"contact_lists\": {\n        \"1\": [\n            200353861,\n            200353856\n        ],\n        \"2\": [\n            200394778\n        ]\n    }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/acct/{{cs_no}}/contacts/lists",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["acct", "{{cs_no}}", "contacts", "lists"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Get Servco_no",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/acct/{{cs_no}}/servco",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["acct", "{{cs_no}}", "servco"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Set Servco_no",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"servco_no\":\"880888\"}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/acct/{{cs_no}}/servco",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["acct", "{{cs_no}}", "servco"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Test Create",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}",
+            "name": "Content-Type",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n\t\"length\": 20,\n\t\"test_category\": \"API\",\n\t\"comment\": \"I am testing.\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/acct/{{cs_no}}/test",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["acct", "{{cs_no}}", "test"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Test Read",
+      "protocolProfileBehavior": {
+        "disableBodyPruning": true
+      },
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}",
+            "name": "Content-Type",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/acct/{{cs_no}}/test",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["acct", "{{cs_no}}", "test"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Test Delete",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}",
+            "name": "Content-Type",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\r\n    \"seqnos\": [2],\r\n    \"comment\": \"This will cancel test 2.\"\r\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/acct/{{cs_no}}/test",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["acct", "{{cs_no}}", "test"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Zone Delete",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": ""
+        },
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/acct/{{cs_no}}/zones/{{zone_id}}",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["acct", "{{cs_no}}", "zones", "{{zone_id}}"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Search",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "var jsonData = JSON.parse(responseBody);",
+              "for (var i in jsonData.accounts) {",
+              "    var acct = jsonData.accounts[i];",
+              "    if (acct.status == \"A\") {",
+              "        postman.setEnvironmentVariable(\"cs_no\", acct.cs_no);",
+              "        break;",
+              "    }",
+              "}",
+              ""
+            ],
+            "type": "text/javascript",
+            "packages": {}
+          }
+        }
+      ],
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{access_token}}"
+          }
+        ],
+        "url": {
+          "raw": "https://{{base_url}}.alertmessage.com/acct/search/{{search_term}}",
+          "protocol": "https",
+          "host": ["{{base_url}}", "alertmessage", "com"],
+          "path": ["acct", "search", "{{search_term}}"]
+        }
+      },
+      "response": []
+    }
+  ]
+}

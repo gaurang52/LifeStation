@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Switch,
   Alert,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
@@ -38,14 +37,13 @@ const DeviceDetailsScreen: React.FC<DeviceDetailsScreenProps> = ({ route }) => {
     !routeParams?.deviceId || !routeParams?.idType,
   );
   const [device, setDevice] = useState<Device | null>(null);
-  const [fallDetectionEnabled, setFallDetectionEnabled] = useState(false);
+  const [fallDetectionEnabled, setFallDetectionEnabled] = useState(false); // Display only
   const [battery, setBattery] = useState<number | undefined>(undefined);
   const [signal, setSignal] = useState<number | undefined>(undefined);
   const [lastUpdate, setLastUpdate] = useState<string | undefined>(undefined);
   const [heartRate, setHeartRate] = useState<number | undefined>(undefined);
   const [steps, setSteps] = useState<number | undefined>(undefined);
   const [loading, setLoading] = useState(true);
-  const [updating, setUpdating] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [downloadingReport, setDownloadingReport] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -209,21 +207,7 @@ const DeviceDetailsScreen: React.FC<DeviceDetailsScreenProps> = ({ route }) => {
     }
   }, [deviceId, idType, fetchingFirstDevice, fetchDeviceRecent]);
 
-  const handleToggleFallDetection = async (enabled: boolean) => {
-    if (!idType || !deviceId) return;
-    try {
-      setUpdating(true);
-      await deviceApi.toggleFallDetection(idType, deviceId, enabled);
-      setFallDetectionEnabled(enabled);
-      Alert.alert('Success', `Fall detection ${enabled ? 'enabled' : 'disabled'} successfully`);
-    } catch (err) {
-      const errorMessage = ErrorHandler.getErrorMessage(err) || 'Failed to update fall detection.';
-      Alert.alert('Error', errorMessage);
-      setFallDetectionEnabled(!enabled);
-    } finally {
-      setUpdating(false);
-    }
-  };
+  // Fall Detection is display-only (matching reference app - no toggle functionality)
 
   const handleRefresh = async () => {
     if (!idType || !deviceId) return;
@@ -529,12 +513,16 @@ const DeviceDetailsScreen: React.FC<DeviceDetailsScreenProps> = ({ route }) => {
             Settings
           </AppText>
 
-          {/* Fall Detection */}
+          {/* Fall Detection - Display Only (matching reference app) */}
           <Card style={styles.settingCard}>
             <View style={styles.fallDetectionHeader}>
               <View style={styles.fallDetectionInfo}>
                 <View style={styles.fallDetectionTitleRow}>
-                  <MaterialIcons name="activity" size={20} color={colors.primary} />
+                  <MaterialIcons
+                    name="security"
+                    size={20}
+                    color={fallDetectionEnabled ? colors.green : colors.red}
+                  />
                   <AppText variant="bodyBold" color={colors.text}>
                     Fall Detection
                   </AppText>
@@ -543,25 +531,13 @@ const DeviceDetailsScreen: React.FC<DeviceDetailsScreenProps> = ({ route }) => {
                   variant="small"
                   color={colors.textSecondary}
                   style={styles.fallDetectionDesc}>
-                  Automatically detect falls and alert caregivers
+                  {fallDetectionEnabled ? 'Active' : 'Inactive'}
                 </AppText>
               </View>
-              <Switch
-                value={fallDetectionEnabled}
-                onValueChange={handleToggleFallDetection}
-                disabled={updating}
-                trackColor={{ false: colors.border, true: colors.primary }}
-                thumbColor={colors.white}
-              />
+              <AppText variant="bodyBold" color={fallDetectionEnabled ? colors.green : colors.red}>
+                {fallDetectionEnabled ? 'ON' : 'OFF'}
+              </AppText>
             </View>
-            {updating && (
-              <View style={styles.updatingIndicator}>
-                <ActivityIndicator size="small" color={colors.primary} />
-                <AppText variant="caption" color={colors.textSecondary}>
-                  Updating...
-                </AppText>
-              </View>
-            )}
           </Card>
 
           {/* Device Information */}
@@ -613,38 +589,6 @@ const styles = StyleSheet.create({
   backButton: {
     marginBottom: spacing.sm,
   },
-  deviceHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: spacing.md,
-  },
-  deviceHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
-    flex: 1,
-  },
-  deviceHeaderInfo: {
-    flex: 1,
-  },
-  deviceHeaderRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  refreshButton: {
-    padding: spacing.xs,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  refreshButtonDisabled: {
-    opacity: 0.5,
-  },
-  deviceName: {
-    marginBottom: spacing.xs,
-  },
   scrollContent: {
     padding: spacing.lg, // px-6 in Figma
   },
@@ -681,7 +625,7 @@ const styles = StyleSheet.create({
     width: 40, // w-10 in Figma
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)', // bg-white/20 in Figma
+    backgroundColor: colors.whiteOpacity20, // bg-white/20 in Figma
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -692,7 +636,7 @@ const styles = StyleSheet.create({
   },
   statusGridItem: {
     width: '48%', // grid-cols-2 equivalent
-    backgroundColor: 'rgba(255, 255, 255, 0.1)', // bg-white/10 in Figma
+    backgroundColor: colors.whiteOpacity10, // bg-white/10 in Figma
     borderRadius: borderRadius.lg, // rounded-xl in Figma
     padding: spacing.sm, // p-3 in Figma
     backdropFilter: 'blur(10px)', // backdrop-blur (not fully supported in RN, but visual effect similar)
@@ -766,24 +710,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: spacing.sm,
   },
-  section: {
-    marginBottom: 0,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
-  },
-  sectionTitle: {
-    flex: 1,
-  },
-  sectionDivider: {
-    marginTop: spacing.md,
-    paddingTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.divider,
-  },
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -817,23 +743,6 @@ const styles = StyleSheet.create({
   },
   fallDetectionDesc: {
     marginTop: spacing.xs,
-  },
-  updatingIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginTop: spacing.sm,
-  },
-  reportDesc: {
-    marginTop: spacing.xs,
-    marginBottom: spacing.md,
-  },
-  buttonContainer: {
-    marginTop: spacing.sm,
-  },
-  statusBarContainer: {
-    marginBottom: spacing.md,
-    marginTop: 0,
   },
   emptyTitle: {
     marginTop: spacing.md,

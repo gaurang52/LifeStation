@@ -61,22 +61,12 @@ export interface GetDeviceResponse {
 }
 
 export interface FallDetectionResponse {
-  device_id: string;
-  id_type: DeviceIdType;
-  fall_detection_enabled: boolean;
-  status: string;
+  status: 'ok';
+  errors: [];
+  fall_detection_status: 'active' | 'inactive' | 'pending';
 }
 
-export interface ToggleFallDetectionRequest {
-  enabled: boolean;
-}
-
-export interface ToggleFallDetectionResponse {
-  message: string;
-  device_id: string;
-  id_type: DeviceIdType;
-  fall_detection_enabled: boolean;
-}
+// Fall Detection toggle interfaces removed - display only (matching reference app)
 
 export interface RequestSignalResponse {
   message: string;
@@ -127,21 +117,17 @@ export const deviceApi = {
    * GET /devices/:id_type/:id/fall-detection - Get fall detection status
    */
   async getFallDetection(idType: DeviceIdType, id: string): Promise<FallDetectionResponse> {
-    return apiClient.get<FallDetectionResponse>(`/devices/${idType}/${id}/fall-detection`);
+    const response = await apiClient.get<FallDetectionResponse>(
+      `/devices/${idType}/${id}/fall-detection`,
+    );
+    // Map response to include fall_detection_enabled for backward compatibility
+    return {
+      ...response,
+      fall_detection_enabled: response.fall_detection_status === 'active',
+    } as FallDetectionResponse & { fall_detection_enabled: boolean };
   },
 
-  /**
-   * PUT /devices/:id_type/:id/fall-detection - Toggle fall detection
-   */
-  async toggleFallDetection(
-    idType: DeviceIdType,
-    id: string,
-    enabled: boolean,
-  ): Promise<ToggleFallDetectionResponse> {
-    return apiClient.put<ToggleFallDetectionResponse>(`/devices/${idType}/${id}/fall-detection`, {
-      enabled,
-    });
-  },
+  // Fall Detection toggle endpoints removed - display only (matching reference app)
 
   /**
    * POST /devices/:id_type/:id/signal - Request device signal

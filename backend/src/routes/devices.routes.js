@@ -11,8 +11,10 @@ const getDeviceRecent = require('../controllers/devices/get-device-recent');
 const getFallDetection = require('../controllers/devices/get-fall-detection');
 const getDeviceTelemetry = require('../controllers/devices/get-device-telemetry');
 const getDeviceMetadata = require('../controllers/devices/get-device-metadata');
-const toggleFallDetection = require('../controllers/devices/toggle-fall-detection');
+// Fall Detection toggle controllers removed - display only (matching reference app)
 const requestSignal = require('../controllers/devices/request-signal');
+const saveGeofenceSettings = require('../controllers/devices/save-geofence-settings');
+const getGeofenceSettings = require('../controllers/devices/get-geofence-settings');
 
 // All routes require authentication
 router.use(verifyToken);
@@ -32,14 +34,19 @@ router.get('/:id_type/:id/recent', getDeviceRecent);
 // GET /devices/:id_type/:id/telemetry - Get telemetry (battery, signal, location)
 router.get('/:id_type/:id/telemetry', getDeviceTelemetry);
 
+// Fall Detection route (display only - matching reference app)
 // GET /devices/:id_type/:id/fall-detection - Get fall detection status
 router.get('/:id_type/:id/fall-detection', getFallDetection);
 
-// PUT /devices/:id_type/:id/fall-detection - Enable/update fall detection
-router.put('/:id_type/:id/fall-detection', toggleFallDetection);
-
 // POST /devices/:id_type/:id/signal - Request device signal
 router.post('/:id_type/:id/signal', requestSignal);
+
+// Geofence routes (matching umbrella-app-backend exactly)
+// POST /save-geo-fence-settings - Save/update geofence settings
+router.post('/save-geo-fence-settings', saveGeofenceSettings);
+
+// POST /get-geo-fence-settings - Get geofence settings
+router.post('/get-geo-fence-settings', getGeofenceSettings);
 
 // GET /devices/imei/:imei/metadata - Get device metadata by IMEI
 router.get('/imei/:imei/metadata', getDeviceMetadata);

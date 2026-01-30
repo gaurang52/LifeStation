@@ -12,6 +12,10 @@ export const colors = {
   lightPrimary: 'rgba(180, 36, 114, 0.5)',
   white: '#FFFFFF',
   whiteOpacity20: 'rgba(255, 255, 255, 0.2)', // For semi-transparent white backgrounds
+  whiteOpacity10: 'rgba(255, 255, 255, 0.1)',
+  overlayWhite80: 'rgba(255, 255, 255, 0.8)',
+  overlayWhite90: 'rgba(255, 255, 255, 0.9)',
+  overlayBlack50: 'rgba(0, 0, 0, 0.5)',
   black: '#000000',
 
   // Secondary — PMS 676, PMS 649

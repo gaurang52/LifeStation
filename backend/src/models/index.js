@@ -40,6 +40,8 @@ db.NotificationLogs = require('./NotificationLogs')(sequelize);
 db.EventNotificationLogs = require('./EventNotificationLogs')(sequelize);
 db.MedicationReminders = require('./MedicationReminders')(sequelize);
 db.Goals = require('./Goals')(sequelize);
+db.DeviceGeoFenceSettings = require('./DeviceGeoFenceSettings')(sequelize);
+db.AllEvents = require('./AllEvents')(sequelize);
 
 // Setup associations (only if not already set up)
 if (!db.associationsLoaded) {

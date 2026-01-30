@@ -1,17 +1,27 @@
-import React from 'react';
-import { StyleSheet, View, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState } from 'react';
+import {
+  StyleSheet,
+  View,
+  ScrollView,
+  TouchableOpacity,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
 import {
   Bell,
   ChevronRight,
   FileText,
   HelpCircle,
   LogOut,
+  Lock,
   Shield,
   User,
   Smartphone,
 } from 'lucide-react-native';
-import { Screen, AppText, Card, TopNavbar } from '@shared/components';
+import { Screen, AppText, Card, TopNavbar, Input, Button } from '@shared/components';
 import { useAuthStore } from '@core/store';
+import { authApi } from '@core/api/authApi';
 import { spacing, colors, borderRadius } from '@shared/theme';
 import { useNavigation } from '@react-navigation/native';
 import type { AppStackParamList } from '@core/constants/routes';
@@ -25,12 +35,76 @@ const ProfileScreen: React.FC = () => {
   const user = useAuthStore(state => state.user);
   const logout = useAuthStore(state => state.logout);
 
+  const [showUpdatePassword, setShowUpdatePassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [passwordLoading, setPasswordLoading] = useState(false);
+
   const handleLogout = () => {
     logout();
   };
 
   const handleDevicePress = () => {
     navigation.navigate(ROUTES.DEVICE_DETAILS_TAB);
+  };
+
+  const openUpdatePassword = () => {
+    setShowUpdatePassword(true);
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setPasswordError(null);
+    setPasswordSuccess(false);
+  };
+
+  const closeUpdatePassword = () => {
+    setShowUpdatePassword(false);
+    setPasswordError(null);
+    setPasswordSuccess(false);
+  };
+
+  const handleUpdatePassword = async () => {
+    setPasswordError(null);
+    if (!currentPassword.trim()) {
+      setPasswordError('Enter your current password');
+      return;
+    }
+    if (!newPassword.trim()) {
+      setPasswordError('Enter a new password');
+      return;
+    }
+    if (newPassword.length < 8) {
+      setPasswordError('New password must be at least 8 characters');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('New passwords do not match');
+      return;
+    }
+    setPasswordLoading(true);
+    try {
+      await authApi.updatePassword({
+        current_password: currentPassword,
+        new_password: newPassword,
+      });
+      setPasswordSuccess(true);
+      setTimeout(() => {
+        closeUpdatePassword();
+        logout();
+      }, 1500);
+    } catch (e: unknown) {
+      const message =
+        (e as { response?: { data?: { error?: string } }; message?: string })?.response?.data
+          ?.error ||
+        (e as { message?: string })?.message ||
+        'Failed to update password';
+      setPasswordError(message);
+    } finally {
+      setPasswordLoading(false);
+    }
   };
 
   return (
@@ -126,6 +200,21 @@ const ProfileScreen: React.FC = () => {
               <TouchableOpacity
                 style={styles.settingRow}
                 activeOpacity={0.7}
+                onPress={openUpdatePassword}>
+                <View style={styles.settingLeft}>
+                  <View style={styles.settingIconContainer}>
+                    <Lock size={20} color={colors.primary} />
+                  </View>
+                  <AppText variant="body" style={styles.settingLabel}>
+                    Update Password
+                  </AppText>
+                </View>
+                <ChevronRight size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+              <View style={styles.divider} />
+              <TouchableOpacity
+                style={styles.settingRow}
+                activeOpacity={0.7}
                 onPress={handleDevicePress}>
                 <View style={styles.settingLeft}>
                   <View style={styles.settingIconContainer}>
@@ -196,15 +285,106 @@ const ProfileScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Update Password Modal */}
+      <Modal
+        visible={showUpdatePassword}
+        transparent
+        animationType="fade"
+        onRequestClose={closeUpdatePassword}>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={closeUpdatePassword}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={styles.modalContentWrap}>
+            <TouchableOpacity activeOpacity={1} onPress={e => e.stopPropagation()}>
+              <Card style={styles.updatePasswordCard}>
+                <AppText variant="h3" style={styles.updatePasswordTitle}>
+                  Update Password
+                </AppText>
+                <AppText
+                  variant="small"
+                  color={colors.textSecondary}
+                  style={styles.updatePasswordSubtitle}>
+                  Enter your current password and choose a new one (min 8 characters).
+                </AppText>
+                <Input
+                  label="Current password"
+                  value={currentPassword}
+                  onChangeText={setCurrentPassword}
+                  placeholder="Current password"
+                  secureTextEntry
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  style={styles.updatePasswordInput}
+                />
+                <Input
+                  label="New password"
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  placeholder="New password"
+                  secureTextEntry
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  style={styles.updatePasswordInput}
+                />
+                <Input
+                  label="Confirm new password"
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  placeholder="Confirm new password"
+                  secureTextEntry
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  style={styles.updatePasswordInput}
+                />
+                {passwordError ? (
+                  <AppText variant="small" color={colors.error} style={styles.updatePasswordError}>
+                    {passwordError}
+                  </AppText>
+                ) : null}
+                {passwordSuccess ? (
+                  <AppText
+                    variant="small"
+                    color={colors.success}
+                    style={styles.updatePasswordSuccess}>
+                    Password updated. Logging you out…
+                  </AppText>
+                ) : null}
+                <View style={styles.updatePasswordActions}>
+                  <TouchableOpacity
+                    style={styles.updatePasswordCancelBtn}
+                    onPress={closeUpdatePassword}
+                    disabled={passwordLoading}>
+                    <AppText variant="body" color={colors.textSecondary}>
+                      Cancel
+                    </AppText>
+                  </TouchableOpacity>
+                  <View style={styles.updatePasswordSubmitWrap}>
+                    <Button
+                      label="Update Password"
+                      onPress={handleUpdatePassword}
+                      loading={passwordLoading}
+                      disabled={passwordLoading}
+                    />
+                  </View>
+                </View>
+              </Card>
+            </TouchableOpacity>
+          </KeyboardAvoidingView>
+        </TouchableOpacity>
+      </Modal>
     </Screen>
   );
 };
 
 const styles = StyleSheet.create({
   scrollContent: {
-    padding: spacing.lg, // px-6 in Figma
-    paddingBottom: spacing.xl,
+    paddingHorizontal: 8, // Match Home screen - less left/right padding
     paddingTop: spacing.sm, // Minimal top padding since navbar already has spacing
+    paddingBottom: spacing.lg,
   },
   profileCard: {
     backgroundColor: colors.primary, // Gradient-like solid color
@@ -277,8 +457,8 @@ const styles = StyleSheet.create({
   },
   settingsCard: {
     borderWidth: 1,
-    borderColor: colors.lightGray, // border-[#F5F5F5] in Figma
-    borderRadius: borderRadius.lg, // Add border radius for modern look
+    borderColor: colors.lightGray,
+    borderRadius: borderRadius.lg,
     overflow: 'hidden',
     backgroundColor: colors.surface,
   },
@@ -286,44 +466,47 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: spacing.md, // p-4 in Figma
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    minHeight: 56,
   },
   settingLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm, // space-x-3 in Figma
+    gap: 12,
     flex: 1,
   },
   settingIconContainer: {
-    width: 40, // w-10 in Figma
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.lightPrimary, // bg-[#C2185B]/10 in Figma
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.lightPrimary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   settingLabel: {
-    fontWeight: '500', // font-medium
+    fontWeight: '500',
     color: colors.text,
+    fontSize: 16,
   },
   settingRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm, // space-x-2 in Figma
+    gap: spacing.sm,
   },
   badge: {
-    paddingHorizontal: spacing.xs, // px-2 in Figma
-    paddingVertical: spacing.xs / 2, // py-1 in Figma
-    borderRadius: borderRadius.xl, // rounded-full in Figma
-    backgroundColor: colors.primary, // bg-[#C2185B] in Figma
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs / 2,
+    borderRadius: borderRadius.xl,
+    backgroundColor: colors.primary,
   },
   badgeText: {
-    fontWeight: '600', // font-semibold
-    fontSize: 12, // text-xs in Figma
+    fontWeight: '600',
+    fontSize: 12,
   },
   divider: {
     height: 1,
-    backgroundColor: colors.lightGray, // border-[#F5F5F5] in Figma
+    backgroundColor: colors.lightGray,
     marginHorizontal: spacing.md,
   },
   appInfoContainer: {
@@ -361,6 +544,55 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     fontWeight: '600', // font-semibold
+  },
+  // Update Password modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: colors.overlayBlack50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg,
+  },
+  modalContentWrap: {
+    width: '100%',
+    maxWidth: 400,
+  },
+  updatePasswordCard: {
+    padding: spacing.xl,
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.lightGray,
+  },
+  updatePasswordTitle: {
+    marginBottom: spacing.xs,
+    color: colors.text,
+  },
+  updatePasswordSubtitle: {
+    marginBottom: spacing.lg,
+  },
+  updatePasswordInput: {
+    marginBottom: spacing.md,
+  },
+  updatePasswordError: {
+    marginBottom: spacing.sm,
+  },
+  updatePasswordSuccess: {
+    marginBottom: spacing.sm,
+  },
+  updatePasswordActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: spacing.md,
+    marginTop: spacing.lg,
+  },
+  updatePasswordCancelBtn: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  updatePasswordSubmitWrap: {
+    minWidth: 140,
   },
 });
 
