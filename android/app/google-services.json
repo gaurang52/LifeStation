@@ -1,13 +1,51 @@
 {
   "project_info": {
-    "project_number": "723316910132",
-    "project_id": "lifestation-dbb7a",
-    "storage_bucket": "lifestation-dbb7a.firebasestorage.app"
+    "project_number": "652155725369",
+    "project_id": "umbrella-pers",
+    "storage_bucket": "umbrella-pers.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:723316910132:android:b7fec18c7e536055d58261",
+        "mobilesdk_app_id": "1:652155725369:android:d95c931492925295d60fe8",
+        "android_client_info": {
+          "package_name": "com.homelink.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBGzKxlDydA3ZetxIBOUWpZyE3SjTTIi9I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:652155725369:android:bc4ddc21b08f06f2d60fe8",
+        "android_client_info": {
+          "package_name": "com.lifefone.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBGzKxlDydA3ZetxIBOUWpZyE3SjTTIi9I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:652155725369:android:ba4b1a6097f59601d60fe8",
         "android_client_info": {
           "package_name": "com.lifestation"
         }
@@ -15,7 +53,45 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDB2jrmcOORM_tgD-zgDInfoKSL9pXbBcU"
+          "current_key": "AIzaSyBGzKxlDydA3ZetxIBOUWpZyE3SjTTIi9I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:652155725369:android:4494d3567e1ae9c7d60fe8",
+        "android_client_info": {
+          "package_name": "com.myumbrella.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBGzKxlDydA3ZetxIBOUWpZyE3SjTTIi9I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:652155725369:android:36e4a7bf3e71b647d60fe8",
+        "android_client_info": {
+          "package_name": "com.umbrella.allwell"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBGzKxlDydA3ZetxIBOUWpZyE3SjTTIi9I"
         }
       ],
       "services": {

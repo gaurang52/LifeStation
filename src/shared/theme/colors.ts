@@ -11,6 +11,7 @@ export const colors = {
   primary: PMS_675,
   lightPrimary: 'rgba(180, 36, 114, 0.5)',
   white: '#FFFFFF',
+  whiteOpacity20: 'rgba(255, 255, 255, 0.2)', // For semi-transparent white backgrounds
   black: '#000000',
 
   // Secondary — PMS 676, PMS 649
@@ -37,7 +38,9 @@ export const colors = {
 
   // Semantic (minimal; use primary/secondary where possible)
   success: PMS_675,
+  successBackground: '#ecfdf5', // Light green success background
   warning: PMS_676,
+  warningBackground: '#fffbeb', // Light yellow warning background
   error: PMS_676,
   errorBackground: 'rgba(150, 0, 81, 0.1)',
   green: PMS_675,

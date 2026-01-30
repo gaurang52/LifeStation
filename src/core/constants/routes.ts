@@ -15,6 +15,7 @@ export const ROUTES = {
   HOME: 'Home',
   PROFILE: 'Profile',
   RECENT_EVENTS: 'RecentEvents',
+  MAP: 'Map',
   ADD_DEVICE: 'AddDevice',
   DEVICE_DETAILS: 'DeviceDetails',
   DEVICE_DETAILS_TAB: 'DeviceDetailsTab',
@@ -31,12 +32,7 @@ export type TabParamList = {
   [ROUTES.HOME]: undefined;
   [ROUTES.PROFILE]: undefined;
   [ROUTES.RECENT_EVENTS]: undefined;
-  [ROUTES.DEVICE_DETAILS_TAB]:
-    | {
-        deviceId?: string;
-        idType?: 'imei' | 'serial' | 'uuid' | 'iccid';
-      }
-    | undefined;
+  [ROUTES.MAP]: undefined;
   [ROUTES.CARE_CIRCLE]: undefined;
 };
 
@@ -46,6 +42,7 @@ export type AppStackParamList = {
     deviceId: string;
     idType: 'imei' | 'serial' | 'uuid';
   };
+  [ROUTES.DEVICE_DETAILS_TAB]: undefined;
   [ROUTES.ADD_CAREGIVER]: undefined;
 };
 

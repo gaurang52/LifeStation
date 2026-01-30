@@ -9,8 +9,8 @@ import {
   Alert,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { Screen, AppText, Button, Card, DeviceCard } from '@shared/components';
-import { spacing, colors } from '@shared/theme';
+import { Screen, AppText, Button, Card, DeviceCard, TopNavbar } from '@shared/components';
+import { spacing, colors, borderRadius } from '@shared/theme';
 import { deviceApi, type Device } from '@core/api/deviceApi';
 import { reportsApi } from '@core/api/reportsApi';
 import { useAuthStore } from '@core/store';
@@ -146,9 +146,17 @@ const DeviceDetailsTabScreen: React.FC = () => {
     );
   };
 
+  // Loading state
   if (loading && devices.length === 0) {
     return (
-      <Screen>
+      <Screen padded={false}>
+        <TopNavbar
+          title="Devices"
+          subtitle="Manage your registered devices"
+          variant="figma"
+          showBackButton={true}
+          onBackPress={() => navigation.goBack()}
+        />
         <View style={styles.centerContainer}>
           <MaterialIcons name="devices" size={64} color={colors.primary} />
           <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
@@ -160,9 +168,17 @@ const DeviceDetailsTabScreen: React.FC = () => {
     );
   }
 
+  // Error state
   if (error && devices.length === 0) {
     return (
-      <Screen>
+      <Screen padded={false}>
+        <TopNavbar
+          title="Devices"
+          subtitle="Manage your registered devices"
+          variant="figma"
+          showBackButton={true}
+          onBackPress={() => navigation.goBack()}
+        />
         <View style={styles.centerContainer}>
           <MaterialIcons name="error-outline" size={64} color={colors.error} />
           <AppText variant="h3" style={styles.errorTitle}>
@@ -179,27 +195,24 @@ const DeviceDetailsTabScreen: React.FC = () => {
 
   return (
     <Screen padded={false}>
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <MaterialIcons name="devices" size={28} color={colors.primary} />
-          <AppText variant="h2" style={styles.headerTitle}>
-            Device Details
-          </AppText>
-        </View>
-        {devices.length > 0 && (
-          <TouchableOpacity
-            style={styles.downloadButton}
-            onPress={handleDownloadPress}
-            disabled={downloading}>
-            {downloading ? (
-              <ActivityIndicator size="small" color={colors.primary} />
-            ) : (
-              <MaterialIcons name="download" size={24} color={colors.primary} />
-            )}
-          </TouchableOpacity>
-        )}
-      </View>
+      <TopNavbar
+        title="Devices"
+        subtitle="Manage your registered devices"
+        variant="figma"
+        showBackButton={true}
+        onBackPress={() => navigation.goBack()}
+        rightAction={
+          devices.length > 0
+            ? {
+                label: downloading ? 'Downloading...' : 'Download',
+                icon: downloading ? undefined : 'download',
+                onPress: handleDownloadPress,
+              }
+            : undefined
+        }
+      />
 
+      {/* Error Banner */}
       {error && devices.length > 0 && (
         <View style={styles.errorBanner}>
           <MaterialIcons name="info-outline" size={20} color={colors.warning} />
@@ -209,6 +222,7 @@ const DeviceDetailsTabScreen: React.FC = () => {
         </View>
       )}
 
+      {/* Empty State */}
       {devices.length === 0 ? (
         <View style={styles.centerContainer}>
           <MaterialIcons name="devices-other" size={64} color={colors.icon} />
@@ -228,6 +242,7 @@ const DeviceDetailsTabScreen: React.FC = () => {
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -235,6 +250,17 @@ const DeviceDetailsTabScreen: React.FC = () => {
               tintColor={colors.primary}
             />
           }>
+          {/* Section Header */}
+          <View style={styles.sectionHeader}>
+            <AppText variant="small" color={colors.textSecondary} style={styles.sectionTitle}>
+              REGISTERED DEVICES
+            </AppText>
+            <AppText variant="small" color={colors.textSecondary} style={styles.deviceCount}>
+              {devices.length} {devices.length === 1 ? 'device' : 'devices'}
+            </AppText>
+          </View>
+
+          {/* Device List */}
           {devices.map((device, index) => (
             <TouchableOpacity
               key={`${device.device_id}-${device.id_type}-${index}`}
@@ -252,37 +278,25 @@ const DeviceDetailsTabScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    flex: 1,
-  },
-  headerTitle: {
-    flex: 1,
-  },
-  downloadButton: {
-    padding: spacing.xs,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    padding: spacing.md,
-    paddingBottom: spacing.lg,
+    padding: spacing.lg,
+    paddingBottom: spacing.xl,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  sectionTitle: {
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  deviceCount: {
+    fontWeight: '500',
   },
   deviceCard: {
     marginBottom: spacing.md,
@@ -304,30 +318,34 @@ const styles = StyleSheet.create({
   errorTitle: {
     marginTop: spacing.md,
     color: colors.error,
+    textAlign: 'center',
   },
   errorText: {
     textAlign: 'center',
     marginBottom: spacing.sm,
+    paddingHorizontal: spacing.lg,
   },
   emptyTitle: {
     marginTop: spacing.md,
+    textAlign: 'center',
   },
   emptyText: {
     textAlign: 'center',
+    paddingHorizontal: spacing.lg,
   },
   errorBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fffbeb',
-    padding: spacing.sm,
-    marginHorizontal: spacing.md,
-    marginTop: spacing.sm,
-    borderRadius: 8,
+    backgroundColor: colors.warningBackground,
+    padding: spacing.md,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+    borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: colors.warning,
   },
   errorBannerText: {
-    marginLeft: spacing.xs,
+    marginLeft: spacing.sm,
     flex: 1,
   },
 });

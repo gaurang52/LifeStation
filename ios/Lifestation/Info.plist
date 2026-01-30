@@ -25,7 +25,7 @@
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>GMSApiKey</key>
-	<string>AIzaSyDxLGHiGmyX0U4gx0ktg9btREkuWxcBoiE</string>
+	<string>AIzaSyCAJ4QH8SwSuqmxhwlXUaK6OVK3VQEzqwQ</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSAppTransportSecurity</key>

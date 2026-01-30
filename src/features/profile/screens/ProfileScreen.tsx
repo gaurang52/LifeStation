@@ -8,12 +8,20 @@ import {
   LogOut,
   Shield,
   User,
+  Smartphone,
 } from 'lucide-react-native';
 import { Screen, AppText, Card, TopNavbar } from '@shared/components';
 import { useAuthStore } from '@core/store';
 import { spacing, colors, borderRadius } from '@shared/theme';
+import { useNavigation } from '@react-navigation/native';
+import type { AppStackParamList } from '@core/constants/routes';
+import type { StackNavigationProp } from '@react-navigation/stack';
+import { ROUTES } from '@core/constants/routes';
+
+type NavigationProp = StackNavigationProp<AppStackParamList>;
 
 const ProfileScreen: React.FC = () => {
+  const navigation = useNavigation<NavigationProp>();
   const user = useAuthStore(state => state.user);
   const logout = useAuthStore(state => state.logout);
 
@@ -21,9 +29,13 @@ const ProfileScreen: React.FC = () => {
     logout();
   };
 
+  const handleDevicePress = () => {
+    navigation.navigate(ROUTES.DEVICE_DETAILS_TAB);
+  };
+
   return (
     <Screen padded={false}>
-      <TopNavbar title="Profile" subtitle="Manage your account settings" variant="figma" />
+      <TopNavbar title="Profile" subtitle="Manage your account" variant="figma" />
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Gradient Profile Card */}
@@ -110,6 +122,21 @@ const ProfileScreen: React.FC = () => {
                 </View>
                 <ChevronRight size={20} color={colors.textSecondary} />
               </TouchableOpacity>
+              <View style={styles.divider} />
+              <TouchableOpacity
+                style={styles.settingRow}
+                activeOpacity={0.7}
+                onPress={handleDevicePress}>
+                <View style={styles.settingLeft}>
+                  <View style={styles.settingIconContainer}>
+                    <Smartphone size={20} color={colors.primary} />
+                  </View>
+                  <AppText variant="body" style={styles.settingLabel}>
+                    Device
+                  </AppText>
+                </View>
+                <ChevronRight size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
             </Card>
           </View>
 
@@ -147,11 +174,17 @@ const ProfileScreen: React.FC = () => {
 
           {/* App Info */}
           <View style={styles.appInfoContainer}>
-            <Card style={styles.appInfoCard}>
-              <AppText variant="small" color={colors.textSecondary} style={styles.appInfoText}>
-                LifeStation Health Care version 1.0.0 © 2026 LifeStation Inc.
+            <View style={styles.appInfoContent}>
+              <AppText variant="body" color={colors.textSecondary} style={styles.appName}>
+                LifeStation CareAssist
               </AppText>
-            </Card>
+              <AppText variant="small" color={colors.textSecondary} style={styles.appVersion}>
+                Version 1.0.0
+              </AppText>
+              <AppText variant="small" color={colors.textSecondary} style={styles.appCopyright}>
+                © 2026 LifeStation Inc. All rights reserved.
+              </AppText>
+            </View>
           </View>
 
           {/* Logout Button */}
@@ -168,29 +201,16 @@ const ProfileScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
-  },
-  headerTitle: {
-    flex: 1,
-  },
   scrollContent: {
     padding: spacing.lg, // px-6 in Figma
     paddingBottom: spacing.xl,
+    paddingTop: spacing.sm, // Minimal top padding since navbar already has spacing
   },
   profileCard: {
     backgroundColor: colors.primary, // Gradient-like solid color
     borderRadius: borderRadius.xl, // rounded-2xl in Figma
     padding: spacing.lg, // p-6 in Figma
-    marginBottom: spacing.lg, // mb-6 in Figma
+    marginBottom: spacing.xl, // mb-8 for better spacing
     shadowColor: colors.black,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
@@ -210,7 +230,7 @@ const styles = StyleSheet.create({
     width: 80, // w-20 in Figma
     height: 80,
     borderRadius: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)', // bg-white/20 in Figma
+    backgroundColor: colors.whiteOpacity20, // bg-white/20 in Figma
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -237,7 +257,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm, // px-3 in Figma
     paddingVertical: spacing.xs / 2, // py-1 in Figma
     borderRadius: borderRadius.xl, // rounded-full in Figma
-    backgroundColor: 'rgba(255, 255, 255, 0.2)', // bg-white/20 in Figma
+    backgroundColor: colors.whiteOpacity20, // bg-white/20 in Figma
     marginTop: spacing.sm, // mt-2 in Figma
   },
   userTypeText: {
@@ -245,10 +265,10 @@ const styles = StyleSheet.create({
     textTransform: 'capitalize',
   },
   settingsContainer: {
-    marginTop: spacing.lg, // mt-6 in Figma
+    marginTop: 0, // Remove extra top margin
   },
   settingsGroup: {
-    marginBottom: spacing.lg, // mb-6 in Figma
+    marginBottom: spacing.xl, // mb-8 for better spacing between groups
   },
   sectionGroupTitle: {
     fontWeight: '600', // font-semibold
@@ -258,7 +278,9 @@ const styles = StyleSheet.create({
   settingsCard: {
     borderWidth: 1,
     borderColor: colors.lightGray, // border-[#F5F5F5] in Figma
+    borderRadius: borderRadius.lg, // Add border radius for modern look
     overflow: 'hidden',
+    backgroundColor: colors.surface,
   },
   settingRow: {
     flexDirection: 'row',
@@ -305,15 +327,25 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.md,
   },
   appInfoContainer: {
-    marginBottom: spacing.lg, // mb-6 in Figma
-  },
-  appInfoCard: {
-    backgroundColor: colors.lightGray, // bg-[#F5F5F5] in Figma
-    padding: spacing.md, // p-4 in Figma
+    marginBottom: spacing.xl, // mb-8 for better spacing
     alignItems: 'center',
   },
-  appInfoText: {
-    marginBottom: spacing.xs / 2, // mb-1 in Figma
+  appInfoContent: {
+    alignItems: 'center',
+    paddingVertical: spacing.md,
+  },
+  appName: {
+    fontWeight: '600',
+    marginBottom: spacing.xs / 2,
+    color: colors.text,
+  },
+  appVersion: {
+    marginBottom: spacing.xs / 2,
+    color: colors.textSecondary,
+  },
+  appCopyright: {
+    marginTop: spacing.xs,
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   logoutButton: {
@@ -325,6 +357,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.error, // border-red-500 in Figma
     gap: spacing.sm, // space-x-2 in Figma
+    marginTop: spacing.md, // Add top margin for separation
   },
   logoutText: {
     fontWeight: '600', // font-semibold

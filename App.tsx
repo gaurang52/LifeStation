@@ -13,8 +13,10 @@ import LoginScreen from '@features/auth/screens/LoginScreen';
 import SignupScreen from '@features/auth/screens/SignupScreen';
 import WelcomeScreen from '@features/auth/screens/WelcomeScreen';
 import RecentEventsScreen from '@features/events/screens/RecentEventsScreen';
+import MapScreen from '@features/maps/screens/MapScreen';
 import AddDeviceScreen from '@features/devices/screens/AddDeviceScreen';
 import DeviceDetailsScreen from '@features/devices/screens/DeviceDetailsScreen';
+import DeviceDetailsTabScreen from '@features/devices/screens/DeviceDetailsTabScreen';
 import CareCircleScreen from '@features/caregivers/screens/CareCircleScreen';
 import AddCaregiverScreen from '@features/caregivers/screens/AddCaregiverScreen';
 import { useAuthStore } from '@core/store';
@@ -89,8 +91,8 @@ const getTabBarIcon = (routeName: string, color: string, size: number) => {
     iconName = 'home';
   } else if (routeName === ROUTES.RECENT_EVENTS) {
     iconName = 'event';
-  } else if (routeName === ROUTES.DEVICE_DETAILS_TAB) {
-    iconName = 'devices';
+  } else if (routeName === ROUTES.MAP) {
+    iconName = 'map';
   } else if (routeName === ROUTES.CARE_CIRCLE) {
     iconName = 'add';
   } else if (routeName === ROUTES.PROFILE) {
@@ -107,8 +109,8 @@ const HomeTabIcon = (props: { color: string; size?: number }) =>
   getTabBarIcon(ROUTES.HOME, props.color, props.size || 24);
 const EventsTabIcon = (props: { color: string; size?: number }) =>
   getTabBarIcon(ROUTES.RECENT_EVENTS, props.color, props.size || 24);
-const DeviceTabIcon = (props: { color: string; size?: number }) =>
-  getTabBarIcon(ROUTES.DEVICE_DETAILS_TAB, props.color, props.size || 24);
+const MapTabIcon = (props: { color: string; size?: number }) =>
+  getTabBarIcon(ROUTES.MAP, props.color, props.size || 24);
 const CareCircleTabIcon = (props: { color: string; size?: number }) =>
   getTabBarIcon(ROUTES.CARE_CIRCLE, props.color, props.size || 24);
 const ProfileTabIcon = (props: { color: string; size?: number }) =>
@@ -120,7 +122,7 @@ const tabBarIconByRoute: Record<
 > = {
   [ROUTES.HOME]: HomeTabIcon,
   [ROUTES.RECENT_EVENTS]: EventsTabIcon,
-  [ROUTES.DEVICE_DETAILS_TAB]: DeviceTabIcon,
+  [ROUTES.MAP]: MapTabIcon,
   [ROUTES.CARE_CIRCLE]: CareCircleTabIcon,
   [ROUTES.PROFILE]: ProfileTabIcon,
 };
@@ -185,12 +187,11 @@ const Tabs = () => {
         }}
       />
       <Tab.Screen
-        name={ROUTES.DEVICE_DETAILS_TAB}
-        component={DeviceDetailsScreen}
+        name={ROUTES.MAP}
+        component={MapScreen}
         options={{
-          tabBarLabel: 'Device',
+          tabBarLabel: 'Map',
         }}
-        initialParams={undefined}
       />
       <Tab.Screen
         name={ROUTES.CARE_CIRCLE}
@@ -215,6 +216,7 @@ const AppNavigator = () => (
     <AppStack.Screen name="MainTabs" component={Tabs} />
     <AppStack.Screen name={ROUTES.ADD_DEVICE} component={AddDeviceScreen} />
     <AppStack.Screen name={ROUTES.DEVICE_DETAILS} component={DeviceDetailsScreen} />
+    <AppStack.Screen name={ROUTES.DEVICE_DETAILS_TAB} component={DeviceDetailsTabScreen} />
     <AppStack.Screen name={ROUTES.ADD_CAREGIVER} component={AddCaregiverScreen} />
   </AppStack.Navigator>
 );

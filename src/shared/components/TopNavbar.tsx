@@ -8,6 +8,8 @@ interface TopNavbarProps {
   title: string;
   subtitle?: string;
   icon?: string;
+  showBackButton?: boolean;
+  onBackPress?: () => void;
   rightAction?: {
     label: string;
     icon?: string;
@@ -20,6 +22,8 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
   title,
   subtitle,
   icon,
+  showBackButton = false,
+  onBackPress,
   rightAction,
   variant = 'default',
 }) => {
@@ -27,11 +31,22 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
   return (
     <View style={[styles.header, isFigma && styles.headerFigma]}>
       <View style={styles.headerLeft}>
+        {showBackButton && (
+          <TouchableOpacity style={styles.backButton} onPress={onBackPress} activeOpacity={0.7}>
+            <MaterialIcons name="arrow-back" size={24} color={colors.primary} />
+          </TouchableOpacity>
+        )}
         {icon && !isFigma && <MaterialIcons name={icon} size={28} color={colors.primary} />}
         <View style={styles.titleContainer}>
-          <AppText variant="h2" style={[styles.headerTitle, isFigma && styles.headerTitleFigma]}>
-            {title}
-          </AppText>
+          {isFigma ? (
+            <AppText variant="h2" color={colors.primary} style={styles.headerTitleFigma}>
+              {title}
+            </AppText>
+          ) : (
+            <AppText variant="h2" color={colors.text} style={styles.headerTitle}>
+              {title}
+            </AppText>
+          )}
           {!!subtitle && (
             <AppText
               variant="body"
@@ -73,8 +88,8 @@ const styles = StyleSheet.create({
   },
   headerFigma: {
     paddingHorizontal: spacing.lg, // px-6
-    paddingTop: spacing.xxl, // pt-12
-    paddingBottom: spacing.lg, // pb-6
+    paddingTop: spacing.md, // Reduced from xxl (48px) to md (16px)
+    paddingBottom: spacing.md, // Reduced from lg (24px) to md (16px)
     borderBottomColor: colors.lightGray, // border-[#F5F5F5]
     alignItems: 'flex-start',
   },
@@ -85,24 +100,30 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
+  backButton: {
+    padding: spacing.xs,
+    marginLeft: -spacing.xs,
+    marginRight: spacing.xs / 2,
+  },
   titleContainer: {
     flex: 1,
     minWidth: 0,
   },
   headerTitle: {
-    flex: 1,
-    minWidth: 0,
+    color: colors.text,
   },
   headerTitleFigma: {
-    fontSize: 24, // text-2xl
-    fontWeight: '600', // font-semibold
-    color: colors.text,
+    fontSize: 28, // Larger font size
+    fontWeight: '700', // font-bold
+    color: colors.primary, // Same as button color
+    lineHeight: 34, // Better line height for large text
   },
   subtitle: {
     marginTop: spacing.xs / 2,
   },
   subtitleFigma: {
-    marginTop: spacing.xs / 2, // mt-1
+    marginTop: spacing.xs / 2, // Reduced spacing between title and subtitle
+    fontSize: 16, // Ensure readable size
   },
   actionButton: {
     flexDirection: 'row',
