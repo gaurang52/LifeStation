@@ -22,6 +22,12 @@ import { ErrorBoundary } from '@shared/components';
 import { colors, spacing } from '@shared/theme';
 import { ROUTES } from '@core/constants/routes';
 import {
+  requestNotificationPermission,
+  checkNotificationPermission,
+} from '@core/utils/notificationPermissions';
+import { setupNotificationHandlers } from '@core/services/notificationHandler';
+import { registerDeviceForRemoteMessages } from '@core/services/fcmService';
+import {
   ActivityIndicator,
   StatusBar,
   StyleSheet,
@@ -229,6 +235,42 @@ const App = (): React.JSX.Element => {
       const timeout = setTimeout(() => {
         useAuthStore.setState({ _hasHydrated: true });
       }, 3000);
+      return () => clearTimeout(timeout);
+    }
+  }, [hasHydrated]);
+
+  // Setup notification handlers and request permission after app has hydrated
+  useEffect(() => {
+    if (hasHydrated) {
+      const initializeNotifications = async () => {
+        try {
+          // Register device for remote messages (iOS only, required before getToken)
+          await registerDeviceForRemoteMessages();
+
+          // Setup notification handlers
+          setupNotificationHandlers(remoteMessage => {
+            // Handle notification opened - you can navigate to specific screens here
+            console.log('Notification opened:', remoteMessage);
+            // Example: Navigate to events screen if notification has event data
+            // navigation.navigate(ROUTES.RECENT_EVENTS);
+          });
+
+          // Check if permission is already granted
+          const hasPermission = await checkNotificationPermission();
+          if (!hasPermission) {
+            // Request permission if not already granted
+            await requestNotificationPermission();
+          }
+        } catch (error) {
+          console.warn('Failed to initialize notifications:', error);
+        }
+      };
+
+      // Small delay to ensure app is fully initialized
+      const timeout = setTimeout(() => {
+        initializeNotifications();
+      }, 500);
+
       return () => clearTimeout(timeout);
     }
   }, [hasHydrated]);

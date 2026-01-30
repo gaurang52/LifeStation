@@ -36,6 +36,17 @@ const signup = async (req, res) => {
       terms_accepted,
     } = req.body;
 
+    // Log received FCM token for debugging (first 20 chars only for security)
+    if (fcm_token) {
+      logger.debug(
+        `Signup request received FCM token: ${fcm_token.substring(0, 20)}... (length: ${
+          fcm_token.length
+        })`,
+      );
+    } else {
+      logger.debug('Signup request received without FCM token');
+    }
+
     // Validate required fields
     if (!name || !email || !password || !user_type) {
       return res.status(400).json({
@@ -195,6 +206,18 @@ const signup = async (req, res) => {
       },
     });
 
+    // Log FCM token for debugging
+    if (fcm_token) {
+      logger.info(
+        `FCM token stored for new user ${user.id} (${user.email}): ${fcm_token.substring(
+          0,
+          20,
+        )}...`,
+      );
+    } else {
+      logger.debug(`No FCM token provided for new user ${user.id} (${user.email})`);
+    }
+
     // Handle invitation acceptance and mapping creation (for caregiver signup)
     if (invitation && user_type === 'caregiver') {
       // Mark invitation as accepted
@@ -259,7 +282,11 @@ const signup = async (req, res) => {
       created_at: user.created_at,
     };
 
-    logger.info(`User signed up: ${user.id} (${user.email}) - Type: ${user.user_type}`);
+    logger.info(
+      `User signed up: ${user.id} (${user.email}) - Type: ${user.user_type} - FCM token: ${
+        user.fcm_token ? 'present' : 'not set'
+      }`,
+    );
 
     res.status(201).json({
       message: 'User registered successfully',

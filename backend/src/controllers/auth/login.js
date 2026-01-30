@@ -14,6 +14,17 @@ const login = async (req, res) => {
   try {
     const { email, password, fcm_token, platform } = req.body;
 
+    // Log received FCM token for debugging (first 20 chars only for security)
+    if (fcm_token) {
+      logger.debug(
+        `Login request received FCM token: ${fcm_token.substring(0, 20)}... (length: ${
+          fcm_token.length
+        })`,
+      );
+    } else {
+      logger.debug('Login request received without FCM token');
+    }
+
     // Validate input
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required' });
@@ -46,13 +57,27 @@ const login = async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
-    // Update user login status
-    await user.update({
+    // Update user login status and FCM token
+    const updateData = {
       is_login: true,
       status: 'ACTIVATED',
       fcm_token: fcm_token || null,
       platform: platform || null,
-    });
+    };
+
+    await user.update(updateData);
+
+    // Reload user to get updated values from database
+    await user.reload();
+
+    // Log FCM token update for debugging
+    if (fcm_token) {
+      logger.info(
+        `FCM token updated for user ${user.id} (${user.email}): ${fcm_token.substring(0, 20)}...`,
+      );
+    } else {
+      logger.debug(`No FCM token provided for user ${user.id} (${user.email})`);
+    }
 
     // Generate JWT tokens
     const token = jwt.sign({ user_id: user.id, user_type: user.user_type }, JWT_SECRET_KEY, {
@@ -90,7 +115,7 @@ const login = async (req, res) => {
       // Continue with login - external API failures should not block internal authentication
     }
 
-    // Prepare user data (exclude password)
+    // Prepare user data (exclude password) - use reloaded user data
     const userData = {
       id: user.id,
       name: user.name,
@@ -107,7 +132,11 @@ const login = async (req, res) => {
       created_at: user.created_at,
     };
 
-    logger.info(`User logged in: ${user.id} (${user.email})`);
+    logger.info(
+      `User logged in: ${user.id} (${user.email}) - FCM token: ${
+        user.fcm_token ? 'present' : 'not set'
+      }`,
+    );
 
     res.status(200).json({
       message: 'Login successful',

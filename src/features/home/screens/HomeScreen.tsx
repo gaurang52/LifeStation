@@ -9,17 +9,14 @@ import {
   FlatList,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import {
-  Screen,
-  AppText,
-  Card,
-  // MapViewComponent, // TODO: Uncomment after fixing Google Maps API key configuration
-} from '@shared/components';
+import { Screen, AppText, Card, MapViewComponent } from '@shared/components';
 import { useAuthStore } from '@core/store';
 import { spacing, colors, borderRadius } from '@shared/theme';
 import { deviceApi, type Device } from '@core/api/deviceApi';
 import { eventsApi, type DeviceEvent } from '@core/api/eventsApi';
+import { caregiverApi } from '@core/api/caregiverApi';
 import { ErrorHandler } from '@core/utils/errorHandler';
+import { logger } from '@core/utils/logger';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { AppStackParamList } from '@core/constants/routes';
 import type { StackNavigationProp } from '@react-navigation/stack';
@@ -51,7 +48,11 @@ const HomeScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [helpLoading, setHelpLoading] = useState(false);
+  const [helpSuccess, setHelpSuccess] = useState<string | null>(null);
+  const [helpError, setHelpError] = useState<string | null>(null);
   const hasInitialFetch = useRef(false);
+  const helpDebounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isFetchingDevices = useRef(false); // Track if fetch is in progress to prevent duplicate calls
   const hasFetchedDevices = useRef(false); // Track if devices have been fetched to prevent duplicate calls
   const isFetchingDeviceRecent = useRef(false); // Track if Get Recent Device Info is in progress
@@ -466,6 +467,62 @@ const HomeScreen: React.FC = () => {
     setRefreshing(false);
   }, [fetchDevices, activeDevice, fetchDeviceRecent, fetchEvents]);
 
+  const handleHelp = useCallback(async () => {
+    // Debounce: prevent rapid repeated presses
+    if (helpLoading) {
+      return;
+    }
+
+    // Clear any existing timer
+    if (helpDebounceTimer.current) {
+      clearTimeout(helpDebounceTimer.current);
+    }
+
+    // Clear previous messages
+    setHelpSuccess(null);
+    setHelpError(null);
+
+    try {
+      setHelpLoading(true);
+      const response = await caregiverApi.sendHelpNotification();
+
+      // Show success message
+      const successMessage = `Help notification sent to ${
+        response.data.notifications.sent
+      } caregiver${response.data.notifications.sent !== 1 ? 's' : ''}`;
+      setHelpSuccess(successMessage);
+
+      // Clear success message after 3 seconds
+      helpDebounceTimer.current = setTimeout(() => {
+        setHelpSuccess(null);
+      }, 3000);
+
+      logger.info('Help notification sent successfully:', response);
+    } catch (err) {
+      const errorMessage =
+        ErrorHandler.getErrorMessage(err) || 'Failed to send help notification. Please try again.';
+      setHelpError(errorMessage);
+
+      // Clear error message after 5 seconds
+      helpDebounceTimer.current = setTimeout(() => {
+        setHelpError(null);
+      }, 5000);
+
+      logger.error('Error sending help notification:', err);
+    } finally {
+      setHelpLoading(false);
+    }
+  }, [helpLoading]);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (helpDebounceTimer.current) {
+        clearTimeout(helpDebounceTimer.current);
+      }
+    };
+  }, []);
+
   const formatEventTime = (eventTime: string): string => {
     try {
       return moment(eventTime).utc().local().format('MMM DD yyyy hh:mm:ss A');
@@ -483,57 +540,56 @@ const HomeScreen: React.FC = () => {
     return 'event';
   };
 
-  // TODO: Uncomment when MapViewComponent is re-enabled
-  // const getLastLocation = (): { latitude: number; longitude: number } => {
-  //   // Priority 1: Use GPS location from telemetry (device recent endpoint)
-  //   if (deviceInfo?.location?.latitude && deviceInfo.location.longitude) {
-  //     const lat =
-  //       typeof deviceInfo.location.latitude === 'string'
-  //         ? parseFloat(deviceInfo.location.latitude)
-  //         : deviceInfo.location.latitude;
-  //     const lng =
-  //       typeof deviceInfo.location.longitude === 'string'
-  //         ? parseFloat(deviceInfo.location.longitude)
-  //         : deviceInfo.location.longitude;
+  const getLastLocation = (): { latitude: number; longitude: number } => {
+    // Priority 1: Use GPS location from telemetry (device recent endpoint)
+    if (deviceInfo?.location?.latitude && deviceInfo.location.longitude) {
+      const lat =
+        typeof deviceInfo.location.latitude === 'string'
+          ? parseFloat(deviceInfo.location.latitude)
+          : deviceInfo.location.latitude;
+      const lng =
+        typeof deviceInfo.location.longitude === 'string'
+          ? parseFloat(deviceInfo.location.longitude)
+          : deviceInfo.location.longitude;
 
-  //     if (!isNaN(lat) && !isNaN(lng) && lat !== null && lng !== null) {
-  //       console.log('HomeScreen - Using deviceInfo location:', {
-  //         lat,
-  //         lng,
-  //         original: deviceInfo.location,
-  //       });
-  //       return { latitude: lat, longitude: lng };
-  //     }
-  //   }
+      if (!isNaN(lat) && !isNaN(lng) && lat !== null && lng !== null) {
+        console.log('HomeScreen - Using deviceInfo location:', {
+          lat,
+          lng,
+          original: deviceInfo.location,
+        });
+        return { latitude: lat, longitude: lng };
+      }
+    }
 
-  //   // Priority 2: Find the most recent location event
-  //   const locationEvent = events.find(
-  //     e => e.eventtype?.toLowerCase().includes('location') && e.rawevent?.location,
-  //   );
-  //   if (locationEvent?.rawevent?.location) {
-  //     const lat =
-  //       typeof locationEvent.rawevent.location.latitude === 'string'
-  //         ? parseFloat(locationEvent.rawevent.location.latitude)
-  //         : locationEvent.rawevent.location.latitude;
-  //     const lng =
-  //       typeof locationEvent.rawevent.location.longitude === 'string'
-  //         ? parseFloat(locationEvent.rawevent.location.longitude)
-  //         : locationEvent.rawevent.location.longitude;
+    // Priority 2: Find the most recent location event
+    const locationEvent = events.find(
+      e => e.eventtype?.toLowerCase().includes('location') && e.rawevent?.location,
+    );
+    if (locationEvent?.rawevent?.location) {
+      const lat =
+        typeof locationEvent.rawevent.location.latitude === 'string'
+          ? parseFloat(locationEvent.rawevent.location.latitude)
+          : locationEvent.rawevent.location.latitude;
+      const lng =
+        typeof locationEvent.rawevent.location.longitude === 'string'
+          ? parseFloat(locationEvent.rawevent.location.longitude)
+          : locationEvent.rawevent.location.longitude;
 
-  //     if (!isNaN(lat) && !isNaN(lng) && lat !== null && lng !== null) {
-  //       console.log('HomeScreen - Using location event:', { lat, lng, event: locationEvent });
-  //       return { latitude: lat, longitude: lng };
-  //     }
-  //   }
+      if (!isNaN(lat) && !isNaN(lng) && lat !== null && lng !== null) {
+        console.log('HomeScreen - Using location event:', { lat, lng, event: locationEvent });
+        return { latitude: lat, longitude: lng };
+      }
+    }
 
-  //   // Temporary default location (San Francisco) when no location is available
-  //   console.log('HomeScreen - Using default location (no valid location found)', {
-  //     deviceInfoLocation: deviceInfo?.location,
-  //     eventsCount: events.length,
-  //     locationEvents: events.filter(e => e.eventtype?.toLowerCase().includes('location')),
-  //   });
-  //   return { latitude: 37.78825, longitude: -122.4324 };
-  // };
+    // Temporary default location (San Francisco) when no location is available
+    console.log('HomeScreen - Using default location (no valid location found)', {
+      deviceInfoLocation: deviceInfo?.location,
+      eventsCount: events.length,
+      locationEvents: events.filter(e => e.eventtype?.toLowerCase().includes('location')),
+    });
+    return { latitude: 37.78825, longitude: -122.4324 };
+  };
 
   const renderContent = () => {
     if (loading && !refreshing) {
@@ -768,7 +824,7 @@ const HomeScreen: React.FC = () => {
       return null;
     }
 
-    // const location = getLastLocation(); // TODO: Uncomment when MapViewComponent is re-enabled
+    const location = getLastLocation();
 
     return (
       <>
@@ -895,15 +951,14 @@ const HomeScreen: React.FC = () => {
           </View>
         </Card>
 
-        {/* Map Section - TODO: Temporarily commented out - uncomment after fixing Google Maps API key configuration
+        {/* Map Section */}
         <MapViewComponent
-          latitude={location?.latitude}
-          longitude={location?.longitude}
+          latitude={location.latitude}
+          longitude={location.longitude}
           height={250}
           showMarker={true}
           markerTitle="Device Location"
         />
-        */}
 
         {/* Recent Events Section */}
         <Card style={styles.eventsCard}>
@@ -986,17 +1041,33 @@ const HomeScreen: React.FC = () => {
                   {user?.name || 'User'}
                 </AppText>
               </View>
-              <TouchableOpacity
-                style={styles.refreshButton}
-                onPress={handleRefresh}
-                activeOpacity={0.7}>
-                <MaterialIcons
-                  name="refresh"
-                  size={20}
-                  color={colors.white}
-                  style={refreshing && styles.refreshIconSpinning}
-                />
-              </TouchableOpacity>
+              <View style={styles.headerButtons}>
+                {user?.user_type === 'senior' && (
+                  <TouchableOpacity
+                    style={[styles.helpButton, helpLoading && styles.buttonDisabled]}
+                    onPress={handleHelp}
+                    activeOpacity={0.7}
+                    disabled={helpLoading}>
+                    <AppText
+                      variant="bodyBold"
+                      color={colors.white}
+                      style={helpLoading && styles.buttonTextDisabled}>
+                      Help
+                    </AppText>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  style={styles.refreshButton}
+                  onPress={handleRefresh}
+                  activeOpacity={0.7}>
+                  <MaterialIcons
+                    name="refresh"
+                    size={20}
+                    color={colors.white}
+                    style={refreshing && styles.refreshIconSpinning}
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
             {/* Device Status Bar on colored background */}
             {activeDevice && (
@@ -1092,6 +1163,28 @@ const HomeScreen: React.FC = () => {
               </AppText>
             </View>
           )}
+          {helpSuccess && (
+            <View style={styles.successBanner}>
+              <MaterialIcons name="check-circle" size={20} color={colors.success || '#10b981'} />
+              <AppText
+                variant="small"
+                color={colors.success || '#10b981'}
+                style={styles.successBannerText}>
+                {helpSuccess}
+              </AppText>
+            </View>
+          )}
+          {helpError && (
+            <View style={styles.errorBanner}>
+              <MaterialIcons name="error-outline" size={20} color={colors.error || colors.red} />
+              <AppText
+                variant="small"
+                color={colors.error || colors.red}
+                style={styles.errorBannerText}>
+                {helpError}
+              </AppText>
+            </View>
+          )}
           <View style={styles.paddedContent}>{renderContent()}</View>
         </ScrollView>
       )}
@@ -1121,6 +1214,11 @@ const styles = StyleSheet.create({
   headerLeft: {
     flex: 1,
   },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   welcomeText: {
     marginBottom: spacing.xs / 2, // mt-1 equivalent
   },
@@ -1130,6 +1228,15 @@ const styles = StyleSheet.create({
     fontSize: 24, // text-2xl in Figma
     fontWeight: '600', // font-semibold
   },
+  helpButton: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)', // bg-white/20 in Figma
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 40,
+  },
   refreshButton: {
     width: 40, // w-10 in Figma
     height: 40,
@@ -1137,6 +1244,15 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.2)', // bg-white/20 in Figma
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
+  buttonIconDisabled: {
+    opacity: 0.5,
+  },
+  buttonTextDisabled: {
+    opacity: 0.5,
   },
   refreshIconSpinning: {
     transform: [{ rotate: '180deg' }], // Simple rotation, could be animated
@@ -1240,6 +1356,21 @@ const styles = StyleSheet.create({
     marginLeft: spacing.xs,
     flex: 1,
   },
+  successBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ecfdf5', // Light green success background
+    padding: spacing.sm,
+    borderRadius: 8,
+    marginBottom: spacing.md,
+    marginHorizontal: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.success || '#10b981',
+  },
+  successBannerText: {
+    marginLeft: spacing.xs,
+    flex: 1,
+  },
   eventsCard: {
     marginTop: spacing.md,
   },
@@ -1318,9 +1449,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
     borderBottomWidth: 1,
     borderBottomColor: colors.border || '#e0e0e0',
-  },
-  statusText: {
-    textTransform: 'capitalize',
   },
 });
 

@@ -1,4 +1,5 @@
 const admin = require('../config/firebase-config');
+const { isFirebaseInitialized } = require('../config/firebase-config');
 const db = require('../models');
 const logger = require('../utils/logger');
 
@@ -15,6 +16,16 @@ const sendNotification = async (deviceToken, title, message, data = {}, isEmerge
   if (!deviceToken) {
     logger.warn('No device token provided, skipping notification');
     return null;
+  }
+
+  // Check if Firebase Admin SDK is initialized
+  if (!isFirebaseInitialized()) {
+    logger.error(
+      'Firebase Admin SDK is not initialized. Cannot send notification. Please check Firebase credentials in .env file.',
+    );
+    throw new Error(
+      'Firebase Admin SDK is not initialized. Please configure FIREBASE_PROJECT_ID, FIREBASE_PRIVATE_KEY, and FIREBASE_CLIENT_EMAIL in your .env file.',
+    );
   }
 
   const messagePayload = {

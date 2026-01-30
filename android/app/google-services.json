@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "723316910132",
+    "project_id": "lifestation-dbb7a",
+    "storage_bucket": "lifestation-dbb7a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:723316910132:android:cd63a2f6501b1b03d58261",
+        "android_client_info": {
+          "package_name": "com.lifestation.mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDB2jrmcOORM_tgD-zgDInfoKSL9pXbBcU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

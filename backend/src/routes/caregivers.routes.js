@@ -12,6 +12,7 @@ const createInvitation = require('../controllers/caregivers/create-invitation');
 const resendInvitation = require('../controllers/caregivers/resend-invitation');
 const listInvitations = require('../controllers/caregivers/list-invitations');
 const revokeInvitation = require('../controllers/caregivers/revoke-invitation');
+const sendHelpNotification = require('../controllers/caregivers/send-help-notification');
 
 // All routes require authentication
 router.use(verifyToken);
@@ -26,6 +27,9 @@ router.post('/senior/add-caregiver', addCaregiver);
 
 // POST /senior/delete-caregiver - Remove a caregiver (using POST to match old API)
 router.post('/senior/delete-caregiver', deleteCaregiver);
+
+// POST /senior/help - Send help/emergency notification to all mapped caregivers
+router.post('/senior/help', sendHelpNotification);
 
 // Invitation routes - manage caregiver invitations
 // POST /senior/caregivers/invite - Create a new caregiver invitation

@@ -37,6 +37,7 @@ db.UserDeviceMapping = require('./UserDeviceMapping')(sequelize);
 db.ExternalApiTokens = require('./ExternalApiTokens')(sequelize);
 db.AuditLogs = require('./AuditLogs')(sequelize);
 db.NotificationLogs = require('./NotificationLogs')(sequelize);
+db.EventNotificationLogs = require('./EventNotificationLogs')(sequelize);
 db.MedicationReminders = require('./MedicationReminders')(sequelize);
 db.Goals = require('./Goals')(sequelize);
 

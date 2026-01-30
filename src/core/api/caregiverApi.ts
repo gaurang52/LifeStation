@@ -88,6 +88,24 @@ export interface DeleteCaregiverResponse {
   message: string;
 }
 
+export interface SendHelpNotificationResponse {
+  message: string;
+  data: {
+    senior_id: number;
+    senior_name: string;
+    timestamp: string;
+    notifications: {
+      sent: number;
+      failed: number;
+      total: number;
+      errors: Array<{
+        caregiverId: number;
+        error: string;
+      }>;
+    };
+  };
+}
+
 /** Caregiver API matching backend routes exactly */
 export const caregiverApi = {
   /**
@@ -156,5 +174,13 @@ export const caregiverApi = {
     return apiClient.post<{ message: string }>(
       `/senior/caregivers/invitations/${invitationId}/revoke`,
     );
+  },
+
+  /**
+   * POST /senior/help
+   * Send a help/emergency notification to all mapped caregivers
+   */
+  async sendHelpNotification(): Promise<SendHelpNotificationResponse> {
+    return apiClient.post<SendHelpNotificationResponse>('/senior/help');
   },
 };

@@ -6,8 +6,13 @@ const { apiLimiter, externalApiLimiter } = require('../middleware/rate-limit');
 
 const getAllEvents = require('../controllers/events/get-all-events');
 const getEventsByType = require('../controllers/events/get-events-by-type');
+const webhookEvent = require('../controllers/events/webhook-event');
 
-// All routes require authentication
+// Webhook endpoint (no authentication required - should be secured with API key or IP whitelist in production)
+// POST /events/webhook - Receive real-time events from external APIs
+router.post('/webhook', apiLimiter, webhookEvent);
+
+// All other routes require authentication
 router.use(verifyToken);
 router.use(apiLimiter);
 
