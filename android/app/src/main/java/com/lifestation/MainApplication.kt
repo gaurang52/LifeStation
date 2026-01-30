@@ -1,4 +1,4 @@
-package com.lifestation.mobile
+package com.lifestation
 
 import android.app.Application
 import android.app.NotificationChannel

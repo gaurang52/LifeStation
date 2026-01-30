@@ -7,9 +7,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:723316910132:android:cd63a2f6501b1b03d58261",
+        "mobilesdk_app_id": "1:723316910132:android:b7fec18c7e536055d58261",
         "android_client_info": {
-          "package_name": "com.lifestation.mobile"
+          "package_name": "com.lifestation"
         }
       },
       "oauth_client": [],

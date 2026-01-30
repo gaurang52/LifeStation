@@ -1,4 +1,4 @@
-package com.lifestation.mobile
+package com.lifestation
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
