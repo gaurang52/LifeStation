@@ -54,10 +54,6 @@ const transporter = createTransporter();
  */
 const sendCaregiverInvitation = async (toEmail, inviterName, appName = 'LifeStation') => {
   try {
-    // Construct signup URL (email-based matching, no token needed)
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    const signupUrl = `${frontendUrl}/signup`;
-
     // Format from address with FROM_NAME if provided
     const fromName = process.env.FROM_NAME || appName;
     const fromEmail = process.env.GMAIL_USER_NAME || 'noreply@lifestation.com';
@@ -93,18 +89,6 @@ const sendCaregiverInvitation = async (toEmail, inviterName, appName = 'LifeStat
             
             <p><strong>Important:</strong> Please sign up using the email address <strong>${toEmail}</strong> to accept this invitation.</p>
             
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${signupUrl}" 
-                 style="background-color: #3498db; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
-                Sign Up as Caregiver
-              </a>
-            </div>
-            
-            <p style="font-size: 12px; color: #7f8c8d; margin-top: 30px;">
-              Or copy and paste this link into your browser:<br>
-              <a href="${signupUrl}" style="color: #3498db; word-break: break-all;">${signupUrl}</a>
-            </p>
-            
             <p style="font-size: 12px; color: #7f8c8d; margin-top: 20px;">
               <strong>Note:</strong> Make sure to use the email address <strong>${toEmail}</strong> when signing up. This invitation will expire in 7 days. If you didn't expect this invitation, you can safely ignore this email.
             </p>
@@ -132,9 +116,6 @@ As a caregiver, you'll be able to:
 - Help manage care activities
 
 Important: Please sign up using the email address ${toEmail} to accept this invitation.
-
-Sign up by clicking the link below:
-${signupUrl}
 
 Note: Make sure to use the email address ${toEmail} when signing up. This invitation will expire in 7 days. If you didn't expect this invitation, you can safely ignore this email.
 
