@@ -386,7 +386,7 @@ const HomeScreen: React.FC = () => {
     if (!device || !device.device_id) return;
 
     try {
-      const response = await eventsApi.getEvents(device.device_id, 'last_7_days');
+      const response = await eventsApi.getEvents(device.device_id, 'last_24_hours');
       const eventList = response.data || [];
       eventList.sort((a, b) => {
         const timeA = new Date(a.eventtime).getTime();

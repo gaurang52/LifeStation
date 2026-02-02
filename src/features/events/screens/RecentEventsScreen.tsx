@@ -64,7 +64,7 @@ const RecentEventsScreen: React.FC = () => {
 
       try {
         setError(null);
-        const response = await eventsApi.getEvents(targetDevice.device_id, 'last_7_days');
+        const response = await eventsApi.getEvents(targetDevice.device_id, 'last_24_hours');
         const eventList = response.data || [];
         // Sort by actual event date (rawevent.originalEvent.event_date), most recent first
         eventList.sort((a, b) => {
@@ -450,7 +450,7 @@ const RecentEventsScreen: React.FC = () => {
             No Events Found
           </AppText>
           <AppText variant="body" color={colors.textSecondary} style={styles.emptyText}>
-            No events recorded in the last 7 days
+            No events recorded in the last 24 hours
           </AppText>
         </View>
       ) : (

@@ -28,7 +28,6 @@ interface Coordinate {
 
 const FREQUENCY_OPTIONS: { label: string; value: EventFrequency }[] = [
   { label: 'Last 24 Hours', value: 'last_24_hours' },
-  { label: 'Last 7 Days', value: 'last_7_days' },
   { label: 'Last 30 Days', value: 'last_30_days' },
   { label: 'All', value: 'all' },
 ];

@@ -1,6 +1,6 @@
 import { apiClient } from './client';
 
-export type EventFrequency = 'last_24_hours' | 'last_7_days' | 'last_30_days' | 'all';
+export type EventFrequency = 'last_24_hours' | 'last_30_days' | 'all';
 
 export interface DeviceEvent {
   eventtype: string;
@@ -34,7 +34,7 @@ export const eventsApi = {
    */
   async getEvents(
     deviceId: string,
-    frequency: EventFrequency = 'last_7_days',
+    frequency: EventFrequency = 'last_24_hours',
   ): Promise<GetEventsResponse> {
     return apiClient.post<GetEventsResponse>('/events/get-all-events', {
       device_id: deviceId,
@@ -50,7 +50,7 @@ export const eventsApi = {
    */
   async getEventsByType(
     deviceId: string,
-    frequency: EventFrequency = 'last_7_days',
+    frequency: EventFrequency = 'last_24_hours',
     eventType: string = 'All',
   ): Promise<GetEventsResponse> {
     return apiClient.post<GetEventsResponse>('/events/get-events-by-type', {

@@ -20,9 +20,6 @@ const getDateRange = frequency => {
     case 'last_24_hours':
       afterDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
       break;
-    case 'last_7_days':
-      afterDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      break;
     case 'last_30_days':
       afterDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
       break;
@@ -30,7 +27,7 @@ const getDateRange = frequency => {
       afterDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
       break;
     default:
-      afterDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      afterDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   }
 
   return {
@@ -256,7 +253,7 @@ const mapSignalTypeToEventType = signalType => {
 
 const getEventsByType = async (req, res) => {
   try {
-    const { device_id, frequency = 'last_7_days', event_type = 'All' } = req.body;
+    const { device_id, frequency = 'last_24_hours', event_type = 'All' } = req.body;
     const userId = req.user_id;
 
     // Validate input
@@ -268,7 +265,7 @@ const getEventsByType = async (req, res) => {
     }
 
     // Validate frequency
-    const validFrequencies = ['last_24_hours', 'last_7_days', 'last_30_days', 'all'];
+    const validFrequencies = ['last_24_hours', 'last_30_days', 'all'];
     if (!validFrequencies.includes(frequency)) {
       return res.status(400).json({
         error: 'Invalid frequency',

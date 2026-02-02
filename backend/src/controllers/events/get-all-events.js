@@ -20,9 +20,6 @@ const getDateRange = frequency => {
     case 'last_24_hours':
       afterDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
       break;
-    case 'last_7_days':
-      afterDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      break;
     case 'last_30_days':
       afterDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
       break;
@@ -30,7 +27,7 @@ const getDateRange = frequency => {
       afterDate = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000); // 1 year
       break;
     default:
-      afterDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      afterDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   }
 
   return {
@@ -183,7 +180,7 @@ const mapSignalTypeToEventType = signalType => {
 
 const getAllEvents = async (req, res) => {
   try {
-    const { device_id, frequency = 'last_7_days' } = req.body;
+    const { device_id, frequency = 'last_24_hours' } = req.body;
     const userId = req.user_id;
 
     // Validate input
@@ -195,7 +192,7 @@ const getAllEvents = async (req, res) => {
     }
 
     // Validate frequency
-    const validFrequencies = ['last_24_hours', 'last_7_days', 'last_30_days', 'all'];
+    const validFrequencies = ['last_24_hours', 'last_30_days', 'all'];
     if (!validFrequencies.includes(frequency)) {
       return res.status(400).json({
         error: 'Invalid frequency',
@@ -313,38 +310,16 @@ const getAllEvents = async (req, res) => {
       });
     }
 
-    // Correct logic: use Recent API for short ranges when supported, History for longer ranges or when Recent fails.
+    // Fast path: last_24_hours uses Recent only (one GET). Longer ranges use History (create + poll + get).
     const dateRange = getDateRange(frequency);
-    const useRecentFirst = frequency === 'last_24_hours' || frequency === 'last_7_days';
+    const useRecentOnly = frequency === 'last_24_hours';
     let eventsData = [];
-    let source = 'history';
 
     try {
-      if (useRecentFirst) {
-        try {
-          const recentData = await reportsApiService.getRecentReports(csNo);
-          eventsData = normalizeEvents(recentData);
-          source = 'recent';
-          logger.debug(`Fetched ${eventsData.length} events from Recent API for cs_no: ${csNo}`);
-        } catch (recentError) {
-          const status = recentError.response?.status;
-          logger.warn('Reports API Recent failed, falling back to History', {
-            cs_no: csNo,
-            status,
-            message: recentError.message,
-          });
-          // Fallback: same date range via History (cs_no in body works when path fails)
-          const historyData = await reportsApiService.getEventHistory({
-            csNo: csNo,
-            before: dateRange.before,
-            after: dateRange.after,
-          });
-          eventsData = normalizeEvents(historyData);
-          source = 'history_fallback';
-          logger.debug(
-            `Fetched ${eventsData.length} events from History API (fallback) for cs_no: ${csNo}`,
-          );
-        }
+      if (useRecentOnly) {
+        const recentData = await reportsApiService.getRecentReports(csNo);
+        eventsData = normalizeEvents(recentData);
+        logger.debug(`Fetched ${eventsData.length} events from Recent API for cs_no: ${csNo}`);
       } else {
         const historyData = await reportsApiService.getEventHistory({
           csNo: csNo,
