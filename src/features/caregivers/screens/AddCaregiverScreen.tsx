@@ -125,7 +125,7 @@ const AddCaregiverScreen: React.FC = () => {
           <View style={styles.form}>
             <Input
               label="Email Address"
-              placeholder="caregiver@example.com"
+              placeholder="Enter email address"
               value={email}
               onChangeText={text => {
                 setEmail(text);

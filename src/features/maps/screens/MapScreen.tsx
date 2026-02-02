@@ -813,7 +813,7 @@ const styles = StyleSheet.create({
   },
   emptyStateText: {
     textAlign: 'center',
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
   },
   bottomButtonContainer: {
     position: 'absolute',

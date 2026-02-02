@@ -16,6 +16,10 @@ interface TopNavbarProps {
     onPress: () => void;
   };
   variant?: 'default' | 'figma';
+  /** When true, no extra horizontal padding so title aligns with content below (e.g. when inside padded scroll). */
+  contentAligned?: boolean;
+  /** When true, removes the bottom border/divider line. */
+  hideBottomBorder?: boolean;
 }
 
 export const TopNavbar: React.FC<TopNavbarProps> = ({
@@ -26,10 +30,18 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
   onBackPress,
   rightAction,
   variant = 'default',
+  contentAligned = false,
+  hideBottomBorder = false,
 }) => {
   const isFigma = variant === 'figma';
   return (
-    <View style={[styles.header, isFigma && styles.headerFigma]}>
+    <View
+      style={[
+        styles.header,
+        isFigma && styles.headerFigma,
+        contentAligned && styles.headerContentAligned,
+        hideBottomBorder && styles.headerNoBorder,
+      ]}>
       <View style={styles.headerLeft}>
         {showBackButton && (
           <TouchableOpacity style={styles.backButton} onPress={onBackPress} activeOpacity={0.7}>
@@ -87,11 +99,17 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.divider,
   },
   headerFigma: {
-    paddingHorizontal: spacing.lg, // px-6
+    paddingHorizontal: spacing.md,
     paddingTop: spacing.md, // Reduced from xxl (48px) to md (16px)
     paddingBottom: spacing.md, // Reduced from lg (24px) to md (16px)
     borderBottomColor: colors.lightGray, // border-[#F5F5F5]
     alignItems: 'flex-start',
+  },
+  headerContentAligned: {
+    paddingHorizontal: 0, // Parent (e.g. scrollContent) already has padding; align title with content below
+  },
+  headerNoBorder: {
+    borderBottomWidth: 0,
   },
   headerLeft: {
     flexDirection: 'row',

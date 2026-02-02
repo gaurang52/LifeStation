@@ -142,6 +142,11 @@ const getDeviceRecent = async (req, res) => {
         normalized.cs_no = csNo;
       }
 
+      // If external API did not return last_seen, use time of fetch so "Last sync" shows "Just now" instead of "Unknown"
+      if (!normalized.last_seen) {
+        normalized.last_seen = new Date().toISOString();
+      }
+
       // Log audit entry
       await auditLogService.log({
         user_id: userId,

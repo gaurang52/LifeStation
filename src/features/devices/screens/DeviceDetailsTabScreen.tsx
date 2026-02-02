@@ -282,7 +282,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: spacing.lg,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.lg,
     paddingBottom: spacing.xl,
   },
   sectionHeader: {
@@ -323,7 +324,7 @@ const styles = StyleSheet.create({
   errorText: {
     textAlign: 'center',
     marginBottom: spacing.sm,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
   },
   emptyTitle: {
     marginTop: spacing.md,
@@ -331,7 +332,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     textAlign: 'center',
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
   },
   errorBanner: {
     flexDirection: 'row',

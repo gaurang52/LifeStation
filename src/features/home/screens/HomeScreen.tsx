@@ -9,7 +9,7 @@ import {
   FlatList,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { Screen, AppText, Card } from '@shared/components';
+import { Screen, AppText, Card, TopNavbar } from '@shared/components';
 import { useAuthStore } from '@core/store';
 import { spacing, colors, borderRadius } from '@shared/theme';
 import { deviceApi, type Device, type FallDetectionResponse } from '@core/api/deviceApi';
@@ -744,15 +744,6 @@ const HomeScreen: React.FC = () => {
             </View>
           </Card>
 
-          {/* TODO: Temporarily commented out - uncomment after fixing Google Maps API key configuration
-          <MapViewComponent
-            latitude={location.latitude}
-            longitude={location.longitude}
-            height={250}
-            showMarker={true}
-            markerTitle="Device Location"
-          />
-          */}
           <Card style={styles.eventsCard}>
             <View style={styles.eventsHeader}>
               <MaterialIcons name="event" size={20} color={colors.primary} />
@@ -1068,8 +1059,16 @@ const HomeScreen: React.FC = () => {
               tintColor={colors.primary}
             />
           }>
-          {/* Header with gradient background */}
-          <View style={styles.header}>
+          <TopNavbar
+            title="Home"
+            subtitle="Your dashboard"
+            variant="figma"
+            contentAligned
+            hideBottomBorder
+          />
+
+          {/* Pink header card - same style as Profile profileCard for consistency */}
+          <View style={styles.homeHeaderCard}>
             <View style={styles.headerContent}>
               <View style={styles.headerLeft}>
                 <AppText
@@ -1110,7 +1109,6 @@ const HomeScreen: React.FC = () => {
                 </TouchableOpacity>
               </View>
             </View>
-            {/* Device Status Bar on colored background */}
             {activeDevice && (
               <View style={styles.statusBarWrapper}>
                 <View style={styles.statusBarOnHeader}>
@@ -1165,40 +1163,50 @@ const HomeScreen: React.FC = () => {
                       )}
                     </View>
                   </View>
-                  <View style={styles.statusBarBottom}>
-                    <View style={styles.lastSyncRow}>
-                      <MaterialIcons name="access-time" size={16} color={colors.textSecondary} />
-                      <AppText
-                        variant="small"
-                        color={colors.textSecondary}
-                        style={styles.lastSyncText}>
-                        Last sync:{' '}
-                        {deviceInfo?.lastUpdate
-                          ? (() => {
-                              try {
-                                const date = new Date(deviceInfo.lastUpdate);
-                                const now = new Date();
-                                const diffMs = now.getTime() - date.getTime();
-                                const diffMins = Math.floor(diffMs / 60000);
-                                if (diffMins < 1) return 'Just now';
-                                if (diffMins < 60) return `${diffMins} min ago`;
-                                const diffHours = Math.floor(diffMs / 3600000);
-                                if (diffHours < 24) return `${diffHours} hr ago`;
-                                return date.toLocaleDateString();
-                              } catch {
-                                return 'Unknown';
-                              }
-                            })()
-                          : 'Unknown'}
-                      </AppText>
-                    </View>
-                    <AppText
-                      variant="small"
-                      color={colors.textSecondary}
-                      style={styles.refreshHintText}>
-                      Tap the refresh icon above or pull down for latest location & status
-                    </AppText>
-                  </View>
+                  {(() => {
+                    let lastSyncLabel: string | null = null;
+                    const raw = deviceInfo?.lastUpdate;
+                    if (raw && typeof raw === 'string' && raw.trim() !== '') {
+                      try {
+                        const date = new Date(raw.trim());
+                        if (!Number.isNaN(date.getTime())) {
+                          const now = new Date();
+                          const diffMs = now.getTime() - date.getTime();
+                          if (diffMs < 0) {
+                            lastSyncLabel = 'Just now';
+                          } else {
+                            const diffMins = Math.floor(diffMs / 60000);
+                            if (diffMins < 1) lastSyncLabel = 'Just now';
+                            else if (diffMins < 60) lastSyncLabel = `${diffMins} min ago`;
+                            else {
+                              const diffHours = Math.floor(diffMs / 3600000);
+                              lastSyncLabel =
+                                diffHours < 24 ? `${diffHours} hr ago` : date.toLocaleDateString();
+                            }
+                          }
+                        }
+                      } catch {
+                        // leave null, hide field
+                      }
+                    }
+                    return lastSyncLabel ? (
+                      <View style={styles.statusBarBottom}>
+                        <View style={styles.lastSyncRow}>
+                          <MaterialIcons
+                            name="access-time"
+                            size={16}
+                            color={colors.textSecondary}
+                          />
+                          <AppText
+                            variant="small"
+                            color={colors.textSecondary}
+                            style={styles.lastSyncText}>
+                            Last sync: {lastSyncLabel}
+                          </AppText>
+                        </View>
+                      </View>
+                    ) : null;
+                  })()}
                 </View>
               </View>
             )}
@@ -1247,14 +1255,19 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingBottom: spacing.lg,
-    paddingHorizontal: 8, // Reduced from 12 - less left/right padding
-    paddingTop: 0, // No top padding - header handles its own spacing
+    paddingHorizontal: spacing.md, // Tighter left/right; was spacing.lg
+    paddingTop: spacing.sm,
   },
-  header: {
-    backgroundColor: colors.primary, // Gradient-like solid color
-    paddingHorizontal: 12, // Reduced from spacing.lg (24px) - less left/right padding
-    paddingTop: spacing.xxl, // pt-12 in Figma
-    paddingBottom: spacing.lg, // pb-6 in Figma
+  homeHeaderCard: {
+    backgroundColor: colors.primary,
+    borderRadius: borderRadius.xl,
+    padding: spacing.md,
+    marginBottom: spacing.xl,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
   headerContent: {
     flexDirection: 'row',
@@ -1359,12 +1372,8 @@ const styles = StyleSheet.create({
   lastSyncText: {
     fontSize: 14,
   },
-  refreshHintText: {
-    opacity: 0.9,
-    fontStyle: 'italic',
-  },
   paddedContent: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 0, // Use scrollContent's padding only; no extra left/right
     paddingVertical: spacing.md,
   },
   centerContainer: {
@@ -1476,8 +1485,8 @@ const styles = StyleSheet.create({
   },
   statusCard: {
     flex: 1,
-    paddingHorizontal: 10, // Slightly reduced for tighter cards
-    paddingVertical: 10, // Match reference app: scale(10) - card default
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     height: 100, // Match reference app: scale(100)
     justifyContent: 'flex-start',
   },

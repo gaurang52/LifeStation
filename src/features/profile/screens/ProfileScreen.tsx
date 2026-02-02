@@ -31,6 +31,7 @@ import { useNavigation, CommonActions } from '@react-navigation/native';
 import type { AppStackParamList } from '@core/constants/routes';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { ROUTES } from '@core/constants/routes';
+import { ENV } from '@core/constants/env';
 
 type NavigationProp = StackNavigationProp<AppStackParamList>;
 
@@ -431,13 +432,13 @@ const ProfileScreen: React.FC = () => {
           <View style={styles.appInfoContainer}>
             <View style={styles.appInfoContent}>
               <AppText variant="body" color={colors.textSecondary} style={styles.appName}>
-                LifeStation CareAssist
+                {ENV.APP_NAME}
               </AppText>
               <AppText variant="small" color={colors.textSecondary} style={styles.appVersion}>
-                Version 1.0.0
+                Version {ENV.APP_VERSION}
               </AppText>
               <AppText variant="small" color={colors.textSecondary} style={styles.appCopyright}>
-                © 2026 LifeStation Inc. All rights reserved.
+                © {new Date().getFullYear()} LifeStation Inc. All rights reserved.
               </AppText>
             </View>
           </View>
@@ -621,8 +622,8 @@ const ProfileScreen: React.FC = () => {
 
 const styles = StyleSheet.create({
   scrollContent: {
-    paddingHorizontal: 8, // Match Home screen - less left/right padding
-    paddingTop: spacing.sm, // Minimal top padding since navbar already has spacing
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
     paddingBottom: spacing.lg,
   },
   profileCard: {

@@ -590,12 +590,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   scrollContent: {
-    padding: spacing.lg, // px-6 in Figma
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.lg,
   },
   deviceCard: {
     backgroundColor: colors.primary, // Gradient-like solid color
     borderRadius: borderRadius.xl, // rounded-2xl in Figma
-    padding: spacing.lg, // p-6 in Figma
+    padding: spacing.md,
     marginBottom: spacing.lg, // mb-6 equivalent
     shadowColor: colors.black,
     shadowOffset: { width: 0, height: 4 },

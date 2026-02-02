@@ -1,12 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import {
-  StyleSheet,
-  View,
-  ScrollView,
-  RefreshControl,
-  ActivityIndicator,
-  TouchableOpacity,
-} from 'react-native';
+import { StyleSheet, View, ScrollView, RefreshControl, ActivityIndicator } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {
   Activity as ActivityIcon,
@@ -321,35 +314,6 @@ const RecentEventsScreen: React.FC = () => {
             Pull to refresh for latest events
           </AppText>
 
-          {/* Filter Chips */}
-          <View style={styles.filterContainer}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.filterChips}>
-              <TouchableOpacity style={styles.filterChipActive}>
-                <AppText variant="small" style={styles.filterChipTextActive}>
-                  All Events
-                </AppText>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.filterChip}>
-                <AppText variant="small" style={styles.filterChipText}>
-                  Health
-                </AppText>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.filterChip}>
-                <AppText variant="small" style={styles.filterChipText}>
-                  Location
-                </AppText>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.filterChip}>
-                <AppText variant="small" style={styles.filterChipText}>
-                  Alerts
-                </AppText>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-
           {/* Grouped Events by Date */}
           {events.length > 0 ? (
             Object.entries(groupEventsByDate(events)).map(([date, dateEvents]) => (
@@ -392,40 +356,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: spacing.lg, // px-6 in Figma
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.lg,
     paddingBottom: spacing.lg,
   },
   refreshHintText: {
     marginBottom: spacing.md,
     opacity: 0.9,
     fontStyle: 'italic',
-  },
-  filterContainer: {
-    marginBottom: spacing.md, // py-4 equivalent
-  },
-  filterChips: {
-    flexDirection: 'row',
-    gap: spacing.sm, // space-x-2 in Figma
-  },
-  filterChip: {
-    paddingHorizontal: spacing.md, // px-4 in Figma
-    paddingVertical: spacing.sm, // py-2 in Figma
-    borderRadius: borderRadius.xl, // rounded-full in Figma
-    backgroundColor: colors.lightGray, // bg-[#F5F5F5] in Figma
-  },
-  filterChipActive: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.xl,
-    backgroundColor: colors.primary, // bg-[#C2185B] in Figma
-  },
-  filterChipText: {
-    color: colors.text,
-    fontWeight: '500', // font-medium
-  },
-  filterChipTextActive: {
-    color: colors.white,
-    fontWeight: '500',
   },
   dateGroup: {
     marginBottom: spacing.lg, // mb-6 in Figma
@@ -535,7 +473,7 @@ const styles = StyleSheet.create({
   emptyStateContainer: {
     alignItems: 'center',
     paddingVertical: spacing.xxl, // py-12 in Figma
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
   },
   emptyTitle: {
     marginTop: spacing.md, // mb-2 equivalent
