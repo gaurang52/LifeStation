@@ -559,12 +559,33 @@ const HomeScreen: React.FC = () => {
     }
   };
 
-  const getEventIcon = (eventType: string): string => {
-    const type = eventType?.toLowerCase() || '';
-    if (type.includes('location')) return 'location-on';
-    if (type.includes('telemetry')) return 'show-chart';
-    if (type.includes('fall')) return 'warning';
-    if (type.includes('alert')) return 'notifications';
+  /** Human-readable event title: prefer event_descr, then map eventtype codes */
+  const getEventDisplayTitle = (item: DeviceEvent): string => {
+    const desc = item.rawevent?.originalEvent?.event_descr;
+    if (desc && String(desc).trim()) return String(desc).trim();
+    const type = (item.eventtype || '').toUpperCase();
+    const mapping: Record<string, string> = {
+      M: 'Personal Emergency',
+      A: 'Location Update',
+      OA: 'Operator Alert',
+      AA: 'Alarm',
+      SY: 'System Event',
+      ZZ: 'Message',
+      TT: 'Timer Test',
+      TF: 'Test Failed',
+    };
+    return mapping[type] || item.eventtype || 'Event';
+  };
+
+  const getEventIcon = (item: DeviceEvent): string => {
+    const type = (item.eventtype || '').toLowerCase();
+    const desc = String(item.rawevent?.originalEvent?.event_descr ?? '').toLowerCase();
+    if (type === 'a' || desc.includes('location')) return 'location-on';
+    if (type.includes('telemetry') || desc.includes('telemetry')) return 'show-chart';
+    if (type.includes('fall') || desc.includes('fall') || desc.includes('emergency'))
+      return 'warning';
+    if (type === 'm' || desc.includes('alert') || desc.includes('pers')) return 'notifications';
+    if (type === 'tt' || desc.includes('timer test')) return 'battery-full';
     return 'event';
   };
 
@@ -746,24 +767,37 @@ const HomeScreen: React.FC = () => {
 
           <Card style={styles.eventsCard}>
             <View style={styles.eventsHeader}>
-              <MaterialIcons name="event" size={20} color={colors.primary} />
-              <AppText variant="h3" style={styles.eventsTitle}>
-                Recent Events
-              </AppText>
+              <View style={styles.eventsHeaderIcon}>
+                <MaterialIcons name="event-note" size={24} color={colors.primary} />
+              </View>
+              <View style={styles.eventsHeaderText}>
+                <AppText variant="h2" style={styles.eventsTitle}>
+                  Recent Events
+                </AppText>
+                <AppText
+                  variant="caption"
+                  color={colors.textSecondary}
+                  style={styles.eventsSubtitle}>
+                  Latest activity from your device
+                </AppText>
+              </View>
             </View>
             {events.length > 0 ? (
               <FlatList
                 data={events}
                 scrollEnabled={false}
-                renderItem={({ item }) => {
-                  const eventType = item.eventtype || 'Unknown Event';
-                  const iconName = getEventIcon(eventType);
+                renderItem={({ item, index }) => {
+                  const displayTitle = getEventDisplayTitle(item);
+                  const iconName = getEventIcon(item);
+                  const isLast = index === events.length - 1;
                   return (
-                    <View style={styles.eventItem}>
-                      <MaterialIcons name={iconName} size={18} color={colors.primary} />
+                    <View style={[styles.eventItem, !isLast && styles.eventItemBorder]}>
+                      <View style={styles.eventIconWrap}>
+                        <MaterialIcons name={iconName} size={20} color={colors.primary} />
+                      </View>
                       <View style={styles.eventContent}>
-                        <AppText variant="body" style={styles.eventTitle}>
-                          {eventType}
+                        <AppText variant="bodyBold" style={styles.eventTitle}>
+                          {displayTitle}
                         </AppText>
                         <AppText
                           variant="small"
@@ -995,24 +1029,34 @@ const HomeScreen: React.FC = () => {
         {/* Recent Events Section */}
         <Card style={styles.eventsCard}>
           <View style={styles.eventsHeader}>
-            <MaterialIcons name="event" size={20} color={colors.primary} />
-            <AppText variant="h3" style={styles.eventsTitle}>
-              Recent Events
-            </AppText>
+            <View style={styles.eventsHeaderIcon}>
+              <MaterialIcons name="event-note" size={24} color={colors.primary} />
+            </View>
+            <View style={styles.eventsHeaderText}>
+              <AppText variant="h2" style={styles.eventsTitle}>
+                Recent Events
+              </AppText>
+              <AppText variant="caption" color={colors.textSecondary} style={styles.eventsSubtitle}>
+                Latest activity from your device
+              </AppText>
+            </View>
           </View>
           {events.length > 0 ? (
             <FlatList
               data={events}
               scrollEnabled={false}
-              renderItem={({ item }) => {
-                const eventType = item.eventtype || 'Unknown Event';
-                const iconName = getEventIcon(eventType);
+              renderItem={({ item, index }) => {
+                const displayTitle = getEventDisplayTitle(item);
+                const iconName = getEventIcon(item);
+                const isLast = index === events.length - 1;
                 return (
-                  <View style={styles.eventItem}>
-                    <MaterialIcons name={iconName} size={18} color={colors.primary} />
+                  <View style={[styles.eventItem, !isLast && styles.eventItemBorder]}>
+                    <View style={styles.eventIconWrap}>
+                      <MaterialIcons name={iconName} size={20} color={colors.primary} />
+                    </View>
                     <View style={styles.eventContent}>
-                      <AppText variant="body" style={styles.eventTitle}>
-                        {eventType}
+                      <AppText variant="bodyBold" style={styles.eventTitle}>
+                        {displayTitle}
                       </AppText>
                       <AppText
                         variant="small"
@@ -1440,36 +1484,72 @@ const styles = StyleSheet.create({
   },
   eventsCard: {
     marginTop: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.md,
   },
   eventsHeader: {
     flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.md,
+    marginBottom: spacing.lg,
+    paddingBottom: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  eventsHeaderIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.tabBg,
     alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
+    justifyContent: 'center',
+  },
+  eventsHeaderText: {
+    flex: 1,
   },
   eventsTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    letterSpacing: 0.3,
+  },
+  eventsSubtitle: {
+    marginTop: 2,
+    opacity: 0.9,
   },
   eventItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: spacing.md,
-    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    gap: spacing.md,
+  },
+  eventItemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.divider,
+  },
+  eventIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: borderRadius.sm,
+    backgroundColor: colors.welcomeRingBg,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   eventContent: {
     flex: 1,
-    gap: spacing.xs / 2,
+    gap: 2,
   },
   eventTitle: {
-    fontWeight: '500',
+    lineHeight: 22,
+    letterSpacing: 0.2,
   },
   eventDate: {
-    fontSize: 11,
+    marginTop: 2,
+    lineHeight: 16,
+    opacity: 0.85,
   },
   noEvents: {
     textAlign: 'center',
-    marginVertical: spacing.md,
+    marginVertical: spacing.lg,
+    lineHeight: 22,
   },
   statusCardsRow: {
     flexDirection: 'row',

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -20,12 +20,10 @@ import {
   Lock,
   User,
   Smartphone,
-  MapPin,
-  Phone,
 } from 'lucide-react-native';
 import { Screen, AppText, Card, TopNavbar, Input, Button } from '@shared/components';
 import { useAuthStore } from '@core/store';
-import { authApi, type LifestationAccount } from '@core/api/authApi';
+import { authApi } from '@core/api/authApi';
 import { spacing, colors, borderRadius } from '@shared/theme';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import type { AppStackParamList } from '@core/constants/routes';
@@ -52,8 +50,6 @@ const ProfileScreen: React.FC = () => {
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
 
-  const [lifestationAccount, setLifestationAccount] = useState<LifestationAccount | null>(null);
-  const [accountLoading, setAccountLoading] = useState(false);
   const [notificationEnabled, setNotificationEnabled] = useState(
     user?.notification_enabled !== false,
   );
@@ -64,28 +60,11 @@ const ProfileScreen: React.FC = () => {
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
 
-  const fetchLifestationAccount = useCallback(async () => {
-    if (!user?.cs_no) return;
-    setAccountLoading(true);
-    try {
-      const res = await authApi.getLifestationAccount();
-      if (res.account) setLifestationAccount(res.account);
-    } catch {
-      setLifestationAccount(null);
-    } finally {
-      setAccountLoading(false);
-    }
-  }, [user?.cs_no]);
-
   useEffect(() => {
     if (user?.notification_enabled !== undefined) {
       setNotificationEnabled(user.notification_enabled !== false);
     }
   }, [user?.notification_enabled]);
-
-  useEffect(() => {
-    fetchLifestationAccount();
-  }, [fetchLifestationAccount]);
 
   const handleNotificationToggle = async (value: boolean) => {
     setNotificationUpdating(true);
@@ -329,75 +308,6 @@ const ProfileScreen: React.FC = () => {
             </Card>
           </View>
 
-          {/* LifeStation account (Account API) - for users with cs_no */}
-          {user?.cs_no && (
-            <View style={styles.settingsGroup}>
-              <AppText
-                variant="small"
-                color={colors.textSecondary}
-                style={styles.sectionGroupTitle}>
-                LIFESTATION ACCOUNT
-              </AppText>
-              <Card style={styles.settingsCard}>
-                {accountLoading ? (
-                  <View style={styles.accountLoading}>
-                    <ActivityIndicator size="small" color={colors.primary} />
-                    <AppText
-                      variant="small"
-                      color={colors.textSecondary}
-                      style={styles.loadingText}>
-                      Loading…
-                    </AppText>
-                  </View>
-                ) : lifestationAccount ? (
-                  <View style={styles.lifestationAccountContent}>
-                    <View style={styles.lifestationRow}>
-                      <AppText variant="small" color={colors.textSecondary}>
-                        Account number
-                      </AppText>
-                      <AppText variant="body">{lifestationAccount.cs_no}</AppText>
-                    </View>
-                    {lifestationAccount.name ? (
-                      <View style={styles.lifestationRow}>
-                        <AppText variant="small" color={colors.textSecondary}>
-                          Name
-                        </AppText>
-                        <AppText variant="body">{lifestationAccount.name}</AppText>
-                      </View>
-                    ) : null}
-                    {lifestationAccount.addr1 || lifestationAccount.city ? (
-                      <View style={styles.lifestationRow}>
-                        <MapPin size={14} color={colors.textSecondary} />
-                        <AppText variant="body" style={styles.lifestationValue}>
-                          {[
-                            lifestationAccount.addr1,
-                            lifestationAccount.city,
-                            lifestationAccount.state,
-                            lifestationAccount.zip,
-                          ]
-                            .filter(Boolean)
-                            .join(', ')}
-                        </AppText>
-                      </View>
-                    ) : null}
-                    {lifestationAccount.phone1 ? (
-                      <View style={styles.lifestationRow}>
-                        <Phone size={14} color={colors.textSecondary} />
-                        <AppText variant="body" style={styles.lifestationValue}>
-                          {lifestationAccount.phone1}
-                        </AppText>
-                      </View>
-                    ) : null}
-                  </View>
-                ) : (
-                  <AppText variant="small" color={colors.textSecondary}>
-                    Account number: {user.cs_no}
-                  </AppText>
-                )}
-              </Card>
-            </View>
-          )}
-
           {/* Support Section */}
           <View style={styles.settingsGroup}>
             <AppText variant="small" color={colors.textSecondary} style={styles.sectionGroupTitle}>
@@ -627,7 +537,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing.sm,
   },
   scrollContent: {
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.sm,
     paddingTop: spacing.sm,
     paddingBottom: spacing.lg,
   },
@@ -712,7 +622,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.sm,
     minHeight: 56,
   },
   settingLeft: {
@@ -752,28 +662,7 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     backgroundColor: colors.lightGray,
-    marginHorizontal: spacing.md,
-  },
-  lifestationAccountContent: {
-    padding: spacing.md,
-  },
-  lifestationRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.sm,
-  },
-  lifestationValue: {
-    flex: 1,
-  },
-  accountLoading: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    padding: spacing.md,
-  },
-  loadingText: {
-    marginLeft: spacing.xs,
+    marginHorizontal: spacing.sm,
   },
   emailHint: {
     marginTop: -spacing.sm,
