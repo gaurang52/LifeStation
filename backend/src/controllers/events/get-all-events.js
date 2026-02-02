@@ -313,48 +313,46 @@ const getAllEvents = async (req, res) => {
       });
     }
 
-    // Fetch events from Reports API
-    let eventsData = [];
+    // Correct logic: use Recent API for short ranges when supported, History for longer ranges or when Recent fails.
     const dateRange = getDateRange(frequency);
+    const useRecentFirst = frequency === 'last_24_hours' || frequency === 'last_7_days';
+    let eventsData = [];
+    let source = 'history';
 
     try {
-      // First try the Recent endpoint for recent events
-      if (frequency === 'last_24_hours' || frequency === 'last_7_days') {
-        const recentData = await reportsApiService.getRecentReports(csNo);
-        eventsData = normalizeEvents(recentData);
-        logger.debug(`Fetched ${eventsData.length} events from Recent API for cs_no: ${csNo}`);
-      }
-
-      // If no events from Recent, or for longer time ranges, use History API
-      if (eventsData.length === 0 || frequency === 'last_30_days' || frequency === 'all') {
+      if (useRecentFirst) {
         try {
+          const recentData = await reportsApiService.getRecentReports(csNo);
+          eventsData = normalizeEvents(recentData);
+          source = 'recent';
+          logger.debug(`Fetched ${eventsData.length} events from Recent API for cs_no: ${csNo}`);
+        } catch (recentError) {
+          const status = recentError.response?.status;
+          logger.warn('Reports API Recent failed, falling back to History', {
+            cs_no: csNo,
+            status,
+            message: recentError.message,
+          });
+          // Fallback: same date range via History (cs_no in body works when path fails)
           const historyData = await reportsApiService.getEventHistory({
             csNo: csNo,
             before: dateRange.before,
             after: dateRange.after,
           });
-          const historyEvents = normalizeEvents(historyData);
-
-          // Merge and deduplicate events
-          const eventMap = new Map();
-          [...eventsData, ...historyEvents].forEach(event => {
-            const key = `${event.eventtime}_${event.eventtype}_${event.cs_no || csNo}`;
-            if (!eventMap.has(key)) {
-              eventMap.set(key, event);
-            }
-          });
-          eventsData = Array.from(eventMap.values());
-
+          eventsData = normalizeEvents(historyData);
+          source = 'history_fallback';
           logger.debug(
-            `Fetched ${historyEvents.length} events from History API for cs_no: ${csNo}`,
-          );
-        } catch (historyError) {
-          // History API might not be available or might timeout
-          logger.warn(
-            'History API fetch failed, using Recent API data only:',
-            historyError.message,
+            `Fetched ${eventsData.length} events from History API (fallback) for cs_no: ${csNo}`,
           );
         }
+      } else {
+        const historyData = await reportsApiService.getEventHistory({
+          csNo: csNo,
+          before: dateRange.before,
+          after: dateRange.after,
+        });
+        eventsData = normalizeEvents(historyData);
+        logger.debug(`Fetched ${eventsData.length} events from History API for cs_no: ${csNo}`);
       }
     } catch (error) {
       const externalStatus = error.response?.status;
