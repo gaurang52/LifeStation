@@ -224,9 +224,16 @@ const getAllEvents = async (req, res) => {
     );
 
     if (!canAccess) {
+      const showDebug =
+        process.env.NODE_ENV !== 'production' || process.env.DEBUG_ACCESS_DENIED === 'true';
       return res.status(403).json({
         error: 'Access denied',
         message: 'You do not have permission to access events for this device',
+        ...(showDebug && {
+          debug: 'Ensure device cs_no matches your account, or add device via app first',
+          device_id,
+          user_type: req.user_type,
+        }),
       });
     }
 

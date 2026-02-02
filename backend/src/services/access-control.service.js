@@ -56,15 +56,37 @@ class AccessControlService {
         return true;
       }
 
+      // Normalize cs_no for comparison (handles format differences: "12345" vs 12345, whitespace, etc.)
+      const normalizeCsNo = val => {
+        if (val == null || val === '') return null;
+        const s = String(val).trim();
+        return s === '' ? null : s;
+      };
+      const csNoMatches = (a, b) => {
+        const na = normalizeCsNo(a);
+        const nb = normalizeCsNo(b);
+        if (!na || !nb) return false;
+        if (na === nb) return true;
+        const numA = parseInt(na, 10);
+        const numB = parseInt(nb, 10);
+        if (!Number.isNaN(numA) && !Number.isNaN(numB) && numA === numB) return true;
+        return false;
+      };
+
       // OPTION A: Query LifeStation Device API to check if device is authorized for user's cs_no
       if (user && user.cs_no) {
         try {
           // Get device from Device API
           const deviceData = await deviceApiService.getDevice(idType, deviceId);
 
-          // Check if device's cs_no matches user's cs_no
-          const deviceCsNo = deviceData.cs_no || deviceData.csNo;
-          if (deviceCsNo && deviceCsNo === user.cs_no) {
+          // Extract cs_no from common API response field names
+          const deviceCsNo =
+            deviceData.cs_no ||
+            deviceData.csNo ||
+            deviceData.affiliated_cs_no ||
+            deviceData.affiliatedCsNo ||
+            (deviceData.account && (deviceData.account.cs_no || deviceData.account.csNo));
+          if (deviceCsNo && csNoMatches(deviceCsNo, user.cs_no)) {
             logger.debug(
               'canUserAccessDevice: device authorized via LifeStation API (cs_no match)',
               {
@@ -76,8 +98,29 @@ class AccessControlService {
             return true;
           }
 
-          // For seniors: device must match their cs_no
+          // For seniors: if cs_no mismatch, still check internal UserDeviceMapping
+          // (senior may have added device via app; LifeStation API may return cs_no in different format)
           if (userType === 'senior') {
+            let device = await db.Devices.findOne({
+              where: { device_id: deviceId, id_type: idType },
+            });
+            if (!device) {
+              device = await db.Devices.findOne({
+                where: { device_imei: deviceId },
+              });
+            }
+            if (device) {
+              const mapping = await db.UserDeviceMapping.findOne({
+                where: { user_id: userId, device_id: device.id },
+              });
+              if (mapping) {
+                logger.debug(
+                  'canUserAccessDevice: senior authorized via UserDeviceMapping (cs_no format mismatch)',
+                  { userId, deviceId },
+                );
+                return true;
+              }
+            }
             logger.debug('canUserAccessDevice: senior device cs_no mismatch', {
               userId,
               deviceId,
@@ -129,12 +172,14 @@ class AccessControlService {
           );
 
           // Fallback to internal UserDeviceMapping check
-          const device = await db.Devices.findOne({
-            where: {
-              device_id: deviceId,
-              id_type: idType,
-            },
+          let device = await db.Devices.findOne({
+            where: { device_id: deviceId, id_type: idType },
           });
+          if (!device) {
+            device = await db.Devices.findOne({
+              where: { device_imei: deviceId },
+            });
+          }
 
           if (!device) {
             return false;
@@ -168,12 +213,14 @@ class AccessControlService {
         // User doesn't have cs_no - fall back to internal check
         logger.debug('canUserAccessDevice: user has no cs_no, using internal check', { userId });
 
-        const device = await db.Devices.findOne({
-          where: {
-            device_id: deviceId,
-            id_type: idType,
-          },
+        let device = await db.Devices.findOne({
+          where: { device_id: deviceId, id_type: idType },
         });
+        if (!device) {
+          device = await db.Devices.findOne({
+            where: { device_imei: deviceId },
+          });
+        }
 
         if (!device) {
           return false;
