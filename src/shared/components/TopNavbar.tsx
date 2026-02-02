@@ -15,6 +15,8 @@ interface TopNavbarProps {
     icon?: string;
     onPress: () => void;
   };
+  /** Style for the right action: default = outline, filled = solid primary (e.g. for Help). */
+  rightActionVariant?: 'default' | 'filled';
   variant?: 'default' | 'figma';
   /** When true, no extra horizontal padding so title aligns with content below (e.g. when inside padded scroll). */
   contentAligned?: boolean;
@@ -29,11 +31,13 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
   showBackButton = false,
   onBackPress,
   rightAction,
+  rightActionVariant = 'default',
   variant = 'default',
   contentAligned = false,
   hideBottomBorder = false,
 }) => {
   const isFigma = variant === 'figma';
+  const isFilledAction = rightActionVariant === 'filled';
   return (
     <View
       style={[
@@ -71,13 +75,20 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
       </View>
       {rightAction && (
         <TouchableOpacity
-          style={styles.actionButton}
+          style={[styles.actionButton, isFilledAction && styles.actionButtonFilled]}
           onPress={rightAction.onPress}
           activeOpacity={0.7}>
           {rightAction.icon && (
-            <MaterialIcons name={rightAction.icon} size={20} color={colors.primary} />
+            <MaterialIcons
+              name={rightAction.icon}
+              size={20}
+              color={isFilledAction ? colors.white : colors.primary}
+            />
           )}
-          <AppText variant="bodyBold" color={colors.primary}>
+          <AppText
+            variant="bodyBold"
+            color={isFilledAction ? colors.white : colors.primary}
+            style={isFilledAction && styles.actionButtonFilledText}>
             {rightAction.label}
           </AppText>
         </TouchableOpacity>
@@ -147,13 +158,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    borderRadius: 8,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: colors.primary,
     backgroundColor: colors.lightPrimary,
     flexShrink: 0,
     marginLeft: spacing.sm,
+  },
+  actionButtonFilled: {
+    backgroundColor: colors.primary,
+    borderWidth: 0,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  actionButtonFilledText: {
+    color: colors.white,
   },
 });

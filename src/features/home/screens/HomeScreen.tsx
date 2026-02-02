@@ -1109,6 +1109,16 @@ const HomeScreen: React.FC = () => {
             variant="figma"
             contentAligned
             hideBottomBorder
+            rightAction={
+              user?.user_type === 'senior'
+                ? {
+                    label: 'Help',
+                    icon: 'call',
+                    onPress: handleHelp,
+                  }
+                : undefined
+            }
+            rightActionVariant="filled"
           />
 
           {/* Pink header card - same style as Profile profileCard for consistency */}
@@ -1126,20 +1136,6 @@ const HomeScreen: React.FC = () => {
                 </AppText>
               </View>
               <View style={styles.headerButtons}>
-                {user?.user_type === 'senior' && (
-                  <TouchableOpacity
-                    style={[styles.helpButton, helpLoading && styles.buttonDisabled]}
-                    onPress={handleHelp}
-                    activeOpacity={0.7}
-                    disabled={helpLoading}>
-                    <AppText
-                      variant="bodyBold"
-                      color={colors.white}
-                      style={helpLoading && styles.buttonTextDisabled}>
-                      Help
-                    </AppText>
-                  </TouchableOpacity>
-                )}
                 <TouchableOpacity
                   style={styles.refreshButton}
                   onPress={handleRefresh}
@@ -1336,15 +1332,6 @@ const styles = StyleSheet.create({
     fontSize: 24, // text-2xl in Figma
     fontWeight: '600', // font-semibold
   },
-  helpButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 20,
-    backgroundColor: colors.whiteOpacity20, // bg-white/20 in Figma
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 40,
-  },
   refreshButton: {
     width: 40, // w-10 in Figma
     height: 40,
@@ -1352,12 +1339,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.whiteOpacity20, // bg-white/20 in Figma
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  buttonTextDisabled: {
-    opacity: 0.5,
   },
   refreshIconSpinning: {
     transform: [{ rotate: '180deg' }], // Simple rotation, could be animated
