@@ -52,10 +52,10 @@ const RecentEventsScreen: React.FC = () => {
         setError(null);
         const response = await eventsApi.getEvents(targetDevice.device_id, 'last_7_days');
         const eventList = response.data || [];
-        // Sort by event time, most recent first
+        // Sort by actual event date (rawevent.originalEvent.event_date), most recent first
         eventList.sort((a, b) => {
-          const timeA = new Date(a.eventtime).getTime();
-          const timeB = new Date(b.eventtime).getTime();
+          const timeA = getEventDate(a);
+          const timeB = getEventDate(b);
           return timeB - timeA;
         });
         setEvents(eventList);
@@ -95,16 +95,72 @@ const RecentEventsScreen: React.FC = () => {
     }
   }, [fetchDevice, fetchEvents]);
 
-  const formatEventTime = (eventTime: string): string => {
+  /** Use actual event date from API (event_date) for display/sort; fallback to eventtime */
+  const getEventDate = (item: DeviceEvent): number => {
+    const eventDate = item.rawevent?.originalEvent?.event_date as string | undefined;
+    if (eventDate) {
+      const parsed = new Date(eventDate).getTime();
+      if (!Number.isNaN(parsed)) return parsed;
+    }
+    return new Date(item.eventtime as string).getTime();
+  };
+
+  const formatEventTime = (item: DeviceEvent): string => {
+    const eventDate = item.rawevent?.originalEvent?.event_date as string | undefined;
+    const timeStr = (eventDate || item.eventtime) as string;
     try {
-      return moment(eventTime).utc().local().format('MMM DD yyyy hh:mm:ss A');
+      return moment(timeStr).utc().local().format('MMM DD, YYYY h:mm A');
     } catch {
-      return eventTime;
+      return timeStr;
     }
   };
 
+  /** Human-readable title: event_descr preferred over eventtype */
+  const getEventTitle = (item: DeviceEvent): string => {
+    const desc = item.rawevent?.originalEvent?.event_descr;
+    if (desc && String(desc).trim()) return String(desc).trim();
+    return item.eventtype || 'Event';
+  };
+
+  /** Category label from signal_type for display */
+  const getEventCategory = (signalType: string): string => {
+    const type = (signalType || '').toUpperCase();
+    if (type === 'M') return 'Medical';
+    if (type === 'OA') return 'Operator';
+    if (type === 'SY') return 'System';
+    if (type === 'TT') return 'Test';
+    if (type === 'TF') return 'Test failed';
+    if (type === 'ZZ') return 'Message';
+    if (type === 'AA') return 'Alarm';
+    if (type === 'A') return 'Location / Misc';
+    return signalType || 'Event';
+  };
+
+  /** Parse battery % and signal from Test Timer additional_info */
+  const parseTestTimerInfo = (
+    additionalInfo: string | undefined,
+  ): { battery?: number; signal?: string } => {
+    const info = additionalInfo || '';
+    const batteryMatch = info.match(/Battery Level:\s*(\d+)/i) || info.match(/Battery:\s*(\d+)/i);
+    const signalMatch =
+      info.match(/Signal Strength:\s*(\d+\/\d+)/i) || info.match(/Signal:\s*(\d+\/\d+)/i);
+    return {
+      battery: batteryMatch ? parseInt(batteryMatch[1], 10) : undefined,
+      signal: signalMatch ? signalMatch[1] : undefined,
+    };
+  };
+
+  /** Short address from Location Update additional_info (e.g. "2502 Cooper St, Piscataway, NJ") */
+  const getLocationAddress = (additionalInfo: string | undefined): string | null => {
+    const info = additionalInfo || '';
+    const match =
+      info.match(/Closest Address\s*-\s*(.+?)(?:, USA)?$/i) ||
+      info.match(/Address\s*-\s*(.+?)(?:, USA)?$/i);
+    return match ? match[1].trim() : null;
+  };
+
   const getEventLucideIcon = (
-    eventType: string,
+    item: DeviceEvent,
   ):
     | typeof Heart
     | typeof MapPin
@@ -112,30 +168,60 @@ const RecentEventsScreen: React.FC = () => {
     | typeof Battery
     | typeof AlertTriangle
     | typeof CheckCircle => {
-    const type = eventType?.toLowerCase() || '';
-    if (type.includes('heart')) return Heart;
-    if (type.includes('location')) return MapPin;
-    if (type.includes('activity')) return ActivityIcon;
-    if (type.includes('battery')) return Battery;
-    if (type.includes('fall') || type.includes('alert')) return AlertTriangle;
+    const signalType = String(item.eventtype ?? item.signal_type ?? '').toUpperCase();
+    const desc = String(item.rawevent?.originalEvent?.event_descr ?? '').toLowerCase();
+    if (signalType === 'M' || desc.includes('emergency') || desc.includes('personal'))
+      return AlertTriangle;
+    if (signalType === 'TT' || signalType === 'TF' || desc.includes('timer test')) return Battery;
+    if (
+      signalType === 'A' &&
+      (desc.includes('location') || item.rawevent?.originalEvent?.event_id === 'LOCUP')
+    )
+      return MapPin;
+    if (
+      signalType === 'OA' ||
+      signalType === 'AA' ||
+      desc.includes('clear') ||
+      desc.includes('stella')
+    )
+      return CheckCircle;
+    if (desc.includes('heart')) return Heart;
+    if (desc.includes('location')) return MapPin;
+    if (desc.includes('activity')) return ActivityIcon;
+    if (desc.includes('battery')) return Battery;
+    if (desc.includes('fall') || desc.includes('alert')) return AlertTriangle;
     return CheckCircle;
   };
 
-  const getEventTypeColor = (eventType: string): string => {
-    const type = eventType?.toLowerCase() || '';
-    if (type.includes('heart')) return colors.primary;
-    if (type.includes('location')) return colors.blue;
-    if (type.includes('activity')) return colors.success;
-    if (type.includes('battery')) return colors.warning;
-    if (type.includes('fall')) return colors.error;
-    return colors.success;
+  const getEventTypeColor = (item: DeviceEvent): string => {
+    const signalType = String(item.eventtype ?? item.signal_type ?? '').toUpperCase();
+    const desc = String(item.rawevent?.originalEvent?.event_descr ?? '').toLowerCase();
+    if (signalType === 'M' || desc.includes('emergency')) return colors.error;
+    if (signalType === 'TF' || desc.includes('not received')) return colors.warning;
+    if (signalType === 'TT') return colors.primary;
+    if (signalType === 'A' && desc.includes('location')) return colors.blue;
+    if (signalType === 'OA' || desc.includes('clear') || desc.includes('stella'))
+      return colors.success;
+    return colors.text;
   };
 
-  const getEventStatus = (eventType: string): 'warning' | 'success' | 'normal' => {
-    const type = eventType?.toLowerCase() || '';
-    if (type.includes('battery') || type.includes('fall') || type.includes('alert'))
+  const getEventStatus = (item: DeviceEvent): 'warning' | 'success' | 'normal' => {
+    const signalType = String(item.eventtype ?? item.signal_type ?? '').toUpperCase();
+    const desc = String(item.rawevent?.originalEvent?.event_descr ?? '').toLowerCase();
+    if (
+      signalType === 'M' ||
+      signalType === 'TF' ||
+      desc.includes('emergency') ||
+      desc.includes('not received')
+    )
       return 'warning';
-    if (type.includes('activity') || type.includes('goal')) return 'success';
+    if (
+      signalType === 'OA' ||
+      signalType === 'TT' ||
+      desc.includes('clear') ||
+      desc.includes('no help')
+    )
+      return 'success';
     return 'normal';
   };
 
@@ -143,7 +229,8 @@ const RecentEventsScreen: React.FC = () => {
     const grouped: Record<string, DeviceEvent[]> = {};
     eventsList.forEach(event => {
       try {
-        const date = moment(event.eventtime).utc().local();
+        const ts = getEventDate(event);
+        const date = moment(ts);
         const displayDate = date.isSame(moment(), 'day')
           ? 'Today'
           : date.isSame(moment().subtract(1, 'day'), 'day')
@@ -155,7 +242,6 @@ const RecentEventsScreen: React.FC = () => {
         }
         grouped[displayDate].push(event);
       } catch {
-        // If date parsing fails, use "Unknown"
         if (!grouped.Unknown) {
           grouped.Unknown = [];
         }
@@ -166,11 +252,19 @@ const RecentEventsScreen: React.FC = () => {
   };
 
   const renderEventItem = (item: DeviceEvent) => {
-    const eventType = item.eventtype || 'Unknown Event';
-    const iconColor = getEventTypeColor(eventType);
-    const status = getEventStatus(eventType);
+    const title = getEventTitle(item);
+    const category = getEventCategory(String(item.eventtype ?? item.signal_type ?? ''));
+    const iconColor = getEventTypeColor(item);
+    const status = getEventStatus(item);
+    const EventIcon = getEventLucideIcon(item);
+    const original = item.rawevent?.originalEvent as Record<string, unknown> | undefined;
+    const additionalInfo = (original?.additional_info as string) || '';
+    const eventId = (original?.event_id as string) || '';
+    const isLocationUpdate = eventId === 'LOCUP' || title.toLowerCase().includes('location update');
+    const locationAddress = getLocationAddress(additionalInfo);
+    const { battery, signal } = parseTestTimerInfo(additionalInfo);
     const location = item.rawevent?.location;
-    const EventIcon = getEventLucideIcon(eventType);
+    const battFromOriginal = original?.batt as number | undefined;
 
     return (
       <Card style={styles.eventCard}>
@@ -191,8 +285,8 @@ const RecentEventsScreen: React.FC = () => {
           </View>
           <View style={styles.eventInfo}>
             <View style={styles.eventHeader}>
-              <AppText variant="bodyBold" style={styles.eventTitle}>
-                {eventType}
+              <AppText variant="bodyBold" style={styles.eventTitle} numberOfLines={2}>
+                {title}
               </AppText>
               <View
                 style={[
@@ -216,24 +310,40 @@ const RecentEventsScreen: React.FC = () => {
                         ? colors.success
                         : colors.blue,
                   }}>
-                  {status}
+                  {category}
                 </AppText>
               </View>
             </View>
-            {!!location && (
-              <AppText variant="small" color={colors.textSecondary} style={styles.eventDescription}>
-                Location: {location.latitude.toFixed(6)}, {location.longitude.toFixed(6)}
+            {!!additionalInfo &&
+              !isLocationUpdate &&
+              !(item.eventtype === 'Test Timer' || item.eventtype === 'TT') && (
+                <AppText
+                  variant="small"
+                  color={colors.textSecondary}
+                  style={styles.eventDescription}
+                  numberOfLines={2}>
+                  {additionalInfo}
+                </AppText>
+              )}
+            {isLocationUpdate && (locationAddress || location) && (
+              <AppText
+                variant="small"
+                color={colors.textSecondary}
+                style={styles.eventDescription}
+                numberOfLines={2}>
+                {locationAddress ||
+                  (location && `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`)}
               </AppText>
             )}
-            {item.rawevent?.originalEvent?.batt !== undefined && (
+            {(battery !== undefined || battFromOriginal !== undefined) && (
               <AppText variant="small" color={colors.textSecondary} style={styles.eventDescription}>
-                Battery: {item.rawevent.originalEvent.batt}%
+                Battery: {battery ?? battFromOriginal}%{signal != null ? ` · Signal ${signal}` : ''}
               </AppText>
             )}
             <View style={styles.eventTimeContainer}>
               <Clock size={12} color={colors.textSecondary} />
               <AppText variant="small" color={colors.textSecondary} style={styles.eventTime}>
-                {formatEventTime(item.eventtime)}
+                {formatEventTime(item)}
               </AppText>
             </View>
           </View>
@@ -337,7 +447,10 @@ const RecentEventsScreen: React.FC = () => {
                 </View>
                 <View style={styles.eventsList}>
                   {dateEvents.map((event, index) => (
-                    <View key={`${event.eventtime}-${index}`}>{renderEventItem(event)}</View>
+                    <View
+                      key={`${event.rawevent?.originalEvent?.seqno ?? event.eventtime}-${index}`}>
+                      {renderEventItem(event)}
+                    </View>
                   ))}
                 </View>
               </View>

@@ -94,14 +94,22 @@ const normalizeEvents = externalData => {
       event.eventtype || event.event_type || event.type || event.signal_type || event.eventrpt_id,
     );
 
+    // Prefer actual occurrence time (event_date) over batch/report time (eventtime) when present.
+    // External API often returns same eventtime for all events (report fetch time); event_date is per-event.
+    const original =
+      event.rawevent?.originalEvent || event.original_event || event.originalEvent || event;
+    const occurrenceTime =
+      (original && original.event_date) ||
+      event.event_date ||
+      event.eventtime ||
+      event.event_time ||
+      event.timestamp ||
+      event.signal_time ||
+      new Date().toISOString();
+
     return {
       eventtype: eventType,
-      eventtime:
-        event.eventtime ||
-        event.event_time ||
-        event.timestamp ||
-        event.signal_time ||
-        new Date().toISOString(),
+      eventtime: occurrenceTime,
       rawevent: {
         location: extractLocation(event),
         originalEvent: event.data || event.original_event || event.raw || event,
@@ -379,10 +387,10 @@ const getAllEvents = async (req, res) => {
       });
     }
 
-    // Sort by event time (most recent first)
+    // Sort by event time (most recent first). eventtime is set from event_date when available (see normalizeEvents).
     eventsData.sort((a, b) => {
-      const timeA = new Date(a.eventtime).getTime();
-      const timeB = new Date(b.eventtime).getTime();
+      const timeA = new Date(a.rawevent?.originalEvent?.event_date || a.eventtime).getTime();
+      const timeB = new Date(b.rawevent?.originalEvent?.event_date || b.eventtime).getTime();
       return timeB - timeA;
     });
 
