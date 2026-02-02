@@ -12,7 +12,7 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { Screen, AppText, Card } from '@shared/components';
 import { useAuthStore } from '@core/store';
 import { spacing, colors, borderRadius } from '@shared/theme';
-import { deviceApi, type Device } from '@core/api/deviceApi';
+import { deviceApi, type Device, type FallDetectionResponse } from '@core/api/deviceApi';
 import { eventsApi, type DeviceEvent } from '@core/api/eventsApi';
 import { caregiverApi } from '@core/api/caregiverApi';
 import { ErrorHandler } from '@core/utils/errorHandler';
@@ -80,6 +80,11 @@ const HomeScreen: React.FC = () => {
       }
       setError(null);
 
+      // Clear active device before fetch so caregiver never uses stale device from previous session
+      // (avoids 403 Access denied when switching accounts or after invite signup)
+      setActiveDevice(null);
+      setDeviceInfo(null);
+
       const response = await deviceApi.getDevices(1, 1);
       const deviceList = response.devices || [];
       setDevices(deviceList);
@@ -139,236 +144,242 @@ const HomeScreen: React.FC = () => {
     }
   }, []);
 
-  const fetchDeviceRecent = useCallback(async (device: Device) => {
-    if (!device) {
-      console.warn('Device is null or undefined');
-      return;
-    }
-
-    // Create a unique identifier for this device (for tracking purposes)
-    const deviceIdentifier =
-      device.device_id ||
-      device.imei ||
-      device.device_serial ||
-      device.device_uuid ||
-      device.sim_iccid;
-    const deviceKey =
-      device.id_type && deviceIdentifier ? `${device.id_type}:${deviceIdentifier}` : null;
-
-    // Prevent duplicate calls - if already fetching or already fetched for this device, skip
-    if (isFetchingDeviceRecent.current) {
-      console.log('Skipping duplicate fetchDeviceRecent call - already in progress');
-      return;
-    }
-
-    if (deviceKey && fetchedDeviceRecentId.current === deviceKey) {
-      console.log('Skipping fetchDeviceRecent - already fetched for this device:', deviceKey);
-      return;
-    }
-
-    // Determine which id_type and device_id to use for the API call
-    // API format: /devices/{id_type}/{device_id}/recent
-    // Example: /devices/imei/861475032341820/recent
-    const idType: Device['id_type'] | 'iccid' | null = device.id_type || null;
-    let deviceId: string | null = device.device_id || null;
-
-    console.log('Initial device data:', {
-      id_type: idType,
-      device_id: deviceId,
-      imei: device.imei,
-      device_serial: device.device_serial,
-      device_uuid: device.device_uuid,
-      sim_iccid: device.sim_iccid,
-    });
-
-    // If device_id is missing, try to infer it from id_type-specific fields
-    if (!deviceId && idType) {
-      if (idType === 'imei' && device.imei) {
-        deviceId = device.imei;
-        console.log('✓ Using imei field as device_id for API call:', {
-          id_type: idType,
-          device_id: deviceId,
-          api_url: `/devices/${idType}/${deviceId}/recent`,
-        });
-      } else if (idType === 'serial' && device.device_serial) {
-        deviceId = device.device_serial;
-        console.log('✓ Using device_serial field as device_id for API call:', {
-          id_type: idType,
-          device_id: deviceId,
-          api_url: `/devices/${idType}/${deviceId}/recent`,
-        });
-      } else if (idType === 'uuid' && device.device_uuid) {
-        deviceId = device.device_uuid;
-        console.log('✓ Using device_uuid field as device_id for API call:', {
-          id_type: idType,
-          device_id: deviceId,
-          api_url: `/devices/${idType}/${deviceId}/recent`,
-        });
-      } else if (idType === 'iccid' && device.sim_iccid) {
-        deviceId = device.sim_iccid;
-        console.log('✓ Using sim_iccid field as device_id for API call:', {
-          id_type: idType,
-          device_id: deviceId,
-          api_url: `/devices/${idType}/${deviceId}/recent`,
-        });
-      }
-    }
-
-    // If device has sim_iccid but id_type is not iccid, try using iccid
-    if (device.sim_iccid && (!idType || idType !== 'iccid')) {
-      console.log('Device has sim_iccid, will try iccid as fallback:', {
-        current_id_type: idType,
-        sim_iccid: device.sim_iccid,
-      });
-    }
-
-    if (!idType || !deviceId) {
-      console.warn('Device missing required fields (id_type or device_id):', {
-        id_type: idType,
-        device_id: deviceId,
-        imei: device.imei,
-        sim_iccid: device.sim_iccid,
-        device: device,
-      });
-      // Set deviceInfo with basic device data even if we can't fetch recent info
-      setDeviceInfo({
-        device,
-        battery: device.battery_level || undefined,
-        signal: device.signal_strength || undefined,
-        lastUpdate: device.last_seen || undefined,
-        location: device.location || undefined,
-      });
-      return;
-    }
-
-    try {
-      isFetchingDeviceRecent.current = true;
-      console.log('Calling Get Recent Device Info API:', {
-        id_type: idType,
-        device_id: deviceId,
-        api_endpoint: `/devices/${idType}/${deviceId}/recent`,
-      });
-
-      const response = await deviceApi.getDeviceRecent(idType, deviceId);
-      const deviceData = response.device;
-
-      console.log('Device recent response received:', {
-        device: deviceData,
-        battery_level: deviceData.battery_level,
-        signal_strength: deviceData.signal_strength,
-        location: deviceData.location,
-        last_seen: deviceData.last_seen,
-      });
-
-      let fallDetection = false;
-      try {
-        const fallResponse = await deviceApi.getFallDetection(idType, deviceId);
-        fallDetection = fallResponse.fall_detection_enabled || false;
-      } catch (e) {
-        console.warn('Failed to fetch fall detection:', e);
-      }
-
-      const deviceInfoData = {
-        device: deviceData,
-        battery: deviceData.battery_level || undefined,
-        fallDetection,
-        signal: deviceData.signal_strength || undefined,
-        lastUpdate: deviceData.last_seen || undefined,
-        location: deviceData.location || undefined,
-      };
-
-      console.log('Setting deviceInfo:', deviceInfoData);
-      setDeviceInfo(deviceInfoData);
-
-      // Mark this device as fetched
-      if (deviceKey) {
-        fetchedDeviceRecentId.current = deviceKey;
-      }
-    } catch (err) {
-      console.error('Error fetching device recent info:', err);
-      const errorMessage = (err as { message?: string })?.message || '';
-      const errorDetails = err as {
-        statusCode?: number;
-        response?: { status?: number; data?: unknown };
-        message?: string;
-      };
-      const statusCode = errorDetails.statusCode ?? errorDetails.response?.status;
-      console.error('Error details:', {
-        message: errorMessage,
-        status: statusCode,
-        data: errorDetails.response?.data,
-        fullError: err,
-      });
-
-      // On 403 Access denied: clear stale device and refetch device list (e.g. caregiver viewing wrong device)
-      if (statusCode === 403 && errorMessage.toLowerCase().includes('access denied')) {
-        logger.error('Device access denied – clearing active device and refetching list', {
-          device_id: deviceId,
-          id_type: idType,
-        });
-        fetchedDeviceRecentId.current = null;
-        setDeviceInfo(null);
-        setActiveDevice(null);
-        hasFetchedDevices.current = false;
-        fetchDevices(true);
+  const fetchDeviceRecent = useCallback(
+    async (device: Device) => {
+      if (!device) {
+        console.warn('Device is null or undefined');
         return;
       }
 
-      // If the call failed and device has sim_iccid, try using iccid as id_type
-      if (device.sim_iccid && idType !== 'iccid') {
-        console.log('Retrying with iccid:', {
-          sim_iccid: device.sim_iccid,
-          original_id_type: idType,
-        });
+      // Create a unique identifier for this device (for tracking purposes)
+      const deviceIdentifier =
+        device.device_id ||
+        device.imei ||
+        device.device_serial ||
+        device.device_uuid ||
+        device.sim_iccid;
+      const deviceKey =
+        device.id_type && deviceIdentifier ? `${device.id_type}:${deviceIdentifier}` : null;
 
-        try {
-          const retryResponse = await deviceApi.getDeviceRecent('iccid', device.sim_iccid);
-          const retryDeviceData = retryResponse.device;
+      // Prevent duplicate calls - if already fetching or already fetched for this device, skip
+      if (isFetchingDeviceRecent.current) {
+        console.log('Skipping duplicate fetchDeviceRecent call - already in progress');
+        return;
+      }
 
-          console.log('Successfully fetched with iccid:', retryDeviceData);
+      if (deviceKey && fetchedDeviceRecentId.current === deviceKey) {
+        console.log('Skipping fetchDeviceRecent - already fetched for this device:', deviceKey);
+        return;
+      }
 
-          let fallDetection = false;
-          try {
-            const fallResponse = await deviceApi.getFallDetection('iccid', device.sim_iccid);
-            fallDetection = fallResponse.fall_detection_enabled || false;
-          } catch (e) {
-            console.warn('Failed to fetch fall detection with iccid:', e);
-          }
+      // Determine which id_type and device_id to use for the API call
+      // API format: /devices/{id_type}/{device_id}/recent
+      // Example: /devices/imei/861475032341820/recent
+      const idType: Device['id_type'] | 'iccid' | null = device.id_type || null;
+      let deviceId: string | null = device.device_id || null;
 
-          const deviceInfoData = {
-            device: retryDeviceData,
-            battery: retryDeviceData.battery_level || undefined,
-            fallDetection,
-            signal: retryDeviceData.signal_strength || undefined,
-            lastUpdate: retryDeviceData.last_seen || undefined,
-            location: retryDeviceData.location || undefined,
-          };
+      console.log('Initial device data:', {
+        id_type: idType,
+        device_id: deviceId,
+        imei: device.imei,
+        device_serial: device.device_serial,
+        device_uuid: device.device_uuid,
+        sim_iccid: device.sim_iccid,
+      });
 
-          console.log('Setting deviceInfo from iccid retry:', deviceInfoData);
-          setDeviceInfo(deviceInfoData);
-          return;
-        } catch (retryErr) {
-          console.error('Retry with iccid also failed:', retryErr);
+      // If device_id is missing, try to infer it from id_type-specific fields
+      if (!deviceId && idType) {
+        if (idType === 'imei' && device.imei) {
+          deviceId = device.imei;
+          console.log('✓ Using imei field as device_id for API call:', {
+            id_type: idType,
+            device_id: deviceId,
+            api_url: `/devices/${idType}/${deviceId}/recent`,
+          });
+        } else if (idType === 'serial' && device.device_serial) {
+          deviceId = device.device_serial;
+          console.log('✓ Using device_serial field as device_id for API call:', {
+            id_type: idType,
+            device_id: deviceId,
+            api_url: `/devices/${idType}/${deviceId}/recent`,
+          });
+        } else if (idType === 'uuid' && device.device_uuid) {
+          deviceId = device.device_uuid;
+          console.log('✓ Using device_uuid field as device_id for API call:', {
+            id_type: idType,
+            device_id: deviceId,
+            api_url: `/devices/${idType}/${deviceId}/recent`,
+          });
+        } else if (idType === 'iccid' && device.sim_iccid) {
+          deviceId = device.sim_iccid;
+          console.log('✓ Using sim_iccid field as device_id for API call:', {
+            id_type: idType,
+            device_id: deviceId,
+            api_url: `/devices/${idType}/${deviceId}/recent`,
+          });
         }
       }
 
-      // Even if fetchDeviceRecent fails, set deviceInfo with basic device data
-      // This prevents infinite loading state
-      setDeviceInfo({
-        device,
-        battery: device.battery_level || undefined,
-        signal: device.signal_strength || undefined,
-        lastUpdate: device.last_seen || undefined,
-        location: device.location || undefined,
-      });
-
-      if (!errorMessage.includes('Access denied')) {
-        console.warn('Could not fetch device details:', errorMessage);
+      // If device has sim_iccid but id_type is not iccid, try using iccid
+      if (device.sim_iccid && (!idType || idType !== 'iccid')) {
+        console.log('Device has sim_iccid, will try iccid as fallback:', {
+          current_id_type: idType,
+          sim_iccid: device.sim_iccid,
+        });
       }
-    } finally {
-      isFetchingDeviceRecent.current = false;
-    }
-  }, []);
+
+      if (!idType || !deviceId) {
+        console.warn('Device missing required fields (id_type or device_id):', {
+          id_type: idType,
+          device_id: deviceId,
+          imei: device.imei,
+          sim_iccid: device.sim_iccid,
+          device: device,
+        });
+        // Set deviceInfo with basic device data even if we can't fetch recent info
+        setDeviceInfo({
+          device,
+          battery: device.battery_level || undefined,
+          signal: device.signal_strength || undefined,
+          lastUpdate: device.last_seen || undefined,
+          location: device.location || undefined,
+        });
+        return;
+      }
+
+      try {
+        isFetchingDeviceRecent.current = true;
+        console.log('Calling Get Recent Device Info API:', {
+          id_type: idType,
+          device_id: deviceId,
+          api_endpoint: `/devices/${idType}/${deviceId}/recent`,
+        });
+
+        const response = await deviceApi.getDeviceRecent(idType, deviceId);
+        const deviceData = response.device;
+
+        console.log('Device recent response received:', {
+          device: deviceData,
+          battery_level: deviceData.battery_level,
+          signal_strength: deviceData.signal_strength,
+          location: deviceData.location,
+          last_seen: deviceData.last_seen,
+        });
+
+        let fallDetection = false;
+        try {
+          const fallResponse = await deviceApi.getFallDetection(idType, deviceId);
+          // Use the correct property based on FallDetectionResponse's type
+          // If you are not sure, default to 'enabled' or similar
+          // Assuming 'enabled' is the correct field:
+          fallDetection = (fallResponse as FallDetectionResponse).fall_detection_enabled ?? false;
+        } catch (e) {
+          console.warn('Failed to fetch fall detection:', e);
+        }
+
+        const deviceInfoData = {
+          device: deviceData,
+          battery: deviceData.battery_level || undefined,
+          fallDetection,
+          signal: deviceData.signal_strength || undefined,
+          lastUpdate: deviceData.last_seen || undefined,
+          location: deviceData.location || undefined,
+        };
+
+        console.log('Setting deviceInfo:', deviceInfoData);
+        setDeviceInfo(deviceInfoData);
+
+        // Mark this device as fetched
+        if (deviceKey) {
+          fetchedDeviceRecentId.current = deviceKey;
+        }
+      } catch (err) {
+        console.error('Error fetching device recent info:', err);
+        const errorMessage = (err as { message?: string })?.message || '';
+        const errorDetails = err as {
+          statusCode?: number;
+          response?: { status?: number; data?: unknown };
+          message?: string;
+        };
+        const statusCode = errorDetails.statusCode ?? errorDetails.response?.status;
+        console.error('Error details:', {
+          message: errorMessage,
+          status: statusCode,
+          data: errorDetails.response?.data,
+          fullError: err,
+        });
+
+        // On 403 Access denied: clear stale device and refetch device list (e.g. caregiver viewing wrong device)
+        if (statusCode === 403 && errorMessage.toLowerCase().includes('access denied')) {
+          logger.error('Device access denied – clearing active device and refetching list', {
+            device_id: deviceId,
+            id_type: idType,
+          });
+          fetchedDeviceRecentId.current = null;
+          setDeviceInfo(null);
+          setActiveDevice(null);
+          hasFetchedDevices.current = false;
+          fetchDevices(true);
+          return;
+        }
+
+        // If the call failed and device has sim_iccid, try using iccid as id_type
+        if (device.sim_iccid && idType !== 'iccid') {
+          console.log('Retrying with iccid:', {
+            sim_iccid: device.sim_iccid,
+            original_id_type: idType,
+          });
+
+          try {
+            const retryResponse = await deviceApi.getDeviceRecent('iccid', device.sim_iccid);
+            const retryDeviceData = retryResponse.device;
+
+            console.log('Successfully fetched with iccid:', retryDeviceData);
+
+            let fallDetection = false;
+            try {
+              const fallResponse = await deviceApi.getFallDetection('iccid', device.sim_iccid);
+              fallDetection = fallResponse.fall_detection_enabled || false;
+            } catch (e) {
+              console.warn('Failed to fetch fall detection with iccid:', e);
+            }
+
+            const deviceInfoData = {
+              device: retryDeviceData,
+              battery: retryDeviceData.battery_level || undefined,
+              fallDetection,
+              signal: retryDeviceData.signal_strength || undefined,
+              lastUpdate: retryDeviceData.last_seen || undefined,
+              location: retryDeviceData.location || undefined,
+            };
+
+            console.log('Setting deviceInfo from iccid retry:', deviceInfoData);
+            setDeviceInfo(deviceInfoData);
+            return;
+          } catch (retryErr) {
+            console.error('Retry with iccid also failed:', retryErr);
+          }
+        }
+
+        // Even if fetchDeviceRecent fails, set deviceInfo with basic device data
+        // This prevents infinite loading state
+        setDeviceInfo({
+          device,
+          battery: device.battery_level || undefined,
+          signal: device.signal_strength || undefined,
+          lastUpdate: device.last_seen || undefined,
+          location: device.location || undefined,
+        });
+
+        if (!errorMessage.includes('Access denied')) {
+          console.warn('Could not fetch device details:', errorMessage);
+        }
+      } finally {
+        isFetchingDeviceRecent.current = false;
+      }
+    },
+    [fetchDevices],
+  );
 
   const fetchEvents = useCallback(async (device: Device) => {
     if (!device || !device.device_id) return;

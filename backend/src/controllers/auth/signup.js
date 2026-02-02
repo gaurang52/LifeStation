@@ -227,43 +227,59 @@ const signup = async (req, res) => {
 
     // Handle invitation acceptance and mapping creation (for caregiver signup)
     if (invitation && user_type_normalized === 'caregiver') {
+      // Resolve senior (inviter) ID - use FK column with fallback from included inviter
+      const seniorId = invitation.inviter_user_id ?? invitation.inviter?.id;
+
+      if (!seniorId) {
+        logger.error('Caregiver signup: inviter_user_id missing on invitation', {
+          invitation_id: invitation.id,
+          caregiver_email: invitation.caregiver_email,
+        });
+        return res.status(500).json({
+          error: 'Internal Server Error',
+          message: 'Invitation data is invalid. Please request a new invitation.',
+        });
+      }
+
       // Mark invitation as accepted
       await invitation.update({
         status: 'ACCEPTED',
         accepted_at: new Date(),
       });
 
-      // Create caregiver-senior mapping automatically
+      // Create caregiver-senior mapping automatically so caregiver can access senior data
       const mappingExists = await db.SeniorCaregiverMapping.findOne({
         where: {
-          senior_id: invitation.inviter_user_id,
+          senior_id: seniorId,
           caregiver_id: user.id,
         },
       });
 
       if (!mappingExists) {
         await db.SeniorCaregiverMapping.create({
-          senior_id: invitation.inviter_user_id,
+          senior_id: seniorId,
           caregiver_id: user.id,
-          relationship_with_senior: invitation.relationship_with_senior,
+          relationship_with_senior: invitation.relationship_with_senior || 'other',
         });
         logger.info(
-          `Automatic mapping created: Senior ${invitation.inviter_user_id} -> Caregiver ${user.id}`,
+          `Automatic mapping created: Senior ${seniorId} -> Caregiver ${user.id} (invitation ${invitation.id})`,
         );
       } else {
-        logger.warn(
-          `Mapping already exists: Senior ${invitation.inviter_user_id} -> Caregiver ${user.id}`,
-        );
+        logger.warn(`Mapping already exists: Senior ${seniorId} -> Caregiver ${user.id}`);
       }
     }
 
+    // Normalize user_type to lowercase in JWT so all routes work consistently (same as login)
+    const normalizedUserType =
+      user.user_type != null ? String(user.user_type).toLowerCase() : user.user_type;
+
     // Generate JWT tokens
-    const token = jwt.sign({ user_id: user.id, user_type: user.user_type }, JWT_SECRET_KEY, {
+    const token = jwt.sign({ user_id: user.id, user_type: normalizedUserType }, JWT_SECRET_KEY, {
       expiresIn: '2 Days',
     });
 
     const refreshToken = jwt.sign(
-      { user_id: user.id, user_type: user.user_type },
+      { user_id: user.id, user_type: normalizedUserType },
       REFRESH_SECRET_KEY,
       {
         expiresIn: '7 Days',

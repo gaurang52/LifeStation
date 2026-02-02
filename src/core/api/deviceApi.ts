@@ -64,6 +64,7 @@ export interface FallDetectionResponse {
   status: 'ok';
   errors: [];
   fall_detection_status: 'active' | 'inactive' | 'pending';
+  fall_detection_enabled: boolean;
 }
 
 // Fall Detection toggle interfaces removed - display only (matching reference app)
@@ -124,7 +125,7 @@ export const deviceApi = {
     return {
       ...response,
       fall_detection_enabled: response.fall_detection_status === 'active',
-    } as FallDetectionResponse & { fall_detection_enabled: boolean };
+    };
   },
 
   // Fall Detection toggle endpoints removed - display only (matching reference app)

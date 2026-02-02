@@ -125,15 +125,17 @@ const downloadVitalsReport = async (req, res) => {
       });
     }
 
+    // Normalize user_type for case-insensitive comparison (DB may store 'Caregiver' or 'caregiver')
+    const userType = (user?.user_type && String(user.user_type).toLowerCase()) || '';
     let canAccess = false;
     let targetSeniorId = senior_id;
 
-    if (user.user_type === 'senior') {
+    if (userType === 'senior') {
       canAccess = parseInt(userId) === parseInt(senior_id);
       targetSeniorId = userId;
-    } else if (user.user_type === 'caregiver') {
+    } else if (userType === 'caregiver') {
       canAccess = await accessControlService.canCaregiverAccessSenior(userId, senior_id);
-    } else if (user.user_type === 'ADMIN' || user.user_type === 'SUPER_ADMIN') {
+    } else if (userType === 'admin' || userType === 'super_admin') {
       canAccess = true;
     }
 
@@ -332,19 +334,16 @@ const downloadVitalsReport = async (req, res) => {
 
     let fileContent;
     let contentType;
-    let fileExtension;
     let filename;
 
     if (format.toLowerCase() === 'csv') {
       fileContent = generateCSV(normalizedData, seniorInfo);
       contentType = 'text/csv';
-      fileExtension = 'csv';
       filename = `vitals-report-${seniorInfo.id}-${Date.now()}.csv`;
     } else {
       // PDF format
       fileContent = generatePDF(normalizedData, seniorInfo);
       contentType = 'application/pdf';
-      fileExtension = 'pdf';
       filename = `vitals-report-${seniorInfo.id}-${Date.now()}.pdf`;
 
       // Note: For proper PDF generation, you'd want to use pdfkit

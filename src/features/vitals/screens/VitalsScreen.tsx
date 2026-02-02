@@ -13,6 +13,7 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { Screen, AppText, Button, Input, Card, TopNavbar } from '@shared/components';
 import { spacing, colors } from '@shared/theme';
 import { vitalsApi, type VitalData } from '@core/api/vitalsApi';
+import { caregiverApi } from '@core/api/caregiverApi';
 import { useAuthStore } from '@core/store';
 import { ErrorHandler } from '@core/utils/errorHandler';
 
@@ -26,14 +27,36 @@ const VitalsScreen: React.FC = () => {
   const [showInput, setShowInput] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
+  const userType = user?.user_type ? String(user.user_type).toLowerCase() : '';
+
   useEffect(() => {
-    if (user?.user_type === 'senior' && user.id) {
+    if (userType === 'senior' && user?.id) {
       setSeniorId(user.id.toString());
       loadVitals(user.id);
+    } else if (userType === 'caregiver') {
+      // Caregiver: load mapped seniors and use first senior so we don't get Access denied
+      caregiverApi
+        .getSeniors()
+        .then(res => {
+          const seniors = res?.data ?? [];
+          const firstSenior = Array.isArray(seniors) ? seniors[0] : null;
+          if (firstSenior?.id) {
+            setSeniorId(String(firstSenior.id));
+            loadVitals(firstSenior.id);
+          } else {
+            setLoading(false);
+            setShowInput(true);
+          }
+        })
+        .catch(() => {
+          setLoading(false);
+          setShowInput(true);
+        });
     } else {
       setLoading(false);
       setShowInput(true);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: run only when user changes; loadVitals/userType are stable for this flow
   }, [user]);
 
   const loadVitals = async (targetSeniorId?: number) => {
@@ -69,7 +92,7 @@ const VitalsScreen: React.FC = () => {
   };
 
   const handleRefresh = () => {
-    const idToUse = user?.user_type === 'senior' ? user.id : parseInt(seniorId, 10);
+    const idToUse = userType === 'senior' ? user?.id : parseInt(seniorId, 10);
     if (idToUse) {
       setRefreshing(true);
       loadVitals(idToUse);
@@ -81,7 +104,7 @@ const VitalsScreen: React.FC = () => {
   };
 
   const handleDownload = async (format: 'csv' | 'pdf' = 'csv') => {
-    const idToUse = user?.user_type === 'senior' ? user.id : parseInt(seniorId, 10);
+    const idToUse = userType === 'senior' ? user?.id : parseInt(seniorId, 10);
     if (!idToUse || isNaN(idToUse)) {
       Alert.alert('Error', 'Please enter a valid senior ID');
       return;
@@ -349,39 +372,6 @@ const VitalsScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    flex: 1,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  headerTitle: {
-    flex: 1,
-  },
-  toggleButton: {
-    padding: spacing.xs,
-  },
-  downloadButton: {
-    padding: spacing.xs,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   searchContainer: {
     padding: spacing.md,
     gap: spacing.md,
@@ -470,7 +460,7 @@ const styles = StyleSheet.create({
   errorBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fffbeb',
+    backgroundColor: colors.warningBackground,
     padding: spacing.sm,
     borderRadius: 8,
     marginBottom: spacing.md,

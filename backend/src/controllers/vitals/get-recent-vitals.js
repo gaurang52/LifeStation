@@ -16,19 +16,20 @@ const getRecentVitals = async (req, res) => {
       return res.status(400).json({ error: 'senior_id is required' });
     }
 
-    // Check access control
+    // Check access control (normalize user_type for case-insensitive comparison)
     const user = await db.Users.findByPk(userId);
+    const userType = (user?.user_type && String(user.user_type).toLowerCase()) || '';
     let canAccess = false;
     let targetSeniorId = senior_id;
 
-    if (user.user_type === 'senior') {
+    if (userType === 'senior') {
       // Seniors can only access their own vitals
       canAccess = parseInt(userId) === parseInt(senior_id);
       targetSeniorId = userId;
-    } else if (user.user_type === 'caregiver') {
+    } else if (userType === 'caregiver') {
       // Caregivers can access vitals of linked seniors
       canAccess = await accessControlService.canCaregiverAccessSenior(userId, senior_id);
-    } else if (user.user_type === 'ADMIN' || user.user_type === 'SUPER_ADMIN') {
+    } else if (userType === 'admin' || userType === 'super_admin') {
       // Admins have full access
       canAccess = true;
     }

@@ -79,13 +79,17 @@ const login = async (req, res) => {
       logger.debug(`No FCM token provided for user ${user.id} (${user.email})`);
     }
 
+    // Normalize user_type to lowercase in JWT so all routes (requireRole, get-seniors, etc.) work consistently
+    const normalizedUserType =
+      user.user_type != null ? String(user.user_type).toLowerCase() : user.user_type;
+
     // Generate JWT tokens
-    const token = jwt.sign({ user_id: user.id, user_type: user.user_type }, JWT_SECRET_KEY, {
+    const token = jwt.sign({ user_id: user.id, user_type: normalizedUserType }, JWT_SECRET_KEY, {
       expiresIn: '2 Days',
     });
 
     const refreshToken = jwt.sign(
-      { user_id: user.id, user_type: user.user_type },
+      { user_id: user.id, user_type: normalizedUserType },
       REFRESH_SECRET_KEY,
       {
         expiresIn: '7 Days',
