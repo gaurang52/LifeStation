@@ -1,16 +1,8 @@
 import React, { useState } from 'react';
-import {
-  StyleSheet,
-  View,
-  ScrollView,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  TouchableOpacity,
-} from 'react-native';
+import { StyleSheet, View, ScrollView, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { Screen, AppText, Button, Input } from '@shared/components';
-import { spacing, colors } from '@shared/theme';
+import { Screen, AppText, Button, Input, TopNavbar } from '@shared/components';
+import { spacing, colors, borderRadius } from '@shared/theme';
 import { deviceApi, type AddDeviceRequest } from '@core/api/deviceApi';
 import { ErrorHandler } from '@core/utils/errorHandler';
 import { useNavigation } from '@react-navigation/native';
@@ -103,24 +95,18 @@ const AddDeviceScreen: React.FC = () => {
 
   return (
     <Screen padded={false}>
+      <View style={styles.navbarWrapper}>
+        <TopNavbar
+          title="Add Device"
+          subtitle="Register a new device"
+          variant="figma"
+          showBackButton
+          onBackPress={() => navigation.goBack()}
+        />
+      </View>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-            activeOpacity={0.7}>
-            <MaterialIcons name="arrow-back" size={24} color={colors.primary} />
-          </TouchableOpacity>
-          <View style={styles.headerContent}>
-            <MaterialIcons name="add-circle" size={32} color={colors.primary} />
-            <AppText variant="h2" style={styles.headerTitle}>
-              Add Device
-            </AppText>
-          </View>
-        </View>
-
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
@@ -218,37 +204,23 @@ const AddDeviceScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  navbarWrapper: {
+    paddingTop: spacing.sm,
+  },
   container: {
-    flex: 1,
-  },
-  header: {
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
-  },
-  backButton: {
-    marginBottom: spacing.sm,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  headerTitle: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    padding: spacing.lg,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.lg,
   },
   infoCard: {
     flexDirection: 'row',
     backgroundColor: colors.lightPrimary,
     padding: spacing.md,
-    borderRadius: 12,
+    borderRadius: borderRadius.lg,
     marginBottom: spacing.lg,
     gap: spacing.md,
   },
@@ -279,7 +251,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#fffbeb',
     padding: spacing.sm,
-    borderRadius: 8,
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
     borderColor: colors.warning,
     gap: spacing.xs,

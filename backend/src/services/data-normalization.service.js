@@ -156,8 +156,9 @@ class DataNormalizationService {
       // Store IMEI separately if available
       imei: externalDevice.IMEI || externalDevice.device_imei || externalDevice.imei || null,
 
-      // Device name
-      name: externalDevice.name || options.accountName || 'Unnamed Device',
+      // Device name: prefer user-set name (UserDeviceMapping.device_name), then API/account
+      name:
+        options.customDeviceName || externalDevice.name || options.accountName || 'Unnamed Device',
 
       // Status - map Device_Status from Device Read API
       status: externalDevice.Device_Status || externalDevice.status || 'unknown',

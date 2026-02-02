@@ -212,6 +212,7 @@ const downloadRecentReports = async (req, res) => {
       });
     }
 
+    // cs_no comes from UserDeviceMapping or external Device API (GET /device/{id_type}/{id}); if missing, reporting is not configured for this device
     if (!csNo) {
       return res.status(404).json({
         error: 'Reports unavailable',

@@ -150,13 +150,15 @@ const DeviceDetailsTabScreen: React.FC = () => {
   if (loading && devices.length === 0) {
     return (
       <Screen padded={false}>
-        <TopNavbar
-          title="Devices"
-          subtitle="Manage your registered devices"
-          variant="figma"
-          showBackButton={true}
-          onBackPress={() => navigation.goBack()}
-        />
+        <View style={styles.navbarWrapper}>
+          <TopNavbar
+            title="Devices"
+            subtitle="Manage your registered devices"
+            variant="figma"
+            showBackButton={true}
+            onBackPress={() => navigation.goBack()}
+          />
+        </View>
         <View style={styles.centerContainer}>
           <MaterialIcons name="devices" size={64} color={colors.primary} />
           <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
@@ -172,13 +174,15 @@ const DeviceDetailsTabScreen: React.FC = () => {
   if (error && devices.length === 0) {
     return (
       <Screen padded={false}>
-        <TopNavbar
-          title="Devices"
-          subtitle="Manage your registered devices"
-          variant="figma"
-          showBackButton={true}
-          onBackPress={() => navigation.goBack()}
-        />
+        <View style={styles.navbarWrapper}>
+          <TopNavbar
+            title="Devices"
+            subtitle="Manage your registered devices"
+            variant="figma"
+            showBackButton={true}
+            onBackPress={() => navigation.goBack()}
+          />
+        </View>
         <View style={styles.centerContainer}>
           <MaterialIcons name="error-outline" size={64} color={colors.error} />
           <AppText variant="h3" style={styles.errorTitle}>
@@ -195,22 +199,24 @@ const DeviceDetailsTabScreen: React.FC = () => {
 
   return (
     <Screen padded={false}>
-      <TopNavbar
-        title="Devices"
-        subtitle="Manage your registered devices"
-        variant="figma"
-        showBackButton={true}
-        onBackPress={() => navigation.goBack()}
-        rightAction={
-          devices.length > 0
-            ? {
-                label: downloading ? 'Downloading...' : 'Download',
-                icon: downloading ? undefined : 'download',
-                onPress: handleDownloadPress,
-              }
-            : undefined
-        }
-      />
+      <View style={styles.navbarWrapper}>
+        <TopNavbar
+          title="Devices"
+          subtitle="Manage your registered devices"
+          variant="figma"
+          showBackButton={true}
+          onBackPress={() => navigation.goBack()}
+          rightAction={
+            devices.length > 0
+              ? {
+                  label: downloading ? 'Downloading...' : 'Download',
+                  icon: downloading ? undefined : 'download',
+                  onPress: handleDownloadPress,
+                }
+              : undefined
+          }
+        />
+      </View>
 
       {/* Error Banner */}
       {error && devices.length > 0 && (
@@ -278,6 +284,9 @@ const DeviceDetailsTabScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  navbarWrapper: {
+    paddingTop: spacing.sm,
+  },
   scrollView: {
     flex: 1,
   },

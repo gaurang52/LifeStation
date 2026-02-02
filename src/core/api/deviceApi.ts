@@ -7,6 +7,8 @@ export interface AddDeviceRequest {
   sim_iccid?: string;
   device_type?: string;
   sim_action?: 'none' | 'activate' | 'deactivate';
+  /** Optional user-friendly device name (stored in our DB; external Device API does not accept name) */
+  name?: string;
 }
 
 export interface Device {
@@ -79,6 +81,11 @@ export interface RequestSignalResponse {
   };
 }
 
+export interface UpdateDeviceNameResponse {
+  message: string;
+  device: { device_id: string; id_type: DeviceIdType; name: string | null };
+}
+
 /** Device API matching backend routes exactly */
 export const deviceApi = {
   /**
@@ -135,5 +142,17 @@ export const deviceApi = {
    */
   async requestSignal(idType: DeviceIdType, id: string): Promise<RequestSignalResponse> {
     return apiClient.post<RequestSignalResponse>(`/devices/${idType}/${id}/signal`);
+  },
+
+  /**
+   * PATCH /devices/:id_type/:id/name - Set user-friendly device name
+   * Only the account that registered the device can set its name. Stored in our DB; external Device API has no name endpoint.
+   */
+  async updateDeviceName(
+    idType: DeviceIdType,
+    id: string,
+    name: string,
+  ): Promise<UpdateDeviceNameResponse> {
+    return apiClient.patch<UpdateDeviceNameResponse>(`/devices/${idType}/${id}/name`, { name });
   },
 };

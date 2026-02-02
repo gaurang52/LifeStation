@@ -9,7 +9,7 @@ const { sanitizeResponseBody, sanitizeRequestBody } = require('../../utils/audit
 
 const addDevice = async (req, res) => {
   try {
-    const { device_imei, sim_iccid, device_type, sim_action = 'none' } = req.body;
+    const { device_imei, sim_iccid, device_type, sim_action = 'none', name: deviceName } = req.body;
     const userId = req.user_id;
 
     // Validate input
@@ -151,6 +151,12 @@ const addDevice = async (req, res) => {
     // cs_no is used to fetch account details and reports from external APIs
     const csNo = externalDevice.cs_no || externalDevice.csNo || null;
 
+    // Optional user-friendly name (max 255 chars); external Device API does not accept name on Add Device
+    const trimmedDeviceName =
+      typeof deviceName === 'string' && deviceName.trim().length > 0
+        ? deviceName.trim().slice(0, 255)
+        : null;
+
     // Create user-device mapping
     await db.UserDeviceMapping.create({
       user_id: userId,
@@ -158,6 +164,7 @@ const addDevice = async (req, res) => {
       external_device_id: device_imei,
       id_type: 'imei',
       cs_no: csNo,
+      device_name: trimmedDeviceName,
     });
 
     // Log audit entry
@@ -178,13 +185,15 @@ const addDevice = async (req, res) => {
 
     logger.info(`Device registered: ${device_imei} for user ${userId}`);
 
+    const displayName = trimmedDeviceName || device.name || externalDevice.name || null;
+
     res.status(200).json({
       message: 'Device registered successfully',
       device: {
         id: device.id,
         device_id: device_imei,
         id_type: 'imei',
-        name: device.name,
+        name: displayName,
         status: device.status,
         battery_level: device.battery_level,
         signal_strength: device.signal_strength,

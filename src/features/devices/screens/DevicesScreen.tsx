@@ -8,8 +8,8 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { Screen, AppText, Button, DeviceCard } from '@shared/components';
-import { spacing, colors } from '@shared/theme';
+import { Screen, AppText, Button, DeviceCard, TopNavbar } from '@shared/components';
+import { spacing, colors, borderRadius } from '@shared/theme';
 import { deviceApi, type Device } from '@core/api/deviceApi';
 import { ErrorHandler } from '@core/utils/errorHandler';
 import { useNavigation } from '@react-navigation/native';
@@ -87,7 +87,18 @@ const DevicesScreen: React.FC = () => {
 
   if (loading && devices.length === 0) {
     return (
-      <Screen>
+      <Screen padded={false}>
+        <View style={styles.navbarWrapper}>
+          <TopNavbar
+            title="My Devices"
+            subtitle="Manage your devices"
+            variant="figma"
+            rightAction={{
+              label: 'Add',
+              onPress: () => navigation.navigate(ROUTES.ADD_DEVICE),
+            }}
+          />
+        </View>
         <View style={styles.centerContainer}>
           <MaterialIcons name="devices" size={64} color={colors.primary} />
           <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
@@ -101,22 +112,16 @@ const DevicesScreen: React.FC = () => {
 
   return (
     <Screen padded={false}>
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <MaterialIcons name="devices" size={28} color={colors.primary} />
-          <AppText variant="h2" style={styles.headerTitle}>
-            My Devices
-          </AppText>
-        </View>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => navigation.navigate(ROUTES.ADD_DEVICE)}
-          activeOpacity={0.7}>
-          <MaterialIcons name="add" size={20} color={colors.primary} />
-          <AppText variant="bodyBold" color={colors.primary}>
-            Add
-          </AppText>
-        </TouchableOpacity>
+      <View style={styles.navbarWrapper}>
+        <TopNavbar
+          title="My Devices"
+          subtitle="Manage your devices"
+          variant="figma"
+          rightAction={{
+            label: 'Add',
+            onPress: () => navigation.navigate(ROUTES.ADD_DEVICE),
+          }}
+        />
       </View>
 
       {error && devices.length === 0 ? (
@@ -160,7 +165,8 @@ const DevicesScreen: React.FC = () => {
               tintColor={colors.primary}
             />
           }
-          onScrollEndDrag={handleLoadMore}>
+          onScrollEndDrag={handleLoadMore}
+          showsVerticalScrollIndicator={false}>
           {error && (
             <View style={styles.errorBanner}>
               <MaterialIcons name="info-outline" size={20} color={colors.warning} />
@@ -169,6 +175,9 @@ const DevicesScreen: React.FC = () => {
               </AppText>
             </View>
           )}
+          <AppText variant="small" color={colors.textSecondary} style={styles.sectionLabel}>
+            YOUR DEVICES
+          </AppText>
           {devices.map(device => (
             <DeviceCard
               key={`${device.id_type}-${device.device_id}`}
@@ -188,53 +197,28 @@ const DevicesScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.divider,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    flex: 1,
-    minWidth: 0, // Allows text to shrink
-  },
-  headerTitle: {
-    flex: 1,
-    minWidth: 0, // Allows text to shrink and wrap if needed
-  },
-  addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.sm,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    backgroundColor: colors.lightPrimary,
-    flexShrink: 0, // Prevents button from shrinking
-    marginLeft: spacing.sm,
+  navbarWrapper: {
+    paddingTop: spacing.sm,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    padding: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.lg,
     paddingBottom: spacing.lg,
+  },
+  sectionLabel: {
+    letterSpacing: 0.5,
+    marginBottom: spacing.sm,
+    fontWeight: '600',
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing.xl,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xl,
     gap: spacing.md,
   },
   loader: {
@@ -262,10 +246,10 @@ const styles = StyleSheet.create({
   addDeviceButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: spacing.sm,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    borderRadius: 8,
+    borderRadius: borderRadius.lg,
     borderWidth: 1,
     borderColor: colors.primary,
     backgroundColor: colors.lightPrimary,
@@ -276,7 +260,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#fffbeb',
     padding: spacing.sm,
-    borderRadius: 8,
+    borderRadius: borderRadius.lg,
     marginBottom: spacing.md,
     borderWidth: 1,
     borderColor: colors.warning,

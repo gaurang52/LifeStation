@@ -214,7 +214,9 @@ const ProfileScreen: React.FC = () => {
 
   return (
     <Screen padded={false}>
-      <TopNavbar title="Profile" subtitle="Manage your account" variant="figma" />
+      <View style={styles.navbarWrapper}>
+        <TopNavbar title="Profile" subtitle="Manage your account" variant="figma" />
+      </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Gradient Profile Card */}
@@ -621,6 +623,9 @@ const ProfileScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  navbarWrapper: {
+    paddingTop: spacing.sm,
+  },
   scrollContent: {
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,

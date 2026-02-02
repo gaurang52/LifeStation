@@ -1,6 +1,7 @@
 const deviceApiService = require('../../services/device-api.service');
 const accountApiService = require('../../services/account-api.service');
 const db = require('../../models');
+const { Op } = require('sequelize');
 const accessControlService = require('../../services/access-control.service');
 const dataNormalizationService = require('../../services/data-normalization.service');
 const auditLogService = require('../../services/audit-log.service');
@@ -23,6 +24,22 @@ const getDevices = async (req, res) => {
         message: 'No devices found',
       });
     }
+
+    // Fetch user-set device names (UserDeviceMapping.device_name) for display
+    const mappingList = await db.UserDeviceMapping.findAll({
+      where: {
+        [Op.or]: accessibleDevices.map(d => ({
+          external_device_id: d.device_id,
+          id_type: d.id_type,
+        })),
+      },
+      attributes: ['external_device_id', 'id_type', 'device_name'],
+    });
+    const customNameByDevice = new Map(
+      mappingList
+        .filter(m => m.device_name && m.device_name.trim() !== '')
+        .map(m => [`${m.external_device_id}|${m.id_type}`, m.device_name]),
+    );
 
     // Fetch device details from external Device API using service-level credentials
     // Note: External system is an integration service (device provider), not a user management platform
@@ -101,14 +118,15 @@ const getDevices = async (req, res) => {
           }
         }
 
-        // Normalize device data with account information
-        // Pass device.id_type and device.device_id from database to ensure they're preserved
+        // Normalize device data with account information; prefer user-set name if present
+        const customDeviceName = customNameByDevice.get(`${device.device_id}|${device.id_type}`);
         return {
           ...dataNormalizationService.normalizeDevice(deviceData, {
             accountName,
             cs_no: csNo,
             id_type: device.id_type,
             device_id: device.device_id,
+            customDeviceName: customDeviceName || undefined,
           }),
           id_type: device.id_type,
         };

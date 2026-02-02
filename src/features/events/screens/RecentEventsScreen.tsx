@@ -245,7 +245,13 @@ const RecentEventsScreen: React.FC = () => {
   if (loading && events.length === 0) {
     return (
       <Screen padded={false}>
-        <TopNavbar title="Events Timeline" subtitle="Track all device activities" variant="figma" />
+        <View style={styles.navbarWrapper}>
+          <TopNavbar
+            title="Events Timeline"
+            subtitle="Track all device activities"
+            variant="figma"
+          />
+        </View>
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
           <AppText variant="body" color={colors.textSecondary} style={styles.loadingText}>
@@ -258,7 +264,9 @@ const RecentEventsScreen: React.FC = () => {
 
   return (
     <Screen padded={false}>
-      <TopNavbar title="Events Timeline" subtitle="Track all device activities" variant="figma" />
+      <View style={styles.navbarWrapper}>
+        <TopNavbar title="Events Timeline" subtitle="Track all device activities" variant="figma" />
+      </View>
 
       {error && events.length === 0 ? (
         <View style={styles.centerContainer}>
@@ -352,6 +360,9 @@ const RecentEventsScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  navbarWrapper: {
+    paddingTop: spacing.sm,
+  },
   scrollView: {
     flex: 1,
   },

@@ -3,6 +3,7 @@ const accountApiService = require('../../services/account-api.service');
 const accessControlService = require('../../services/access-control.service');
 const dataNormalizationService = require('../../services/data-normalization.service');
 const auditLogService = require('../../services/audit-log.service');
+const db = require('../../models');
 const logger = require('../../utils/logger');
 const { isValidIdType } = require('../../utils/validators');
 const { sanitizeResponseBody } = require('../../utils/audit-sanitizer');
@@ -44,6 +45,19 @@ const getDeviceRecent = async (req, res) => {
       return res.status(403).json({
         error: 'Access denied: You do not have permission to access this device',
       });
+    }
+
+    let customDeviceName = null;
+    try {
+      const mapping = await db.UserDeviceMapping.findOne({
+        where: { external_device_id: deviceId, id_type: idTypeNormalized },
+        attributes: ['device_name'],
+      });
+      if (mapping?.device_name?.trim()) {
+        customDeviceName = mapping.device_name.trim();
+      }
+    } catch (mappingError) {
+      logger.debug('Could not fetch user device name:', mappingError.message);
     }
 
     try {
@@ -119,22 +133,17 @@ const getDeviceRecent = async (req, res) => {
         });
       }
 
-      // Normalize device data - pass id_type and device_id from normalized params
+      // Normalize device data; prefer user-set name (customDeviceName), then API/account
       const normalized = dataNormalizationService.normalizeDevice(deviceRecent, {
-        accountName: accountName,
+        accountName,
         cs_no: csNo,
         id_type: idTypeNormalized,
         device_id: deviceId,
+        customDeviceName: customDeviceName || undefined,
       });
 
-      // Add account name to normalized device data if available
-      // This ensures Device Name and User Name come from external APIs
       if (accountName) {
         normalized.account_name = accountName;
-        // If device name is not set, use account name as device name
-        if (!normalized.name || normalized.name === 'Unnamed Device') {
-          normalized.name = accountName;
-        }
       }
 
       // Include cs_no in response if available

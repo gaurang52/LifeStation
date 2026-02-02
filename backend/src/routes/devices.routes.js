@@ -15,6 +15,7 @@ const getDeviceMetadata = require('../controllers/devices/get-device-metadata');
 const requestSignal = require('../controllers/devices/request-signal');
 const saveGeofenceSettings = require('../controllers/devices/save-geofence-settings');
 const getGeofenceSettings = require('../controllers/devices/get-geofence-settings');
+const updateDeviceName = require('../controllers/devices/update-device-name');
 
 // All routes require authentication
 router.use(verifyToken);
@@ -40,6 +41,9 @@ router.get('/:id_type/:id/fall-detection', getFallDetection);
 
 // POST /devices/:id_type/:id/signal - Request device signal
 router.post('/:id_type/:id/signal', requestSignal);
+
+// PATCH /devices/:id_type/:id/name - Set user-friendly device name (stored in UserDeviceMapping)
+router.patch('/:id_type/:id/name', updateDeviceName);
 
 // Geofence routes (matching umbrella-app-backend exactly)
 // POST /save-geo-fence-settings - Save/update geofence settings

@@ -4,7 +4,7 @@ import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { Card } from './Card';
 import { AppText } from './AppText';
 import { StatusBadge } from './StatusBadge';
-import { colors, spacing } from '@shared/theme';
+import { colors, spacing, borderRadius } from '@shared/theme';
 import type { Device } from '@core/api/deviceApi';
 
 interface DeviceCardProps {
@@ -54,7 +54,7 @@ export const DeviceCard: React.FC<DeviceCardProps> = ({ device, onPress }) => {
   const lastSeen = formatLastSeen(device.last_seen);
 
   const content = (
-    <Card style={styles.card}>
+    <Card style={[styles.card, { borderRadius: borderRadius.lg }]} padding={spacing.md}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <MaterialIcons name="devices" size={24} color={colors.primary} />
@@ -152,16 +152,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+    minWidth: 0,
   },
   deviceInfo: {
     marginLeft: spacing.sm,
     flex: 1,
+    minWidth: 0,
   },
   deviceName: {
     marginBottom: spacing.xs / 2,
@@ -172,16 +174,19 @@ const styles = StyleSheet.create({
   stats: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: spacing.sm,
+    marginTop: spacing.md,
+    gap: spacing.sm,
   },
   statItem: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+    minWidth: 0,
   },
   statContent: {
     marginLeft: spacing.xs,
     flex: 1,
+    minWidth: 0,
   },
   signalBars: {
     flexDirection: 'row',

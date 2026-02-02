@@ -443,11 +443,13 @@ const MapScreen: React.FC = () => {
 
   return (
     <Screen padded={false} edges={['top']} style={styles.screen}>
-      <TopNavbar
-        title="Maps/GPS Location"
-        subtitle="Location tracking and geofencing"
-        variant="figma"
-      />
+      <View style={styles.navbarWrapper}>
+        <TopNavbar
+          title="Maps/GPS Location"
+          subtitle="Location tracking and geofencing"
+          variant="figma"
+        />
+      </View>
       <View style={styles.content}>
         {/* Frequency Selector */}
         <View style={styles.frequencyContainer}>
@@ -735,6 +737,9 @@ const MapScreen: React.FC = () => {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
+  },
+  navbarWrapper: {
+    paddingTop: spacing.sm,
   },
   content: {
     flex: 1,

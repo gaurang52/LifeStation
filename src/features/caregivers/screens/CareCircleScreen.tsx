@@ -169,11 +169,13 @@ const CareCircleScreen: React.FC = () => {
 
   return (
     <Screen padded={false}>
-      <TopNavbar
-        title="Care Circle"
-        subtitle="Manage your caregivers and contacts"
-        variant="figma"
-      />
+      <View style={styles.navbarWrapper}>
+        <TopNavbar
+          title="Care Circle"
+          subtitle="Manage your caregivers and contacts"
+          variant="figma"
+        />
+      </View>
 
       {error && caregivers.length === 0 ? (
         <View style={styles.centerContainer}>
@@ -338,6 +340,9 @@ const CareCircleScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  navbarWrapper: {
+    paddingTop: spacing.sm,
+  },
   scrollView: {
     flex: 1,
   },

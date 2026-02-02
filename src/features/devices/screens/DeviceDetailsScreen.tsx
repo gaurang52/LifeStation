@@ -6,9 +6,10 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  RefreshControl,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { Screen, AppText, Button, Card } from '@shared/components';
+import { Screen, AppText, Button, Card, TopNavbar } from '@shared/components';
 import { spacing, colors, borderRadius } from '@shared/theme';
 import { deviceApi, type Device, type DeviceIdType } from '@core/api/deviceApi';
 import { reportsApi } from '@core/api/reportsApi';
@@ -332,9 +333,18 @@ const DeviceDetailsScreen: React.FC<DeviceDetailsScreenProps> = ({ route }) => {
     );
   };
 
-  if (loading) {
+  if (loading && !device) {
     return (
-      <Screen>
+      <Screen padded={false}>
+        <View style={styles.navbarWrapper}>
+          <TopNavbar
+            title="Device Details"
+            subtitle="Loading..."
+            variant="figma"
+            showBackButton
+            onBackPress={() => navigation.goBack()}
+          />
+        </View>
         <View style={styles.centerContainer}>
           <MaterialIcons name="devices" size={64} color={colors.primary} />
           <ActivityIndicator size="large" color={colors.primary} style={styles.loader} />
@@ -346,9 +356,18 @@ const DeviceDetailsScreen: React.FC<DeviceDetailsScreenProps> = ({ route }) => {
     );
   }
 
-  if (error && !fetchingFirstDevice) {
+  if (error && !fetchingFirstDevice && !device) {
     return (
-      <Screen>
+      <Screen padded={false}>
+        <View style={styles.navbarWrapper}>
+          <TopNavbar
+            title="Device Details"
+            subtitle="Error"
+            variant="figma"
+            showBackButton
+            onBackPress={() => navigation.goBack()}
+          />
+        </View>
         <View style={styles.centerContainer}>
           <MaterialIcons name="error-outline" size={64} color={colors.error} />
           <AppText variant="h3" style={styles.errorTitle}>
@@ -375,7 +394,16 @@ const DeviceDetailsScreen: React.FC<DeviceDetailsScreenProps> = ({ route }) => {
   if (!deviceId || !idType) {
     if (!loading && !fetchingFirstDevice) {
       return (
-        <Screen>
+        <Screen padded={false}>
+          <View style={styles.navbarWrapper}>
+            <TopNavbar
+              title="Device Details"
+              subtitle="No device"
+              variant="figma"
+              showBackButton
+              onBackPress={() => navigation.goBack()}
+            />
+          </View>
           <View style={styles.centerContainer}>
             <MaterialIcons name="devices-other" size={64} color={colors.icon} />
             <AppText variant="h3" style={styles.emptyTitle}>
@@ -397,7 +425,16 @@ const DeviceDetailsScreen: React.FC<DeviceDetailsScreenProps> = ({ route }) => {
 
   if (!device && !loading && deviceId && idType) {
     return (
-      <Screen>
+      <Screen padded={false}>
+        <View style={styles.navbarWrapper}>
+          <TopNavbar
+            title="Device Details"
+            subtitle="Not found"
+            variant="figma"
+            showBackButton
+            onBackPress={() => navigation.goBack()}
+          />
+        </View>
         <View style={styles.centerContainer}>
           <MaterialIcons name="devices-other" size={64} color={colors.icon} />
           <AppText variant="body" color={colors.textSecondary}>
@@ -410,16 +447,26 @@ const DeviceDetailsScreen: React.FC<DeviceDetailsScreenProps> = ({ route }) => {
 
   return (
     <Screen padded={false}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.7}>
-          <MaterialIcons name="arrow-back" size={24} color={colors.primary} />
-        </TouchableOpacity>
+      <View style={styles.navbarWrapper}>
+        <TopNavbar
+          title="Device Details"
+          subtitle={device?.name || device?.device_id || 'Details'}
+          variant="figma"
+          showBackButton
+          onBackPress={() => navigation.goBack()}
+        />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.primary}
+          />
+        }>
         {/* Gradient Device Card */}
         <View style={styles.deviceCard}>
           <View style={styles.deviceCardHeader}>
@@ -581,17 +628,13 @@ const DeviceDetailsScreen: React.FC<DeviceDetailsScreenProps> = ({ route }) => {
 };
 
 const styles = StyleSheet.create({
-  header: {
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-  },
-  backButton: {
-    marginBottom: spacing.sm,
+  navbarWrapper: {
+    paddingTop: spacing.sm,
   },
   scrollContent: {
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.lg,
   },
   deviceCard: {
     backgroundColor: colors.primary, // Gradient-like solid color
@@ -694,7 +737,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: spacing.md,
-    padding: spacing.xl,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xl,
   },
   loader: {
     marginTop: spacing.md,
