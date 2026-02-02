@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   StyleSheet,
   View,
@@ -16,7 +16,7 @@ import { reportsApi } from '@core/api/reportsApi';
 import { useAuthStore } from '@core/store';
 import { ErrorHandler } from '@core/utils/errorHandler';
 import { downloadFile } from '@core/utils/fileDownloader';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { AppStackParamList } from '@core/constants/routes';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { ROUTES } from '@core/constants/routes';
@@ -31,6 +31,7 @@ const DeviceDetailsTabScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hasBlurred = useRef(false);
 
   const fetchDevices = useCallback(async (isRefresh = false) => {
     try {
@@ -58,6 +59,18 @@ const DeviceDetailsTabScreen: React.FC = () => {
   useEffect(() => {
     fetchDevices();
   }, [fetchDevices]);
+
+  // Refetch when returning to this screen (e.g. after updating device name in Device Details)
+  useFocusEffect(
+    useCallback(() => {
+      if (hasBlurred.current) {
+        fetchDevices(true);
+      }
+      return () => {
+        hasBlurred.current = true;
+      };
+    }, [fetchDevices]),
+  );
 
   const handleRefresh = () => {
     fetchDevices(true);
@@ -258,12 +271,25 @@ const DeviceDetailsTabScreen: React.FC = () => {
           }>
           {/* Section Header */}
           <View style={styles.sectionHeader}>
-            <AppText variant="small" color={colors.textSecondary} style={styles.sectionTitle}>
-              REGISTERED DEVICES
-            </AppText>
-            <AppText variant="small" color={colors.textSecondary} style={styles.deviceCount}>
-              {devices.length} {devices.length === 1 ? 'device' : 'devices'}
-            </AppText>
+            <View style={styles.sectionHeaderLeft}>
+              <AppText variant="small" color={colors.textSecondary} style={styles.sectionTitle}>
+                REGISTERED DEVICES
+              </AppText>
+              <AppText variant="small" color={colors.textSecondary} style={styles.deviceCount}>
+                {devices.length} {devices.length === 1 ? 'device' : 'devices'}
+              </AppText>
+            </View>
+            {user?.user_type === 'senior' && (
+              <TouchableOpacity
+                style={styles.addDeviceButton}
+                onPress={() => navigation.navigate(ROUTES.ADD_DEVICE)}
+                activeOpacity={0.7}>
+                <MaterialIcons name="add" size={18} color={colors.primary} />
+                <AppText variant="bodyBold" color={colors.primary}>
+                  Add Device
+                </AppText>
+              </TouchableOpacity>
+            )}
           </View>
 
           {/* Device List */}
@@ -301,12 +327,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.md,
   },
+  sectionHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: spacing.sm,
+  },
   sectionTitle: {
     fontWeight: '600',
     letterSpacing: 0.5,
   },
   deviceCount: {
     fontWeight: '500',
+  },
+  addDeviceButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: colors.lightPrimary,
   },
   deviceCard: {
     marginBottom: spacing.md,

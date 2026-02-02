@@ -3,7 +3,7 @@ import { View, StyleSheet, Image, StatusBar, useWindowDimensions } from 'react-n
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
-import { Logo } from '@shared/components';
+import { LogoWithTagline } from '@shared/components';
 import { useAuthStore } from '@core/store';
 import { ROUTES } from '@core/constants/routes';
 import type { RootStackParamList } from '@core/constants/routes';
@@ -21,8 +21,7 @@ const WelcomeScreen: React.FC = () => {
   const isAuthenticated = useAuthStore(state => state.isAuthenticated);
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const ringSize = Math.min(width * 0.82, 340);
-  const logoSize = Math.min(width * 0.68, 300);
+  const ringSize = Math.min(width * 0.88, 380);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -46,10 +45,15 @@ const WelcomeScreen: React.FC = () => {
             paddingBottom: insets.bottom + spacing.xl,
           },
         ]}>
-        <Logo size={logoSize} style={styles.logo} />
-        <View
-          style={[styles.ring, { width: ringSize, height: ringSize, borderRadius: ringSize / 2 }]}>
-          <Image source={FAVICON} style={styles.favicon} resizeMode="contain" />
+        <LogoWithTagline style={styles.logoBlock} />
+        <View style={styles.ringWrapper}>
+          <View
+            style={[
+              styles.ring,
+              { width: ringSize, height: ringSize, borderRadius: ringSize / 2 },
+            ]}>
+            <Image source={FAVICON} style={styles.favicon} resizeMode="contain" />
+          </View>
         </View>
       </View>
     </View>
@@ -67,9 +71,14 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     paddingHorizontal: spacing.lg,
   },
-  logo: {
-    opacity: 0.98,
+  logoBlock: {
     marginBottom: spacing.lg,
+  },
+  ringWrapper: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingBottom: 56,
   },
   ring: {
     alignItems: 'center',
@@ -79,8 +88,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.welcomeRingBg,
   },
   favicon: {
-    width: 180,
-    height: 180,
+    width: 220,
+    height: 220,
   },
 });
 

@@ -15,6 +15,7 @@ type NavigationProp = StackNavigationProp<AppStackParamList>;
 const AddDeviceScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const user = useAuthStore(state => state.user);
+  const [deviceName, setDeviceName] = useState('');
   const [deviceImei, setDeviceImei] = useState('');
   const [simIccid, setSimIccid] = useState('');
   const [deviceType, setDeviceType] = useState('');
@@ -70,6 +71,10 @@ const AddDeviceScreen: React.FC = () => {
         payload.device_type = deviceType.trim();
       }
 
+      if (deviceName.trim()) {
+        payload.name = deviceName.trim();
+      }
+
       const response = await deviceApi.addDevice(payload);
 
       Alert.alert('Success', response.message || 'Device registered successfully', [
@@ -118,13 +123,26 @@ const AddDeviceScreen: React.FC = () => {
                 Register a New Device
               </AppText>
               <AppText variant="caption" color={colors.textSecondary}>
-                Enter your device&apos;s IMEI number to register it with your account. The IMEI is a
-                15-digit number found on your device or in its settings.
+                Give your device a friendly name (e.g. Living Room) and enter its 15-digit IMEI to
+                register. The IMEI is found on your device or in its settings.
               </AppText>
             </View>
           </View>
 
           <View style={styles.form}>
+            <View style={styles.inputContainer}>
+              <MaterialIcons name="label" size={20} color={colors.icon} style={styles.inputIcon} />
+              <Input
+                label="Device Name"
+                placeholder="e.g. Living Room, Bedroom (optional)"
+                value={deviceName}
+                onChangeText={setDeviceName}
+                autoCapitalize="words"
+                maxLength={255}
+                style={styles.input}
+              />
+            </View>
+
             <View style={styles.inputContainer}>
               <MaterialIcons
                 name="devices"
@@ -240,7 +258,7 @@ const styles = StyleSheet.create({
   inputIcon: {
     position: 'absolute',
     left: spacing.md,
-    top: 32,
+    top: 28 + (56 - 20) / 2, // Label (~20) + gap (8) + half of (input height 56 - icon size 20)
     zIndex: 1,
   },
   input: {

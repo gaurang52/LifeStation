@@ -7,9 +7,12 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { Screen, AppText, Button, Card, TopNavbar } from '@shared/components';
+import { Screen, AppText, Button, Card, TopNavbar, Input } from '@shared/components';
 import { spacing, colors, borderRadius } from '@shared/theme';
 import { deviceApi, type Device, type DeviceIdType } from '@core/api/deviceApi';
 import { reportsApi } from '@core/api/reportsApi';
@@ -48,6 +51,9 @@ const DeviceDetailsScreen: React.FC<DeviceDetailsScreenProps> = ({ route }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [downloadingReport, setDownloadingReport] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showEditNameModal, setShowEditNameModal] = useState(false);
+  const [editNameValue, setEditNameValue] = useState('');
+  const [updatingName, setUpdatingName] = useState(false);
 
   // Refs to prevent duplicate API calls (matching HomeScreen pattern)
   const isFetchingDeviceRecent = useRef(false);
@@ -262,6 +268,34 @@ const DeviceDetailsScreen: React.FC<DeviceDetailsScreenProps> = ({ route }) => {
       Alert.alert('Download Failed', backendError || errorMessage, [{ text: 'OK' }]);
     } finally {
       setDownloadingReport(false);
+    }
+  };
+
+  const handleOpenEditName = () => {
+    setEditNameValue(device?.name || device?.device_id || '');
+    setShowEditNameModal(true);
+  };
+
+  const handleSaveDeviceName = async () => {
+    if (!deviceId || !idType) return;
+
+    setUpdatingName(true);
+    try {
+      const trimmed = editNameValue.trim();
+      await deviceApi.updateDeviceName(idType, deviceId, trimmed);
+      setDevice(prev => (prev ? { ...prev, name: trimmed || null } : null));
+      setShowEditNameModal(false);
+      // Refresh to ensure backend state is reflected
+      fetchedDeviceRecentId.current = null;
+      await fetchDeviceRecent(true);
+    } catch (err) {
+      const errMsg =
+        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ||
+        ErrorHandler.getErrorMessage(err) ||
+        'Failed to update device name.';
+      Alert.alert('Update Failed', errMsg);
+    } finally {
+      setUpdatingName(false);
     }
   };
 
@@ -560,6 +594,37 @@ const DeviceDetailsScreen: React.FC<DeviceDetailsScreenProps> = ({ route }) => {
             Settings
           </AppText>
 
+          {/* Edit Device Name - seniors can edit; caregivers see but cannot click */}
+          <Card
+            style={[styles.settingCard, user?.user_type !== 'senior' && styles.editNameDisabled]}>
+            <TouchableOpacity
+              style={styles.editNameRow}
+              onPress={user?.user_type === 'senior' ? handleOpenEditName : undefined}
+              disabled={user?.user_type !== 'senior'}
+              activeOpacity={user?.user_type === 'senior' ? 0.7 : 1}>
+              <View style={styles.editNameLeft}>
+                <MaterialIcons
+                  name="edit"
+                  size={20}
+                  color={user?.user_type === 'senior' ? colors.primary : colors.textSecondary}
+                />
+                <View>
+                  <AppText
+                    variant="bodyBold"
+                    color={user?.user_type === 'senior' ? colors.text : colors.textSecondary}>
+                    Device Name
+                  </AppText>
+                  <AppText variant="small" color={colors.textSecondary}>
+                    {device?.name || 'Unnamed Device'}
+                  </AppText>
+                </View>
+              </View>
+              {user?.user_type === 'senior' && (
+                <MaterialIcons name="chevron-right" size={24} color={colors.textSecondary} />
+              )}
+            </TouchableOpacity>
+          </Card>
+
           {/* Fall Detection - Display Only (matching reference app) */}
           <Card style={styles.settingCard}>
             <View style={styles.fallDetectionHeader}>
@@ -623,6 +688,60 @@ const DeviceDetailsScreen: React.FC<DeviceDetailsScreenProps> = ({ route }) => {
           </View>
         </View>
       </ScrollView>
+
+      {/* Edit Device Name Modal */}
+      <Modal
+        visible={showEditNameModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => !updatingName && setShowEditNameModal(false)}>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => !updatingName && setShowEditNameModal(false)}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={styles.modalContentWrap}>
+            <TouchableOpacity
+              activeOpacity={1}
+              onPress={e => e.stopPropagation()}
+              style={styles.modalTouchable}>
+              <Card style={styles.editNameCard}>
+                <AppText variant="h3" style={styles.editNameModalTitle}>
+                  Edit Device Name
+                </AppText>
+                <Input
+                  label="Device Name"
+                  value={editNameValue}
+                  onChangeText={setEditNameValue}
+                  placeholder="e.g. Living Room, Bedroom"
+                  autoCapitalize="words"
+                  maxLength={255}
+                  style={styles.editNameInput}
+                />
+                <View style={styles.editNameModalActions}>
+                  <TouchableOpacity
+                    style={styles.editNameCancelBtn}
+                    onPress={() => !updatingName && setShowEditNameModal(false)}
+                    disabled={updatingName}>
+                    <AppText variant="body" color={colors.textSecondary}>
+                      Cancel
+                    </AppText>
+                  </TouchableOpacity>
+                  <View style={styles.editNameSubmitWrap}>
+                    <Button
+                      label="Save"
+                      onPress={handleSaveDeviceName}
+                      loading={updatingName}
+                      disabled={updatingName}
+                    />
+                  </View>
+                </View>
+              </Card>
+            </TouchableOpacity>
+          </KeyboardAvoidingView>
+        </TouchableOpacity>
+      </Modal>
     </Screen>
   );
 };
@@ -788,6 +907,62 @@ const styles = StyleSheet.create({
   },
   fallDetectionDesc: {
     marginTop: spacing.xs,
+  },
+  editNameDisabled: {
+    opacity: 0.7,
+  },
+  editNameRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+  },
+  editNameLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    flex: 1,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg,
+  },
+  modalContentWrap: {
+    width: '100%',
+    maxWidth: 400,
+  },
+  modalTouchable: {
+    width: '100%',
+  },
+  editNameCard: {
+    padding: spacing.xl,
+    borderRadius: borderRadius.lg,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.lightGray,
+  },
+  editNameModalTitle: {
+    marginBottom: spacing.md,
+    color: colors.text,
+  },
+  editNameInput: {
+    marginBottom: spacing.lg,
+  },
+  editNameModalActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: spacing.md,
+  },
+  editNameCancelBtn: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+  },
+  editNameSubmitWrap: {
+    minWidth: 120,
   },
   emptyTitle: {
     marginTop: spacing.md,

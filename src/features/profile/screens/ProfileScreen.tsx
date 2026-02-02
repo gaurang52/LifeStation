@@ -114,7 +114,7 @@ const ProfileScreen: React.FC = () => {
 
   const handleLogout = () => {
     logout();
-    // Reset root to Auth stack with Signup screen
+    // Reset root to Auth stack with Login (sign in) screen
     const rootNav = navigation.getParent()?.getParent();
     if (rootNav) {
       rootNav.dispatch(
@@ -123,7 +123,7 @@ const ProfileScreen: React.FC = () => {
           routes: [
             {
               name: ROUTES.AUTH,
-              state: { routes: [{ name: ROUTES.SIGNUP }], index: 0 },
+              state: { routes: [{ name: ROUTES.LOGIN }], index: 0 },
             },
           ],
         }),

@@ -9,7 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { Screen, AppText, Button, Input } from '@shared/components';
+import { Screen, AppText, Button, Input, LogoWithTagline } from '@shared/components';
 import { useAuthStore } from '@core/store';
 import { spacing, colors, borderRadius } from '@shared/theme';
 import { ErrorHandler } from '@core/utils/errorHandler';
@@ -219,6 +219,7 @@ const SignupScreen: React.FC = () => {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
+            <LogoWithTagline style={styles.logoBlock} />
             <AppText variant="h1" style={styles.title}>
               Create Account
             </AppText>
@@ -506,12 +507,15 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: spacing.lg, // px-6 in Figma
-    paddingVertical: spacing.xxl, // py-12 in Figma
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.xxl,
+    justifyContent: 'flex-start',
   },
   header: {
     alignItems: 'center',
     marginBottom: spacing.lg,
   },
+  logoBlock: {},
   title: {
     marginBottom: spacing.sm, // mb-2 in Figma
     textAlign: 'center',

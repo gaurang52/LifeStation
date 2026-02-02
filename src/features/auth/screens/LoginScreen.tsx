@@ -6,9 +6,10 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  Alert,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { Screen, AppText, Button, Input } from '@shared/components';
+import { Screen, AppText, Button, Input, LogoWithTagline } from '@shared/components';
 import { useAuthStore } from '@core/store';
 import { spacing, colors, borderRadius } from '@shared/theme';
 import { ErrorHandler } from '@core/utils/errorHandler';
@@ -97,6 +98,7 @@ const LoginScreen: React.FC = () => {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
+            <LogoWithTagline style={styles.logoBlock} />
             <AppText variant="h1" style={styles.title}>
               Welcome Back
             </AppText>
@@ -165,7 +167,13 @@ const LoginScreen: React.FC = () => {
             ) : null}
 
             <View style={styles.forgotPasswordContainer}>
-              <TouchableOpacity activeOpacity={0.7}>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() =>
+                  Alert.alert('Coming Soon', 'This feature will be available soon.', [
+                    { text: 'OK' },
+                  ])
+                }>
                 <AppText variant="bodyBold" color={colors.primary}>
                   Forgot Password?
                 </AppText>
@@ -198,14 +206,16 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     paddingHorizontal: spacing.lg, // px-6 in Figma = 24px
-    paddingVertical: spacing.xxl, // py-12 in Figma = 48px
-    justifyContent: 'center',
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.xxl,
   },
   header: {
     alignItems: 'center',
     marginBottom: spacing.lg,
   },
+  logoBlock: {},
   title: {
+    marginTop: 72,
     marginBottom: spacing.sm, // mb-2 in Figma = 8px
     textAlign: 'center',
     fontSize: 30, // text-3xl in Figma

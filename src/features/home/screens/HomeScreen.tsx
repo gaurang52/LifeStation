@@ -52,6 +52,7 @@ const HomeScreen: React.FC = () => {
   const [helpSuccess, setHelpSuccess] = useState<string | null>(null);
   const [helpError, setHelpError] = useState<string | null>(null);
   const hasInitialFetch = useRef(false);
+  const hasBlurred = useRef(false); // True after user has navigated away and back (used to refetch on return)
   const helpDebounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isFetchingDevices = useRef(false); // Track if fetch is in progress to prevent duplicate calls
   const hasFetchedDevices = useRef(false); // Track if devices have been fetched to prevent duplicate calls
@@ -412,25 +413,26 @@ const HomeScreen: React.FC = () => {
     }
   }, [fetchDevices]);
 
-  // Also fetch when screen comes into focus (e.g., when navigating back to Home)
-  // This ensures fresh data when user returns to Home screen
-  // Skip on initial mount to avoid duplicate call (useEffect handles initial mount)
-  // Only fetch if devices haven't been fetched yet
+  // Fetch when screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      // Only fetch if:
-      // 1. Initial mount has completed (hasInitialFetch.current is true)
-      // 2. Devices haven't been fetched yet (hasFetchedDevices.current is false)
-      // 3. Not currently loading or fetching (to prevent duplicate calls)
-      // This prevents duplicate API calls that cause rate limit errors
-      if (
-        hasInitialFetch.current &&
-        !hasFetchedDevices.current &&
-        !loading &&
-        !isFetchingDevices.current
-      ) {
+      if (!hasInitialFetch.current) return;
+
+      // Initial load: fetch if not yet fetched
+      if (!hasFetchedDevices.current && !loading && !isFetchingDevices.current) {
         fetchDevices();
+        return;
       }
+
+      // Refetch when returning to Home (e.g. after updating device name in Device Details)
+      if (hasBlurred.current && hasFetchedDevices.current && !isFetchingDevices.current) {
+        hasFetchedDevices.current = false;
+        fetchDevices(true);
+      }
+
+      return () => {
+        hasBlurred.current = true;
+      };
     }, [fetchDevices, loading]),
   );
 

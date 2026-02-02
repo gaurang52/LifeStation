@@ -8,6 +8,7 @@ export { DeviceStatusBar, BatteryStatus, SignalStatus, LastSyncStatus } from './
 export { ErrorBoundary } from './ErrorBoundary';
 export { Input } from './Input';
 export { Logo } from './Logo';
+export { LogoWithTagline } from './LogoWithTagline';
 export { MapPlaceholder } from './MapPlaceholder';
 export { MapViewComponent } from './MapViewComponent';
 export { Screen } from './Screen';
