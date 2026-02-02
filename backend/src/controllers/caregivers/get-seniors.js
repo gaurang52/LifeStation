@@ -8,9 +8,21 @@ const logger = require('../../utils/logger');
 const getSeniors = async (req, res) => {
   try {
     const userId = req.user_id;
-    const userType = (req.user_type && String(req.user_type).toLowerCase()) || '';
+    let userType = (req.user_type && String(req.user_type).toLowerCase()) || '';
+
+    // Defensive: if verify-token left user_type empty, resolve from DB so caregivers don't get 403
+    if (!userType && userId) {
+      const user = await db.Users.findByPk(userId, { attributes: ['user_type'] });
+      const raw = user?.user_type ?? user?.get?.('user_type') ?? user?.dataValues?.user_type;
+      userType = raw != null && String(raw).trim() !== '' ? String(raw).toLowerCase() : '';
+    }
 
     if (userType !== 'caregiver') {
+      logger.warn('get-seniors: caller is not caregiver', {
+        user_id: userId,
+        user_type: req.user_type,
+        resolved: userType,
+      });
       return res.status(403).json({
         error: 'Forbidden',
         message: 'Only caregivers can view their seniors',

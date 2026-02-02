@@ -195,6 +195,7 @@ const downloadVitalsReport = async (req, res) => {
       userId,
       deviceId: primaryDevice.device_id,
       idType: primaryDevice.id_type,
+      userType: req.user_type,
     });
 
     if (!resolvedDevice) {

@@ -93,6 +93,7 @@ const downloadHistoryReport = async (req, res) => {
       userId,
       deviceId: device_id,
       idType: id_type || null,
+      userType: req.user_type,
     });
 
     if (!device) {

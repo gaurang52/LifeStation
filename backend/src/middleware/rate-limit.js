@@ -1,7 +1,8 @@
 const rateLimit = require('express-rate-limit');
 
+// General API: higher limit so normal app usage (devices, events, vitals in quick succession) doesn't hit 429
 const windowMs = parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000; // 15 minutes
-const maxRequests = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100;
+const maxRequests = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 500;
 
 const externalApiWindowMs = parseInt(process.env.EXTERNAL_API_RATE_LIMIT_WINDOW_MS) || 60 * 1000; // 1 minute
 const externalApiMaxRequests = parseInt(process.env.EXTERNAL_API_RATE_LIMIT_MAX_REQUESTS) || 10;

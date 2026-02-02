@@ -29,18 +29,20 @@ class AccessControlService {
    * @param {number} userId - User ID
    * @param {string} deviceId - Device ID
    * @param {string} idType - ID type ('imei', 'serial', 'uuid')
+   * @param {{ userType?: string }} [options] - Optional: pass userType from req to avoid re-fetching user (set by verifyToken)
    * @returns {Promise<boolean>} - True if access allowed
    */
-  async canUserAccessDevice(userId, deviceId, idType) {
+  async canUserAccessDevice(userId, deviceId, idType, options = {}) {
     try {
-      const user = await db.Users.findByPk(userId);
-      if (!user) {
-        logger.debug('canUserAccessDevice: user not found', { userId });
-        return false;
+      let userType = options.userType != null ? String(options.userType).toLowerCase() : '';
+      if (!userType) {
+        const user = await db.Users.findByPk(userId, { attributes: ['id', 'user_type'] });
+        if (!user) {
+          logger.debug('canUserAccessDevice: user not found', { userId });
+          return false;
+        }
+        userType = (user.user_type && String(user.user_type).toLowerCase()) || '';
       }
-
-      // Normalize user_type for case-insensitive comparison (DB may store 'Caregiver' or 'caregiver')
-      const userType = (user.user_type && String(user.user_type).toLowerCase()) || '';
 
       // Admins have full access
       if (userType === 'admin' || userType === 'super_admin') {
@@ -64,7 +66,7 @@ class AccessControlService {
           userId,
           deviceId: deviceIdStr,
           idType: idTypeStr,
-          user_type: user.user_type,
+          user_type: userType,
         });
         return false;
       }
@@ -112,7 +114,7 @@ class AccessControlService {
 
       logger.debug('canUserAccessDevice: unknown user_type', {
         userId,
-        user_type: user.user_type,
+        user_type: userType,
       });
       return false;
     } catch (error) {
@@ -143,16 +145,19 @@ class AccessControlService {
   /**
    * Get accessible devices for user
    * @param {number} userId - User ID
+   * @param {{ userType?: string }} [options] - Optional: pass userType from req to avoid re-fetching user (set by verifyToken)
    * @returns {Promise<Array>} - Array of device objects {device_id, id_type}
    */
-  async getAccessibleDevicesForUser(userId) {
+  async getAccessibleDevicesForUser(userId, options = {}) {
     try {
-      const user = await db.Users.findByPk(userId);
-      if (!user) {
-        return [];
+      let userType = options.userType != null ? String(options.userType).toLowerCase() : '';
+      if (!userType) {
+        const user = await db.Users.findByPk(userId, { attributes: ['id', 'user_type'] });
+        if (!user) {
+          return [];
+        }
+        userType = (user.user_type && String(user.user_type).toLowerCase()) || '';
       }
-
-      const userType = (user.user_type && String(user.user_type).toLowerCase()) || '';
 
       // Admins can access all devices
       if (userType === 'admin' || userType === 'super_admin') {

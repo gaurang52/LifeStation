@@ -47,7 +47,7 @@ function verifyToken(req, res, next) {
     req.user_id = decoded.user_id;
     req.decoded_info = decoded;
 
-    // Resolve user_type from DB (umbrella-app pattern) so role checks always use current data.
+    // Resolve user_type from DB so role checks (get-seniors, devices, etc.) always use current data.
     // Avoids 403 when JWT lacks user_type (e.g. old tokens) or DB was updated.
     try {
       const user = await db.Users.findByPk(decoded.user_id, {
@@ -56,11 +56,28 @@ function verifyToken(req, res, next) {
       if (!user) {
         return res.status(401).json({ error: 'Unauthorized: User not found' });
       }
-      const rawType = user.user_type;
-      req.user_type = rawType != null ? String(rawType).toLowerCase() : decoded.user_type || '';
+      // Support both instance attribute and dataValues (Sequelize behavior can vary)
+      const rawType = user.user_type ?? user.get?.('user_type') ?? user.dataValues?.user_type;
+      const fromDb =
+        rawType != null && String(rawType).trim() !== '' ? String(rawType).toLowerCase() : null;
+      const fromJwt =
+        decoded.user_type != null && String(decoded.user_type).trim() !== ''
+          ? String(decoded.user_type).toLowerCase()
+          : '';
+      req.user_type = fromDb ?? fromJwt ?? '';
+      if (!req.user_type) {
+        logger.warn('verify-token: user_type empty for user', {
+          user_id: decoded.user_id,
+          fromDb: rawType,
+          fromJwt: decoded.user_type,
+        });
+      }
     } catch (fetchErr) {
       logger.error('Error fetching user in verify-token:', fetchErr);
-      const fallback = decoded.user_type != null ? String(decoded.user_type).toLowerCase() : '';
+      const fallback =
+        decoded.user_type != null && String(decoded.user_type).trim() !== ''
+          ? String(decoded.user_type).toLowerCase()
+          : '';
       req.user_type = fallback;
     }
 

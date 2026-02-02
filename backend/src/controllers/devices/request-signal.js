@@ -22,8 +22,10 @@ const requestSignal = async (req, res) => {
         .json({ error: 'Invalid id_type. Must be: imei, serial, uuid, or iccid' });
     }
 
-    // Check access control
-    const canAccess = await accessControlService.canUserAccessDevice(userId, id, id_type);
+    // Check access control; pass userType to avoid duplicate user fetch
+    const canAccess = await accessControlService.canUserAccessDevice(userId, id, id_type, {
+      userType: req.user_type,
+    });
 
     if (!canAccess) {
       return res.status(403).json({

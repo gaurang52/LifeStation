@@ -30,7 +30,7 @@ class DeviceContextService {
     });
   }
 
-  async resolveDeviceContext({ userId, deviceId, idType = null }) {
+  async resolveDeviceContext({ userId, deviceId, idType = null, userType = null }) {
     const device = await this.findDeviceRecord(deviceId, idType);
 
     if (!device) {
@@ -41,6 +41,7 @@ class DeviceContextService {
       userId,
       device.device_id,
       device.id_type,
+      userType != null ? { userType } : {},
     );
 
     if (!canAccess) {

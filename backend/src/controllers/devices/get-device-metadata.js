@@ -20,7 +20,9 @@ const getDeviceMetadata = async (req, res) => {
       return res.status(400).json({ error: 'Invalid IMEI format' });
     }
 
-    const canAccess = await accessControlService.canUserAccessDevice(userId, imei, 'imei');
+    const canAccess = await accessControlService.canUserAccessDevice(userId, imei, 'imei', {
+      userType: req.user_type,
+    });
     if (!canAccess) {
       return res.status(403).json({
         error: 'Access denied: You do not have permission to access this device',

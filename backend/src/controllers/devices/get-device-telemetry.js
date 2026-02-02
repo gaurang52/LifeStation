@@ -22,7 +22,9 @@ const getDeviceTelemetry = async (req, res) => {
         .json({ error: 'Invalid id_type. Must be: imei, serial, uuid, or iccid' });
     }
 
-    const canAccess = await accessControlService.canUserAccessDevice(userId, id, id_type);
+    const canAccess = await accessControlService.canUserAccessDevice(userId, id, id_type, {
+      userType: req.user_type,
+    });
     if (!canAccess) {
       return res.status(403).json({
         error: 'Access denied: You do not have permission to access this device',

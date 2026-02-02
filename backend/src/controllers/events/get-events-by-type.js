@@ -294,11 +294,12 @@ const getEventsByType = async (req, res) => {
       });
     }
 
-    // Check access control
+    // Check access control; pass userType to avoid duplicate user fetch
     const canAccess = await accessControlService.canUserAccessDevice(
       userId,
       targetDevice.device_id,
       targetDevice.id_type,
+      { userType: req.user_type },
     );
 
     if (!canAccess) {

@@ -27,11 +27,12 @@ const getDeviceRecent = async (req, res) => {
     const deviceId = String(id).trim();
     const idTypeNormalized = (id_type && String(id_type).toLowerCase()) || id_type;
 
-    // Check access control
+    // Check access control; pass userType to avoid duplicate user fetch
     const canAccess = await accessControlService.canUserAccessDevice(
       userId,
       deviceId,
       idTypeNormalized,
+      { userType: req.user_type },
     );
 
     if (!canAccess) {

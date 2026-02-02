@@ -12,8 +12,10 @@ const getDevices = async (req, res) => {
     const userId = req.user_id;
     const { page = 1, limit = 10 } = req.query;
 
-    // Get all accessible devices for user (from internal mapping)
-    const accessibleDevices = await accessControlService.getAccessibleDevicesForUser(userId);
+    // Get all accessible devices for user (from internal mapping); pass userType to avoid duplicate user fetch
+    const accessibleDevices = await accessControlService.getAccessibleDevicesForUser(userId, {
+      userType: req.user_type,
+    });
 
     if (accessibleDevices.length === 0) {
       return res.status(200).json({

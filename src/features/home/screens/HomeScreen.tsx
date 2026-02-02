@@ -131,12 +131,9 @@ const HomeScreen: React.FC = () => {
       setActiveDevice(null);
       setDeviceInfo(null);
 
-      // Mark as fetched even on error to prevent retry loops
-      // This prevents useFocusEffect from continuously retrying on errors
-      // User can manually refresh if needed
-      if (!isRefresh) {
-        hasFetchedDevices.current = true;
-      }
+      // Always mark as fetched on error (including refresh) to prevent retry loops.
+      // Otherwise useFocusEffect re-runs when loading flips to false and calls fetchDevices again.
+      hasFetchedDevices.current = true;
     } finally {
       isFetchingDevices.current = false;
       setLoading(false);
@@ -309,17 +306,21 @@ const HomeScreen: React.FC = () => {
           fullError: err,
         });
 
-        // On 403 Access denied: clear stale device and refetch device list (e.g. caregiver viewing wrong device)
+        // On 403 Access denied: clear stale device and refetch device list (e.g. caregiver viewing wrong device).
+        // Mark this device as "attempted" so we don't retry getDeviceRecent in a loop when activeDevice is set again.
         if (statusCode === 403 && errorMessage.toLowerCase().includes('access denied')) {
           logger.error('Device access denied – clearing active device and refetching list', {
             device_id: deviceId,
             id_type: idType,
           });
-          fetchedDeviceRecentId.current = null;
+          if (deviceKey) fetchedDeviceRecentId.current = deviceKey;
           setDeviceInfo(null);
           setActiveDevice(null);
           hasFetchedDevices.current = false;
-          fetchDevices(true);
+          // Only trigger refetch if not already fetching (avoids stacking requests)
+          if (!isFetchingDevices.current) {
+            fetchDevices(true);
+          }
           return;
         }
 

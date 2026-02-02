@@ -24,8 +24,10 @@ const getFallDetection = async (req, res) => {
       });
     }
 
-    // Check access control
-    const canAccess = await accessControlService.canUserAccessDevice(userId, id, id_type);
+    // Check access control; pass userType to avoid duplicate user fetch
+    const canAccess = await accessControlService.canUserAccessDevice(userId, id, id_type, {
+      userType: req.user_type,
+    });
 
     if (!canAccess) {
       return res.status(403).json({
