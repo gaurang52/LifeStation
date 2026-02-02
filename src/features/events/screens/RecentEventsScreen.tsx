@@ -1,5 +1,14 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { StyleSheet, View, ScrollView, RefreshControl, ActivityIndicator } from 'react-native';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import {
+  StyleSheet,
+  View,
+  ScrollView,
+  RefreshControl,
+  ActivityIndicator,
+  TouchableOpacity,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
+} from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {
   Activity as ActivityIcon,
@@ -17,12 +26,17 @@ import { deviceApi, type Device } from '@core/api/deviceApi';
 import { ErrorHandler } from '@core/utils/errorHandler';
 import moment from 'moment';
 
+const EVENTS_PAGE_SIZE = 25;
+const INFINITE_SCROLL_THRESHOLD_PX = 200;
+
 const RecentEventsScreen: React.FC = () => {
   const [events, setEvents] = useState<DeviceEvent[]>([]);
   const [device, setDevice] = useState<Device | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(EVENTS_PAGE_SIZE);
+  const loadMoreTriggeredRef = useRef(false);
 
   const fetchDevice = useCallback(async () => {
     try {
@@ -59,6 +73,8 @@ const RecentEventsScreen: React.FC = () => {
           return timeB - timeA;
         });
         setEvents(eventList);
+        setVisibleCount(EVENTS_PAGE_SIZE);
+        loadMoreTriggeredRef.current = false;
       } catch (err: unknown) {
         const errorMessage =
           ErrorHandler.getErrorMessage(err) || 'Failed to load events. Please try again.';
@@ -94,6 +110,31 @@ const RecentEventsScreen: React.FC = () => {
       setRefreshing(false);
     }
   }, [fetchDevice, fetchEvents]);
+
+  /** Industry pattern: infinite scroll – load more when user scrolls near bottom */
+  const handleScroll = useCallback(
+    (ev: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const { contentOffset, contentSize, layoutMeasurement } = ev.nativeEvent;
+      const distanceFromBottom = contentSize.height - (contentOffset.y + layoutMeasurement.height);
+      const hasMore = visibleCount < events.length;
+      if (
+        hasMore &&
+        distanceFromBottom < INFINITE_SCROLL_THRESHOLD_PX &&
+        !loadMoreTriggeredRef.current
+      ) {
+        loadMoreTriggeredRef.current = true;
+        setVisibleCount(prev => Math.min(prev + EVENTS_PAGE_SIZE, events.length));
+      }
+      if (distanceFromBottom > INFINITE_SCROLL_THRESHOLD_PX + 100) {
+        loadMoreTriggeredRef.current = false;
+      }
+    },
+    [events.length, visibleCount],
+  );
+
+  const loadMore = useCallback(() => {
+    setVisibleCount(prev => Math.min(prev + EVENTS_PAGE_SIZE, events.length));
+  }, [events.length]);
 
   /** Use actual event date from API (event_date) for display/sort; fallback to eventtime */
   const getEventDate = (item: DeviceEvent): number => {
@@ -267,7 +308,7 @@ const RecentEventsScreen: React.FC = () => {
     const battFromOriginal = original?.batt as number | undefined;
 
     return (
-      <Card style={styles.eventCard}>
+      <Card style={styles.eventCard} padding={spacing.md}>
         <View style={styles.eventContent}>
           <View
             style={[
@@ -275,13 +316,13 @@ const RecentEventsScreen: React.FC = () => {
               {
                 backgroundColor:
                   status === 'warning'
-                    ? colors.warning + '20'
+                    ? colors.errorBackground
                     : status === 'success'
-                    ? colors.success + '20'
-                    : colors.blue + '20',
+                    ? colors.primary + '22'
+                    : colors.lightGray,
               },
             ]}>
-            <EventIcon size={24} color={iconColor} />
+            <EventIcon size={22} color={iconColor} />
           </View>
           <View style={styles.eventInfo}>
             <View style={styles.eventHeader}>
@@ -294,22 +335,26 @@ const RecentEventsScreen: React.FC = () => {
                   {
                     backgroundColor:
                       status === 'warning'
-                        ? colors.warning + '20'
+                        ? colors.errorBackground
                         : status === 'success'
-                        ? colors.success + '20'
-                        : colors.blue + '20',
+                        ? colors.primary + '22'
+                        : colors.lightGray,
                   },
                 ]}>
                 <AppText
                   variant="small"
-                  style={{
-                    color:
-                      status === 'warning'
-                        ? colors.warning
-                        : status === 'success'
-                        ? colors.success
-                        : colors.blue,
-                  }}>
+                  numberOfLines={1}
+                  style={[
+                    styles.eventStatusBadgeText,
+                    {
+                      color:
+                        status === 'warning'
+                          ? colors.error
+                          : status === 'success'
+                          ? colors.primary
+                          : colors.text,
+                    },
+                  ]}>
                   {category}
                 </AppText>
               </View>
@@ -412,6 +457,8 @@ const RecentEventsScreen: React.FC = () => {
         <ScrollView
           style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
+          onScroll={handleScroll}
+          scrollEventThrottle={160}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -428,44 +475,84 @@ const RecentEventsScreen: React.FC = () => {
             </View>
           )}
 
-          <AppText variant="small" color={colors.textSecondary} style={styles.refreshHintText}>
-            Pull to refresh for latest events
-          </AppText>
-
-          {/* Grouped Events by Date */}
-          {events.length > 0 ? (
-            Object.entries(groupEventsByDate(events)).map(([date, dateEvents]) => (
-              <View key={date} style={styles.dateGroup}>
-                <View style={styles.dateHeader}>
-                  <View style={styles.dateHeaderLeft}>
-                    <Clock size={16} color={colors.textSecondary} />
-                    <AppText variant="small" color={colors.textSecondary} style={styles.dateLabel}>
-                      {date.toUpperCase()}
+          {/* Pagination: show first visibleCount events, grouped by date */}
+          {(() => {
+            const visibleEvents = events.slice(0, visibleCount);
+            const hasMore = visibleCount < events.length;
+            const totalCount = events.length;
+            return (
+              <>
+                {visibleEvents.length > 0 ? (
+                  Object.entries(groupEventsByDate(visibleEvents)).map(([date, dateEvents]) => (
+                    <View key={date} style={styles.dateGroup}>
+                      <View style={styles.dateHeader}>
+                        <View style={styles.dateHeaderPill}>
+                          <Clock size={14} color={colors.primary} />
+                          <AppText variant="small" style={styles.dateLabel}>
+                            {date}
+                          </AppText>
+                        </View>
+                      </View>
+                      <View style={styles.eventsList}>
+                        {dateEvents.map((event, index) => (
+                          <View
+                            key={`${
+                              event.rawevent?.originalEvent?.seqno ?? event.eventtime
+                            }-${index}`}>
+                            {renderEventItem(event)}
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  ))
+                ) : (
+                  <View style={styles.emptyStateContainer}>
+                    <MaterialIcons name="event-busy" size={64} color={colors.icon} />
+                    <AppText variant="h3" style={styles.emptyTitle}>
+                      No Events Yet
+                    </AppText>
+                    <AppText variant="small" color={colors.textSecondary} style={styles.emptyText}>
+                      Events and activities will appear here as they occur
                     </AppText>
                   </View>
-                  <View style={styles.dateDivider} />
-                </View>
-                <View style={styles.eventsList}>
-                  {dateEvents.map((event, index) => (
-                    <View
-                      key={`${event.rawevent?.originalEvent?.seqno ?? event.eventtime}-${index}`}>
-                      {renderEventItem(event)}
+                )}
+                {visibleEvents.length > 0 && (
+                  <View style={styles.paginationFooter}>
+                    <View style={styles.paginationBar}>
+                      <AppText
+                        variant="small"
+                        color={colors.textSecondary}
+                        style={styles.paginationCount}>
+                        {visibleCount} of {totalCount} events
+                      </AppText>
+                      {hasMore ? (
+                        <TouchableOpacity
+                          style={styles.loadMoreButton}
+                          onPress={loadMore}
+                          activeOpacity={0.8}
+                          accessibilityRole="button"
+                          accessibilityLabel="Load more events">
+                          <AppText variant="small" style={styles.loadMoreButtonText}>
+                            Load more
+                          </AppText>
+                        </TouchableOpacity>
+                      ) : (
+                        <View style={styles.paginationComplete}>
+                          <CheckCircle size={16} color={colors.success} />
+                          <AppText
+                            variant="small"
+                            color={colors.textSecondary}
+                            style={styles.paginationCompleteText}>
+                            All loaded
+                          </AppText>
+                        </View>
+                      )}
                     </View>
-                  ))}
-                </View>
-              </View>
-            ))
-          ) : (
-            <View style={styles.emptyStateContainer}>
-              <MaterialIcons name="event-busy" size={64} color={colors.icon} />
-              <AppText variant="h3" style={styles.emptyTitle}>
-                No Events Yet
-              </AppText>
-              <AppText variant="small" color={colors.textSecondary} style={styles.emptyText}>
-                Events and activities will appear here as they occur
-              </AppText>
-            </View>
-          )}
+                  </View>
+                )}
+              </>
+            );
+          })()}
         </ScrollView>
       )}
     </Screen>
@@ -481,39 +568,67 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: spacing.md,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xxl,
   },
-  refreshHintText: {
-    marginBottom: spacing.md,
-    opacity: 0.9,
-    fontStyle: 'italic',
+  paginationFooter: {
+    marginTop: spacing.xl,
+    marginBottom: spacing.lg,
+  },
+  paginationBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.lightGray + '40',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.lg,
+  },
+  paginationCount: {
+    fontWeight: '600',
+    color: colors.text,
+  },
+  loadMoreButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    borderRadius: borderRadius.md,
+  },
+  loadMoreButtonText: {
+    color: colors.white,
+    fontWeight: '600',
+  },
+  paginationComplete: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  paginationCompleteText: {
+    fontWeight: '600',
   },
   dateGroup: {
-    marginBottom: spacing.lg, // mb-6 in Figma
+    marginBottom: spacing.xl,
   },
   dateHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.md, // mb-4 in Figma
+    marginBottom: spacing.sm,
   },
-  dateHeaderLeft: {
+  dateHeaderPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm, // space-x-2 in Figma
+    alignSelf: 'flex-start',
+    gap: spacing.xs,
+    backgroundColor: colors.primary + '12',
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    borderRadius: borderRadius.xl,
   },
   dateLabel: {
-    fontWeight: '600', // font-semibold
-    letterSpacing: 0.5, // tracking-wide
-  },
-  dateDivider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: colors.lightGray, // bg-[#F5F5F5] in Figma
-    marginLeft: spacing.sm, // ml-3 in Figma
+    fontWeight: '700',
+    color: colors.primary,
+    letterSpacing: 0.3,
   },
   eventsList: {
-    gap: spacing.sm, // space-y-3 in Figma
+    gap: spacing.md,
   },
   centerContainer: {
     flex: 1,
@@ -549,18 +664,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   eventCard: {
-    marginBottom: 0,
     borderWidth: 1,
-    borderColor: colors.lightGray, // border-[#F5F5F5] in Figma
+    borderColor: colors.lightGray,
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
   },
   eventContent: {
     flexDirection: 'row',
-    gap: spacing.sm, // space-x-3 in Figma
+    gap: spacing.md,
+    alignItems: 'flex-start',
   },
   eventIconContainer: {
-    width: 48, // w-12 in Figma
-    height: 48,
-    borderRadius: borderRadius.lg, // rounded-xl in Figma
+    width: 44,
+    height: 44,
+    borderRadius: borderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -573,26 +690,37 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: spacing.xs / 2, // mb-1 in Figma
+    gap: spacing.xs,
+    marginBottom: spacing.xs,
   },
   eventTitle: {
     flex: 1,
+    marginRight: spacing.xs,
   },
   eventStatusBadge: {
-    paddingHorizontal: spacing.xs, // px-2 in Figma
-    paddingVertical: spacing.xs / 2, // py-1 in Figma
-    borderRadius: borderRadius.xl, // rounded-full in Figma
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs / 2,
+    borderRadius: borderRadius.xl,
+    flexShrink: 0,
+    maxWidth: 120,
+  },
+  eventStatusBadgeText: {
+    fontWeight: '700',
+    fontSize: 11,
   },
   eventDescription: {
-    marginBottom: spacing.xs / 2, // mb-2 in Figma
+    marginBottom: spacing.xs,
+    lineHeight: 18,
   },
   eventTimeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs / 2, // space-x-1 in Figma
+    gap: spacing.xs,
+    marginTop: spacing.xs,
   },
   eventTime: {
-    fontSize: 12, // text-xs in Figma
+    fontSize: 12,
+    color: colors.textSecondary,
   },
   emptyStateContainer: {
     alignItems: 'center',
