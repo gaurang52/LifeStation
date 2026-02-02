@@ -357,6 +357,12 @@ const getAllEvents = async (req, res) => {
         }
       }
     } catch (error) {
+      const externalStatus = error.response?.status;
+      const externalMessage =
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        (typeof error.response?.data === 'string' ? error.response.data : null);
+
       logger.error('Error fetching events from Reports API:', {
         error: error.message,
         stack: error.stack,
@@ -365,7 +371,7 @@ const getAllEvents = async (req, res) => {
         frequency: frequency,
         error_name: error.name,
         error_code: error.code,
-        response_status: error.response?.status,
+        response_status: externalStatus,
         response_data: error.response?.data,
         response_headers: error.response?.headers,
       });
@@ -380,9 +386,24 @@ const getAllEvents = async (req, res) => {
         });
       }
 
+      const isProduction = process.env.NODE_ENV === 'production';
+      const includeDetail = !isProduction || process.env.DEBUG_EVENTS_ERROR === 'true';
+
+      const detail = includeDetail
+        ? [
+            externalStatus && `Reports API status: ${externalStatus}`,
+            externalMessage && `Reports API: ${String(externalMessage).slice(0, 100)}`,
+            error.code && `Code: ${error.code}`,
+            error.message,
+          ]
+            .filter(Boolean)
+            .join(' | ')
+        : undefined;
+
       return res.status(500).json({
         error: 'Unable to fetch events',
         message: 'The events service is currently unavailable. Please try again later.',
+        ...(detail && { detail }),
       });
     }
 
@@ -427,19 +448,23 @@ const getAllEvents = async (req, res) => {
       user_id: req.user_id,
     });
 
+    const isProduction = process.env.NODE_ENV === 'production';
+    const includeDetail = !isProduction || process.env.DEBUG_EVENTS_ERROR === 'true';
+
     if (error.response) {
       return res.status(500).json({
         error: 'Unable to fetch events',
         message: 'The events service encountered an error. Please try again later.',
+        ...(includeDetail && { detail: error.message }),
       });
     }
 
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Internal server error',
-      message:
-        process.env.NODE_ENV === 'production'
-          ? 'An unexpected error occurred. Please try again later.'
-          : error.message,
+      message: isProduction
+        ? 'An unexpected error occurred. Please try again later.'
+        : error.message,
+      ...(includeDetail && { detail: error.message }),
     });
   }
 };
