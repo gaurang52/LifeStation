@@ -44,10 +44,25 @@ function verifyToken(req, res, next) {
       return res.status(401).json({ error: 'Unauthorized: Invalid token' });
     }
 
-    // Attach user info to request
     req.user_id = decoded.user_id;
-    req.user_type = decoded.user_type;
     req.decoded_info = decoded;
+
+    // Resolve user_type from DB (umbrella-app pattern) so role checks always use current data.
+    // Avoids 403 when JWT lacks user_type (e.g. old tokens) or DB was updated.
+    try {
+      const user = await db.Users.findByPk(decoded.user_id, {
+        attributes: ['id', 'user_type', 'status'],
+      });
+      if (!user) {
+        return res.status(401).json({ error: 'Unauthorized: User not found' });
+      }
+      const rawType = user.user_type;
+      req.user_type = rawType != null ? String(rawType).toLowerCase() : decoded.user_type || '';
+    } catch (fetchErr) {
+      logger.error('Error fetching user in verify-token:', fetchErr);
+      const fallback = decoded.user_type != null ? String(decoded.user_type).toLowerCase() : '';
+      req.user_type = fallback;
+    }
 
     next();
   });
