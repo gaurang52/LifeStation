@@ -24,6 +24,7 @@ interface AuthState {
     fcm_token?: string;
     privacy_accepted: boolean;
     terms_accepted: boolean;
+    cs_no?: string; // OPTION A: LifeStation account number (required for seniors)
   }) => Promise<void>;
   logout: () => void;
   setUser: (user: User) => void;

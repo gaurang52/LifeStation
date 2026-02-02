@@ -15,5 +15,6 @@ export interface User {
     isPro?: boolean;
   };
   cs_no?: string | null;
+  notification_enabled?: boolean;
   created_at: string;
 }

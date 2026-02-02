@@ -57,6 +57,56 @@ const login = async (req, res) => {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
 
+    // OPTION A: Validate user's cs_no exists in LifeStation Account API (real-time validation)
+    if (user.cs_no) {
+      try {
+        const accountApiService = require('../../services/account-api.service');
+        const accountData = await accountApiService.getAccount(user.cs_no);
+
+        // Validate account is active (status 'A' = Active)
+        if (accountData && accountData.status && accountData.status !== 'A') {
+          logger.warn(
+            `User ${user.id} (${user.email}) has inactive LifeStation account (cs_no: ${user.cs_no}, status: ${accountData.status})`,
+          );
+          return res.status(403).json({
+            error: 'Account inactive',
+            message: 'Your LifeStation account is not active. Please contact support.',
+          });
+        }
+
+        logger.debug(
+          `Validated user ${user.id} cs_no ${user.cs_no} against LifeStation Account API`,
+        );
+      } catch (accountError) {
+        // If Account API returns 404, account doesn't exist in LifeStation
+        if (accountError.response?.status === 404) {
+          logger.warn(
+            `User ${user.id} (${user.email}) has cs_no ${user.cs_no} but account not found in LifeStation`,
+          );
+          return res.status(403).json({
+            error: 'Account not found',
+            message: 'Your account is not found in LifeStation system. Please contact support.',
+          });
+        }
+
+        // If Account API is down, log but allow login (graceful degradation)
+        logger.error(
+          `Failed to validate cs_no ${user.cs_no} against LifeStation Account API (non-blocking):`,
+          {
+            error: accountError.message,
+            user_id: user.id,
+            email: user.email,
+          },
+        );
+        // Continue with login - API failures should not block authentication completely
+      }
+    } else {
+      // If user doesn't have cs_no, log warning but allow login (for backward compatibility)
+      logger.debug(
+        `User ${user.id} (${user.email}) logged in without cs_no - skipping LifeStation validation`,
+      );
+    }
+
     // Update user login status and FCM token
     const updateData = {
       is_login: true,

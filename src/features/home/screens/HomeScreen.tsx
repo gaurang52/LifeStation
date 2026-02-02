@@ -1166,29 +1166,37 @@ const HomeScreen: React.FC = () => {
                     </View>
                   </View>
                   <View style={styles.statusBarBottom}>
-                    <MaterialIcons name="access-time" size={16} color={colors.textSecondary} />
+                    <View style={styles.lastSyncRow}>
+                      <MaterialIcons name="access-time" size={16} color={colors.textSecondary} />
+                      <AppText
+                        variant="small"
+                        color={colors.textSecondary}
+                        style={styles.lastSyncText}>
+                        Last sync:{' '}
+                        {deviceInfo?.lastUpdate
+                          ? (() => {
+                              try {
+                                const date = new Date(deviceInfo.lastUpdate);
+                                const now = new Date();
+                                const diffMs = now.getTime() - date.getTime();
+                                const diffMins = Math.floor(diffMs / 60000);
+                                if (diffMins < 1) return 'Just now';
+                                if (diffMins < 60) return `${diffMins} min ago`;
+                                const diffHours = Math.floor(diffMs / 3600000);
+                                if (diffHours < 24) return `${diffHours} hr ago`;
+                                return date.toLocaleDateString();
+                              } catch {
+                                return 'Unknown';
+                              }
+                            })()
+                          : 'Unknown'}
+                      </AppText>
+                    </View>
                     <AppText
                       variant="small"
                       color={colors.textSecondary}
-                      style={styles.lastSyncText}>
-                      Last sync:{' '}
-                      {deviceInfo?.lastUpdate
-                        ? (() => {
-                            try {
-                              const date = new Date(deviceInfo.lastUpdate);
-                              const now = new Date();
-                              const diffMs = now.getTime() - date.getTime();
-                              const diffMins = Math.floor(diffMs / 60000);
-                              if (diffMins < 1) return 'Just now';
-                              if (diffMins < 60) return `${diffMins} minutes ago`;
-                              const diffHours = Math.floor(diffMs / 3600000);
-                              if (diffHours < 24) return `${diffHours} hours ago`;
-                              return date.toLocaleDateString();
-                            } catch {
-                              return 'Unknown';
-                            }
-                          })()
-                        : 'Never'}
+                      style={styles.refreshHintText}>
+                      Tap the refresh icon above or pull down for latest location & status
                     </AppText>
                   </View>
                 </View>
@@ -1339,12 +1347,21 @@ const styles = StyleSheet.create({
     backgroundColor: colors.textSecondary,
   },
   statusBarBottom: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: spacing.xs / 2,
+  },
+  lastSyncRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs / 2, // mr-1 equivalent
+    gap: spacing.xs / 2,
   },
   lastSyncText: {
-    fontSize: 14, // text-sm in Figma
+    fontSize: 14,
+  },
+  refreshHintText: {
+    opacity: 0.9,
+    fontStyle: 'italic',
   },
   paddedContent: {
     paddingHorizontal: 8,

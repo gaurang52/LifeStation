@@ -317,6 +317,10 @@ const RecentEventsScreen: React.FC = () => {
             </View>
           )}
 
+          <AppText variant="small" color={colors.textSecondary} style={styles.refreshHintText}>
+            Pull to refresh for latest events
+          </AppText>
+
           {/* Filter Chips */}
           <View style={styles.filterContainer}>
             <ScrollView
@@ -390,6 +394,11 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: spacing.lg, // px-6 in Figma
     paddingBottom: spacing.lg,
+  },
+  refreshHintText: {
+    marginBottom: spacing.md,
+    opacity: 0.9,
+    fontStyle: 'italic',
   },
   filterContainer: {
     marginBottom: spacing.md, // py-4 equivalent

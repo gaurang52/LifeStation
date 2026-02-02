@@ -32,6 +32,7 @@ const SignupScreen: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [mobile, setMobile] = useState('');
   const [address, setAddress] = useState('');
+  const [csNo, setCsNo] = useState(''); // OPTION A: LifeStation account number
   const [userType, setUserType] = useState<'caregiver' | 'senior'>('senior');
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -125,6 +126,25 @@ const SignupScreen: React.FC = () => {
     return true;
   };
 
+  const validateCsNo = (csNoValue: string): boolean => {
+    // OPTION A: cs_no is required for seniors
+    if (userType === 'senior') {
+      if (!csNoValue || csNoValue.trim().length === 0) {
+        setErrors(prev => ({
+          ...prev,
+          csNo: 'LifeStation account number (cs_no) is required for senior accounts',
+        }));
+        return false;
+      }
+    }
+    setErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors.csNo;
+      return newErrors;
+    });
+    return true;
+  };
+
   const onSubmit = async () => {
     setError(null);
 
@@ -133,13 +153,15 @@ const SignupScreen: React.FC = () => {
     const isPasswordValid = validatePassword(password);
     const isConfirmPasswordValid = validateConfirmPassword(confirmPassword);
     const isMobileValid = validateMobile(mobile);
+    const isCsNoValid = validateCsNo(csNo);
 
     if (
       !isNameValid ||
       !isEmailValid ||
       !isPasswordValid ||
       !isConfirmPasswordValid ||
-      !isMobileValid
+      !isMobileValid ||
+      !isCsNoValid
     ) {
       return;
     }
@@ -170,6 +192,7 @@ const SignupScreen: React.FC = () => {
         user_type: userType,
         mobile: mobile.trim() || undefined,
         address: address.trim() || undefined,
+        cs_no: csNo.trim() || undefined, // OPTION A: Include cs_no for LifeStation validation
         fcm_token: fcmToken || undefined,
         privacy_accepted: true,
         terms_accepted: true,
@@ -333,6 +356,30 @@ const SignupScreen: React.FC = () => {
               />
             </View>
 
+            {/* OPTION A: cs_no field - required for seniors */}
+            {userType === 'senior' && (
+              <View style={styles.inputContainer}>
+                <MaterialIcons
+                  name="account-circle"
+                  size={20}
+                  color={colors.icon}
+                  style={styles.inputIcon}
+                />
+                <Input
+                  label="LifeStation Account Number (cs_no) *"
+                  placeholder="Enter your LifeStation account number"
+                  value={csNo}
+                  onChangeText={text => {
+                    setCsNo(text);
+                    if (errors.csNo) validateCsNo(text);
+                  }}
+                  error={errors.csNo}
+                  onBlur={() => validateCsNo(csNo)}
+                  style={styles.input}
+                />
+              </View>
+            )}
+
             <View style={styles.userTypeContainer}>
               <AppText variant="bodyBold" color={colors.text} style={styles.userTypeLabel}>
                 I am a:
@@ -343,7 +390,17 @@ const SignupScreen: React.FC = () => {
                     styles.userTypeButton,
                     userType === 'senior' && styles.userTypeButtonActive,
                   ]}
-                  onPress={() => setUserType('senior')}
+                  onPress={() => {
+                    setUserType('senior');
+                    // Clear cs_no validation error when switching to senior
+                    if (errors.csNo) {
+                      setErrors(prev => {
+                        const newErrors = { ...prev };
+                        delete newErrors.csNo;
+                        return newErrors;
+                      });
+                    }
+                  }}
                   activeOpacity={0.7}>
                   <AppText
                     variant="bodyBold"
@@ -359,7 +416,18 @@ const SignupScreen: React.FC = () => {
                     styles.userTypeButton,
                     userType === 'caregiver' && styles.userTypeButtonActive,
                   ]}
-                  onPress={() => setUserType('caregiver')}
+                  onPress={() => {
+                    setUserType('caregiver');
+                    // Clear cs_no when switching to caregiver (not required)
+                    setCsNo('');
+                    if (errors.csNo) {
+                      setErrors(prev => {
+                        const newErrors = { ...prev };
+                        delete newErrors.csNo;
+                        return newErrors;
+                      });
+                    }
+                  }}
                   activeOpacity={0.7}>
                   <AppText
                     variant="bodyBold"

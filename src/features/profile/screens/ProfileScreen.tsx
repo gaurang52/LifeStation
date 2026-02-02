@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   View,
@@ -7,6 +7,9 @@ import {
   Modal,
   KeyboardAvoidingView,
   Platform,
+  Switch,
+  Linking,
+  ActivityIndicator,
 } from 'react-native';
 import {
   Bell,
@@ -15,13 +18,14 @@ import {
   HelpCircle,
   LogOut,
   Lock,
-  Shield,
   User,
   Smartphone,
+  MapPin,
+  Phone,
 } from 'lucide-react-native';
 import { Screen, AppText, Card, TopNavbar, Input, Button } from '@shared/components';
 import { useAuthStore } from '@core/store';
-import { authApi } from '@core/api/authApi';
+import { authApi, type LifestationAccount } from '@core/api/authApi';
 import { spacing, colors, borderRadius } from '@shared/theme';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import type { AppStackParamList } from '@core/constants/routes';
@@ -30,10 +34,14 @@ import { ROUTES } from '@core/constants/routes';
 
 type NavigationProp = StackNavigationProp<AppStackParamList>;
 
+const LIFESTATION_HELP_URL = 'https://www.lifestation.com';
+const LIFESTATION_TERMS_URL = 'https://www.lifestation.com/terms-and-conditions/';
+
 const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const user = useAuthStore(state => state.user);
   const logout = useAuthStore(state => state.logout);
+  const setUser = useAuthStore(state => state.setUser);
 
   const [showUpdatePassword, setShowUpdatePassword] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -42,6 +50,87 @@ const ProfileScreen: React.FC = () => {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
+
+  const [lifestationAccount, setLifestationAccount] = useState<LifestationAccount | null>(null);
+  const [accountLoading, setAccountLoading] = useState(false);
+  const [notificationEnabled, setNotificationEnabled] = useState(
+    user?.notification_enabled !== false,
+  );
+  const [notificationUpdating, setNotificationUpdating] = useState(false);
+  const [showEditProfile, setShowEditProfile] = useState(false);
+  const [editName, setEditName] = useState(user?.name ?? '');
+  const [editMobile, setEditMobile] = useState(user?.mobile ?? '');
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+
+  const fetchLifestationAccount = useCallback(async () => {
+    if (!user?.cs_no) return;
+    setAccountLoading(true);
+    try {
+      const res = await authApi.getLifestationAccount();
+      if (res.account) setLifestationAccount(res.account);
+    } catch {
+      setLifestationAccount(null);
+    } finally {
+      setAccountLoading(false);
+    }
+  }, [user?.cs_no]);
+
+  useEffect(() => {
+    if (user?.notification_enabled !== undefined) {
+      setNotificationEnabled(user.notification_enabled !== false);
+    }
+  }, [user?.notification_enabled]);
+
+  useEffect(() => {
+    fetchLifestationAccount();
+  }, [fetchLifestationAccount]);
+
+  const handleNotificationToggle = async (value: boolean) => {
+    setNotificationUpdating(true);
+    try {
+      await authApi.updateProfile({ notification_enabled: value });
+      setNotificationEnabled(value);
+      setUser({ ...user!, notification_enabled: value });
+    } catch {
+      // Revert on error
+      setNotificationEnabled(!value);
+    } finally {
+      setNotificationUpdating(false);
+    }
+  };
+
+  const openEditProfile = () => {
+    setEditName(user?.name ?? '');
+    setEditMobile(user?.mobile ?? '');
+    setProfileError(null);
+    setShowEditProfile(true);
+  };
+
+  const handleSaveProfile = async () => {
+    setProfileError(null);
+    setProfileSaving(true);
+    try {
+      const res = await authApi.updateProfile({
+        name: editName.trim() || undefined,
+        mobile: editMobile.trim() || null,
+      });
+      if (res.user) setUser({ ...user!, ...res.user });
+      setShowEditProfile(false);
+    } catch (e: unknown) {
+      const msg =
+        (e as { response?: { data?: { error?: string } }; message?: string })?.response?.data
+          ?.error ??
+        (e as { message?: string })?.message ??
+        'Failed to update profile';
+      setProfileError(msg);
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
+  const openHelp = () => Linking.openURL(LIFESTATION_HELP_URL).catch(() => {});
+  const openTerms = () => Linking.openURL(LIFESTATION_TERMS_URL).catch(() => {});
 
   const handleLogout = () => {
     logout();
@@ -169,7 +258,10 @@ const ProfileScreen: React.FC = () => {
               ACCOUNT
             </AppText>
             <Card style={styles.settingsCard}>
-              <TouchableOpacity style={styles.settingRow} activeOpacity={0.7}>
+              <TouchableOpacity
+                style={styles.settingRow}
+                activeOpacity={0.7}
+                onPress={openEditProfile}>
                 <View style={styles.settingLeft}>
                   <View style={styles.settingIconContainer}>
                     <User size={20} color={colors.primary} />
@@ -181,36 +273,26 @@ const ProfileScreen: React.FC = () => {
                 <ChevronRight size={20} color={colors.textSecondary} />
               </TouchableOpacity>
               <View style={styles.divider} />
-              <TouchableOpacity style={styles.settingRow} activeOpacity={0.7}>
+              <View style={styles.settingRow}>
                 <View style={styles.settingLeft}>
                   <View style={styles.settingIconContainer}>
                     <Bell size={20} color={colors.primary} />
                   </View>
                   <AppText variant="body" style={styles.settingLabel}>
-                    Notifications
+                    Push notifications
                   </AppText>
                 </View>
-                <View style={styles.settingRight}>
-                  <View style={styles.badge}>
-                    <AppText variant="small" color={colors.white} style={styles.badgeText}>
-                      3
-                    </AppText>
-                  </View>
-                  <ChevronRight size={20} color={colors.textSecondary} />
-                </View>
-              </TouchableOpacity>
-              <View style={styles.divider} />
-              <TouchableOpacity style={styles.settingRow} activeOpacity={0.7}>
-                <View style={styles.settingLeft}>
-                  <View style={styles.settingIconContainer}>
-                    <Shield size={20} color={colors.primary} />
-                  </View>
-                  <AppText variant="body" style={styles.settingLabel}>
-                    Privacy & Security
-                  </AppText>
-                </View>
-                <ChevronRight size={20} color={colors.textSecondary} />
-              </TouchableOpacity>
+                {notificationUpdating ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Switch
+                    value={notificationEnabled}
+                    onValueChange={handleNotificationToggle}
+                    trackColor={{ false: colors.lightGray, true: colors.lightPrimary }}
+                    thumbColor={notificationEnabled ? colors.primary : colors.white}
+                  />
+                )}
+              </View>
               <View style={styles.divider} />
               <TouchableOpacity
                 style={styles.settingRow}
@@ -244,13 +326,82 @@ const ProfileScreen: React.FC = () => {
             </Card>
           </View>
 
+          {/* LifeStation account (Account API) - for users with cs_no */}
+          {user?.cs_no && (
+            <View style={styles.settingsGroup}>
+              <AppText
+                variant="small"
+                color={colors.textSecondary}
+                style={styles.sectionGroupTitle}>
+                LIFESTATION ACCOUNT
+              </AppText>
+              <Card style={styles.settingsCard}>
+                {accountLoading ? (
+                  <View style={styles.accountLoading}>
+                    <ActivityIndicator size="small" color={colors.primary} />
+                    <AppText
+                      variant="small"
+                      color={colors.textSecondary}
+                      style={styles.loadingText}>
+                      Loading…
+                    </AppText>
+                  </View>
+                ) : lifestationAccount ? (
+                  <View style={styles.lifestationAccountContent}>
+                    <View style={styles.lifestationRow}>
+                      <AppText variant="small" color={colors.textSecondary}>
+                        Account number
+                      </AppText>
+                      <AppText variant="body">{lifestationAccount.cs_no}</AppText>
+                    </View>
+                    {lifestationAccount.name ? (
+                      <View style={styles.lifestationRow}>
+                        <AppText variant="small" color={colors.textSecondary}>
+                          Name
+                        </AppText>
+                        <AppText variant="body">{lifestationAccount.name}</AppText>
+                      </View>
+                    ) : null}
+                    {lifestationAccount.addr1 || lifestationAccount.city ? (
+                      <View style={styles.lifestationRow}>
+                        <MapPin size={14} color={colors.textSecondary} />
+                        <AppText variant="body" style={styles.lifestationValue}>
+                          {[
+                            lifestationAccount.addr1,
+                            lifestationAccount.city,
+                            lifestationAccount.state,
+                            lifestationAccount.zip,
+                          ]
+                            .filter(Boolean)
+                            .join(', ')}
+                        </AppText>
+                      </View>
+                    ) : null}
+                    {lifestationAccount.phone1 ? (
+                      <View style={styles.lifestationRow}>
+                        <Phone size={14} color={colors.textSecondary} />
+                        <AppText variant="body" style={styles.lifestationValue}>
+                          {lifestationAccount.phone1}
+                        </AppText>
+                      </View>
+                    ) : null}
+                  </View>
+                ) : (
+                  <AppText variant="small" color={colors.textSecondary}>
+                    Account number: {user.cs_no}
+                  </AppText>
+                )}
+              </Card>
+            </View>
+          )}
+
           {/* Support Section */}
           <View style={styles.settingsGroup}>
             <AppText variant="small" color={colors.textSecondary} style={styles.sectionGroupTitle}>
               SUPPORT
             </AppText>
             <Card style={styles.settingsCard}>
-              <TouchableOpacity style={styles.settingRow} activeOpacity={0.7}>
+              <TouchableOpacity style={styles.settingRow} activeOpacity={0.7} onPress={openHelp}>
                 <View style={styles.settingLeft}>
                   <View style={styles.settingIconContainer}>
                     <HelpCircle size={20} color={colors.primary} />
@@ -262,7 +413,7 @@ const ProfileScreen: React.FC = () => {
                 <ChevronRight size={20} color={colors.textSecondary} />
               </TouchableOpacity>
               <View style={styles.divider} />
-              <TouchableOpacity style={styles.settingRow} activeOpacity={0.7}>
+              <TouchableOpacity style={styles.settingRow} activeOpacity={0.7} onPress={openTerms}>
                 <View style={styles.settingLeft}>
                   <View style={styles.settingIconContainer}>
                     <FileText size={20} color={colors.primary} />
@@ -300,6 +451,79 @@ const ProfileScreen: React.FC = () => {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Edit Profile Modal */}
+      <Modal
+        visible={showEditProfile}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowEditProfile(false)}>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowEditProfile(false)}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={styles.modalContentWrap}>
+            <TouchableOpacity activeOpacity={1} onPress={e => e.stopPropagation()}>
+              <Card style={styles.updatePasswordCard}>
+                <AppText variant="h3" style={styles.updatePasswordTitle}>
+                  Edit Profile
+                </AppText>
+                <Input
+                  label="Name"
+                  value={editName}
+                  onChangeText={setEditName}
+                  placeholder="Your name"
+                  autoCapitalize="words"
+                  style={styles.updatePasswordInput}
+                />
+                <Input
+                  label="Email"
+                  value={user?.email ?? ''}
+                  editable={false}
+                  placeholder="Email"
+                  style={[styles.updatePasswordInput, styles.inputReadOnly]}
+                />
+                <AppText variant="small" color={colors.textSecondary} style={styles.emailHint}>
+                  Email cannot be changed
+                </AppText>
+                <Input
+                  label="Mobile"
+                  value={editMobile}
+                  onChangeText={setEditMobile}
+                  placeholder="Phone number"
+                  keyboardType="phone-pad"
+                  style={styles.updatePasswordInput}
+                />
+                {profileError ? (
+                  <AppText variant="small" color={colors.error} style={styles.updatePasswordError}>
+                    {profileError}
+                  </AppText>
+                ) : null}
+                <View style={styles.updatePasswordActions}>
+                  <TouchableOpacity
+                    style={styles.updatePasswordCancelBtn}
+                    onPress={() => setShowEditProfile(false)}
+                    disabled={profileSaving}>
+                    <AppText variant="body" color={colors.textSecondary}>
+                      Cancel
+                    </AppText>
+                  </TouchableOpacity>
+                  <View style={styles.updatePasswordSubmitWrap}>
+                    <Button
+                      label="Save"
+                      onPress={handleSaveProfile}
+                      loading={profileSaving}
+                      disabled={profileSaving}
+                    />
+                  </View>
+                </View>
+              </Card>
+            </TouchableOpacity>
+          </KeyboardAvoidingView>
+        </TouchableOpacity>
+      </Modal>
 
       {/* Update Password Modal */}
       <Modal
@@ -523,6 +747,34 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: colors.lightGray,
     marginHorizontal: spacing.md,
+  },
+  lifestationAccountContent: {
+    padding: spacing.md,
+  },
+  lifestationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  lifestationValue: {
+    flex: 1,
+  },
+  accountLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.md,
+  },
+  loadingText: {
+    marginLeft: spacing.xs,
+  },
+  emailHint: {
+    marginTop: -spacing.sm,
+    marginBottom: spacing.md,
+  },
+  inputReadOnly: {
+    opacity: 0.8,
   },
   appInfoContainer: {
     marginBottom: spacing.xl, // mb-8 for better spacing

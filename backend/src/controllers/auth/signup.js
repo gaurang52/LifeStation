@@ -1,13 +1,12 @@
 /**
  * Signup Controller
  *
- * ARCHITECTURE NOTE:
- * ==================
- * This controller creates users ONLY in our internal system.
- * NO external API calls are made to create or sync users.
- *
- * The external system is treated as an integration service (device/reports provider),
- * NOT a user management platform.
+ * ARCHITECTURE NOTE (OPTION A):
+ * =============================
+ * This controller implements Option A: Real-time validation with LifeStation APIs.
+ * - If cs_no is provided, we validate it exists in LifeStation Account API before creating user
+ * - Users are still stored in our internal system, but linked to LifeStation accounts via cs_no
+ * - Device access will be validated via LifeStation Device API (not internal UserDeviceMapping)
  */
 
 require('dotenv').config();
@@ -16,6 +15,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const logger = require('../../utils/logger');
 const { isValidEmail, isValidUserType, isValidPhone } = require('../../utils/validators');
+const accountApiService = require('../../services/account-api.service');
 
 const JWT_SECRET_KEY = process.env.JWT_SECRET_KEY;
 const REFRESH_SECRET_KEY = process.env.REFRESH_SECRET_KEY;
@@ -34,6 +34,7 @@ const signup = async (req, res) => {
       platform,
       privacy_accepted,
       terms_accepted,
+      cs_no, // OPTION A: cs_no from LifeStation account
     } = req.body;
 
     // Log received FCM token for debugging (first 20 chars only for security)
@@ -90,6 +91,51 @@ const signup = async (req, res) => {
       return res.status(400).json({
         error: 'Privacy policy and terms of service must be accepted',
       });
+    }
+
+    // OPTION A: Validate cs_no exists in LifeStation Account API (if provided)
+    if (cs_no) {
+      try {
+        const accountData = await accountApiService.getAccount(cs_no);
+
+        // Validate account is active
+        if (accountData && accountData.status && accountData.status !== 'A') {
+          return res.status(400).json({
+            error: 'Invalid account',
+            message: `LifeStation account ${cs_no} is not active (status: ${accountData.status}). Please contact support.`,
+          });
+        }
+
+        logger.info(`Validated cs_no ${cs_no} against LifeStation Account API during signup`);
+      } catch (accountError) {
+        // If Account API returns 404, account doesn't exist
+        if (accountError.response?.status === 404) {
+          return res.status(400).json({
+            error: 'Account not found',
+            message: `LifeStation account ${cs_no} not found. Please verify your account number or contact support.`,
+          });
+        }
+
+        // If Account API is down, reject signup (we need validation for Option A)
+        logger.error(`Failed to validate cs_no ${cs_no} against LifeStation Account API:`, {
+          error: accountError.message,
+        });
+        return res.status(503).json({
+          error: 'Service unavailable',
+          message: 'Unable to validate account with LifeStation. Please try again later.',
+        });
+      }
+    } else {
+      // OPTION A: For seniors, cs_no is required (they need LifeStation account)
+      if (user_type_normalized === 'senior') {
+        return res.status(400).json({
+          error: 'cs_no required',
+          message:
+            'Senior accounts require a LifeStation account number (cs_no). Please provide your cs_no.',
+        });
+      }
+      // Caregivers and admins can signup without cs_no initially
+      logger.debug('Signup without cs_no (allowed for caregivers/admins)');
     }
 
     const normalizedEmail = email.toLowerCase().trim();
@@ -194,6 +240,7 @@ const signup = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
     // Create user (store normalized user_type for consistent access control)
+    // OPTION A: Store cs_no to link user to LifeStation account
     const user = await db.Users.create({
       name: name.trim(),
       email: normalizedEmail,
@@ -208,6 +255,7 @@ const signup = async (req, res) => {
       terms_accepted: terms_accepted || false,
       status: 'ACTIVATED',
       is_login: true,
+      cs_no: cs_no ? cs_no.trim() : null, // OPTION A: Link to LifeStation account
       extra_info: {
         isPro: false,
       },
