@@ -244,13 +244,13 @@ const getAllEvents = async (req, res) => {
       });
     }
 
-    // Get cs_no from device mapping
+    // Get cs_no from device mapping (LifeStation Reports API uses this in GET /report/recent/{cs_no})
     const deviceMapping = await db.UserDeviceMapping.findOne({
       where: { device_id: targetDevice.id },
     });
 
-    const csNo = deviceMapping?.cs_no || targetDevice.cs_no;
-
+    let csNo = deviceMapping?.cs_no || targetDevice.cs_no;
+    if (csNo != null) csNo = String(csNo).trim();
     if (!csNo) {
       logger.warn(`No cs_no found for device ${device_id} - trying device API instead`);
 
@@ -358,10 +358,11 @@ const getAllEvents = async (req, res) => {
       }
     } catch (error) {
       const externalStatus = error.response?.status;
+      const data = error.response?.data;
       const externalMessage =
-        error.response?.data?.message ||
-        error.response?.data?.error ||
-        (typeof error.response?.data === 'string' ? error.response.data : null);
+        (data && (data.message || data.error || data.error_description)) ||
+        (Array.isArray(data?.errors) && data.errors[0] ? String(data.errors[0]) : null) ||
+        (typeof data === 'string' ? data : null);
 
       logger.error('Error fetching events from Reports API:', {
         error: error.message,
@@ -372,7 +373,7 @@ const getAllEvents = async (req, res) => {
         error_name: error.name,
         error_code: error.code,
         response_status: externalStatus,
-        response_data: error.response?.data,
+        response_data: data,
         response_headers: error.response?.headers,
       });
 
@@ -392,7 +393,10 @@ const getAllEvents = async (req, res) => {
       const detail = includeDetail
         ? [
             externalStatus && `Reports API status: ${externalStatus}`,
-            externalMessage && `Reports API: ${String(externalMessage).slice(0, 100)}`,
+            externalMessage && `Reports API: ${String(externalMessage).slice(0, 200)}`,
+            externalStatus === 400 &&
+              csNo &&
+              `cs_no sent: ${String(csNo).slice(0, 20)} (check format/length for LifeStation)`,
             error.code && `Code: ${error.code}`,
             error.message,
           ]
