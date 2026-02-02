@@ -118,17 +118,20 @@ class ReportsApiService {
   }
 
   /**
-   * Get recent reports for account
-   * @param {string} csNo - Customer service number
+   * Get recent reports for account.
+   * Matches ReportsAPI.postman_collection.json "Recent": GET /report/recent/{{cs_no}}, Bearer only, no body.
+   * @param {string} csNo - Customer service number (path segment)
    * @returns {Promise<object>} - Recent reports data
    */
   async getRecentReports(csNo) {
-    return await this.makeRequest('GET', `/report/recent/${csNo}`);
+    const path = `/report/recent/${encodeURIComponent(String(csNo).trim())}`;
+    return await this.makeRequest('GET', path, null);
   }
 
   /**
-   * Create history report request
-   * @param {object} reportParams - Report parameters
+   * Create history report request.
+   * Matches ReportsAPI.postman_collection.json "History Create": POST /report/history, JSON body.
+   * @param {object} reportParams - { before, after, cs_start, cs_end, title?, signal_type?, servco_no? }
    * @returns {Promise<object>} - Report creation result with report_id
    */
   async createHistoryReport(reportParams) {
@@ -189,12 +192,12 @@ class ReportsApiService {
   }
 
   /**
-   * Create and fetch event history report
-   * This is a convenience method that creates a history report, waits for it to be ready,
-   * and returns the data.
+   * Create and fetch event history report.
+   * Matches ReportsAPI.postman_collection.json "History Create" flow: POST body then GET .../ready then GET .../report_id.
+   * Body fields per Postman: before, after, cs_start, cs_end, title (max 40 chars), signal_type (optional), servco_no (optional).
    *
    * @param {object} params - Report parameters
-   * @param {string} params.csNo - Customer service number (for single account)
+   * @param {string} params.csNo - Customer service number (for single account → cs_start/cs_end)
    * @param {string} params.before - End date (YYYY-MM-DD HH:mm:ss)
    * @param {string} params.after - Start date (YYYY-MM-DD HH:mm:ss)
    * @param {Array<string>} params.signalTypes - Signal types to include (optional)
@@ -204,27 +207,25 @@ class ReportsApiService {
   async getEventHistory(params) {
     const { csNo, before, after, signalTypes, servcoNo } = params;
 
-    // Build request body matching Postman collection
+    // Build request body matching Postman "History Create" raw JSON (before, after, cs_start, cs_end, title, signal_type, servco_no)
     const reportParams = {
       before: before || this.formatDate(new Date()),
-      after: after || this.formatDate(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)), // Default: 30 days ago
-      title: `Events_${csNo}_${Date.now()}`,
+      after: after || this.formatDate(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)), // Default: today - 30 days per API doc
+      title: this.buildHistoryTitle(csNo),
     };
 
-    // If csNo provided, use it as range
     if (csNo) {
-      reportParams.cs_start = csNo;
-      reportParams.cs_end = csNo;
+      const cs = String(csNo).trim();
+      reportParams.cs_start = cs;
+      reportParams.cs_end = cs;
     }
 
-    // Add signal types if provided
     if (signalTypes && Array.isArray(signalTypes) && signalTypes.length > 0) {
       reportParams.signal_type = signalTypes;
     }
 
-    // Add servco_no if provided
     if (servcoNo) {
-      reportParams.servco_no = servcoNo;
+      reportParams.servco_no = String(servcoNo).trim();
     }
 
     // Step 1: Create history report
@@ -260,7 +261,19 @@ class ReportsApiService {
   }
 
   /**
-   * Format date for Reports API
+   * Build title for History report. API doc: title optional, max 40 chars.
+   * @param {string} csNo - Customer service number
+   * @returns {string} - Title string, max 40 characters
+   */
+  buildHistoryTitle(csNo) {
+    const base = `Rpt_${String(csNo || '')
+      .trim()
+      .slice(0, 12)}_${Date.now() % 1e9}`;
+    return base.slice(0, 40);
+  }
+
+  /**
+   * Format date for Reports API (Postman example: "2017-10-11 00:00:00").
    * @param {Date} date - Date to format
    * @returns {string} - Formatted date (YYYY-MM-DD HH:mm:ss)
    */

@@ -310,16 +310,39 @@ const getAllEvents = async (req, res) => {
       });
     }
 
-    // Fast path: last_24_hours uses Recent only (one GET). Longer ranges use History (create + poll + get).
+    // last_24_hours: try Recent first (fast GET). If 4xx (e.g. 400 for cs_no in path on staging), fall back to History (cs_no in body).
     const dateRange = getDateRange(frequency);
-    const useRecentOnly = frequency === 'last_24_hours';
+    const tryRecentFirst = frequency === 'last_24_hours';
     let eventsData = [];
 
     try {
-      if (useRecentOnly) {
-        const recentData = await reportsApiService.getRecentReports(csNo);
-        eventsData = normalizeEvents(recentData);
-        logger.debug(`Fetched ${eventsData.length} events from Recent API for cs_no: ${csNo}`);
+      if (tryRecentFirst) {
+        try {
+          const recentData = await reportsApiService.getRecentReports(csNo);
+          eventsData = normalizeEvents(recentData);
+          logger.debug(`Fetched ${eventsData.length} events from Recent API for cs_no: ${csNo}`);
+        } catch (recentError) {
+          const status = recentError.response?.status;
+          const isClientError = status >= 400 && status < 500;
+          if (isClientError) {
+            logger.warn('Reports API Recent rejected request, using History for last_24_hours', {
+              cs_no: csNo,
+              status,
+              message: recentError.message,
+            });
+            const historyData = await reportsApiService.getEventHistory({
+              csNo: csNo,
+              before: dateRange.before,
+              after: dateRange.after,
+            });
+            eventsData = normalizeEvents(historyData);
+            logger.debug(
+              `Fetched ${eventsData.length} events from History API (fallback) for cs_no: ${csNo}`,
+            );
+          } else {
+            throw recentError;
+          }
+        }
       } else {
         const historyData = await reportsApiService.getEventHistory({
           csNo: csNo,
