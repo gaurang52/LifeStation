@@ -41,9 +41,10 @@ class ReportsApiService {
    * @param {string} endpoint - API endpoint
    * @param {object} data - Request data
    * @param {number} retries - Number of retries
-   * @returns {Promise<any>} - API response data
+   * @param {object} [options] - Optional: { returnFullResponse: true } to return { data, status }
+   * @returns {Promise<any>} - API response data, or { data, status } when returnFullResponse is true
    */
-  async makeRequest(method, endpoint, data = null, retries = 3) {
+  async makeRequest(method, endpoint, data = null, retries = 3, options = {}) {
     const token = await this.getAccessToken();
     const startTime = Date.now();
 
@@ -102,6 +103,9 @@ class ReportsApiService {
         duration_ms: Date.now() - startTime,
       });
 
+      if (options.returnFullResponse) {
+        return result;
+      }
       return result.data;
     } catch (error) {
       logger.error('External API request failed', {
@@ -167,12 +171,15 @@ class ReportsApiService {
   }
 
   /**
-   * Check if account report is ready
+   * Check if account report is ready. Returns full response so caller can use HTTP status.
+   * External API may return 200 with a body that does not include ready/status fields.
    * @param {string} reportId - Report ID
-   * @returns {Promise<object>} - Report status
+   * @returns {Promise<{ data: any, status: number }>} - Response data and HTTP status
    */
   async getAccountReportStatus(reportId) {
-    return await this.makeRequest('GET', `/report/account/${reportId}/ready`);
+    return await this.makeRequest('GET', `/report/account/${reportId}/ready`, null, 3, {
+      returnFullResponse: true,
+    });
   }
 
   /**
@@ -246,13 +253,15 @@ class ReportsApiService {
 
     while (attempts < maxAttempts && !isReady) {
       attempts++;
-      const statusResponse = await this.getAccountReportStatus(reportId);
+      const { data: statusBody, status: httpStatus } = await this.getAccountReportStatus(reportId);
+      // External API often returns 200 when report is ready; body may not include ready/status
       isReady =
-        statusResponse.ready === true ||
-        statusResponse.Ready === true ||
-        statusResponse.status === 'ready' ||
-        statusResponse.Status === 'ready' ||
-        statusResponse.Status === 'Ready';
+        httpStatus === 200 ||
+        statusBody?.ready === true ||
+        statusBody?.Ready === true ||
+        statusBody?.status === 'ready' ||
+        statusBody?.Status === 'ready' ||
+        statusBody?.Status === 'Ready';
       if (!isReady) {
         await new Promise(resolve => setTimeout(resolve, pollInterval));
       }
