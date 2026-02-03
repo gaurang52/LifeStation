@@ -20,6 +20,9 @@ const { retry } = require('../utils/retry');
 const logger = require('../utils/logger');
 const externalApiConfig = require('../config/external-apis');
 
+/** Headers for account report GET/ready (per Postman Accounts Ready / Accounts Get). */
+const REPORT_ACCEPT_HEADERS = { 'Content-Type': 'application/json' };
+
 class ReportsApiService {
   constructor() {
     this.config = externalApiConfig.reports;
@@ -41,7 +44,7 @@ class ReportsApiService {
    * @param {string} endpoint - API endpoint
    * @param {object} data - Request data
    * @param {number} retries - Number of retries
-   * @param {object} [options] - Optional: { returnFullResponse: true } to return { data, status }
+   * @param {object} [options] - Optional: { returnFullResponse: true } to return { data, status }; { headers: {} } to add headers
    * @returns {Promise<any>} - API response data, or { data, status } when returnFullResponse is true
    */
   async makeRequest(method, endpoint, data = null, retries = 3, options = {}) {
@@ -60,6 +63,9 @@ class ReportsApiService {
     // Only set Content-Type for requests with data (not GET queries or empty bodies)
     if (data && method !== 'GET') {
       config.headers['Content-Type'] = 'application/json';
+    }
+    if (options.headers && typeof options.headers === 'object') {
+      Object.assign(config.headers, options.headers);
     }
 
     if (data) {
@@ -171,24 +177,28 @@ class ReportsApiService {
   }
 
   /**
-   * Check if account report is ready. Returns full response so caller can use HTTP status.
-   * External API may return 200 with a body that does not include ready/status fields.
+   * Check if account report is ready. Returns full response so caller can use HTTP status and body.
+   * Postman: GET /report/account/{{report_id}}/ready with Content-Type: application/json.
    * @param {string} reportId - Report ID
    * @returns {Promise<{ data: any, status: number }>} - Response data and HTTP status
    */
   async getAccountReportStatus(reportId) {
-    return await this.makeRequest('GET', `/report/account/${reportId}/ready`, null, 3, {
+    return await this.makeRequest('GET', `/report/account/${String(reportId)}/ready`, null, 3, {
       returnFullResponse: true,
+      headers: REPORT_ACCEPT_HEADERS,
     });
   }
 
   /**
    * Get account report data. May throw on 400 "Report not ready" from external API.
+   * Postman: GET /report/account/{{report_id}} with Content-Type: application/json.
    * @param {string} reportId - Report ID
    * @returns {Promise<object>} - Report data
    */
   async getAccountReport(reportId) {
-    return await this.makeRequest('GET', `/report/account/${reportId}`);
+    return await this.makeRequest('GET', `/report/account/${String(reportId)}`, null, 3, {
+      headers: REPORT_ACCEPT_HEADERS,
+    });
   }
 
   /**
@@ -246,14 +256,41 @@ class ReportsApiService {
       throw new Error('Failed to create account report: No report_id returned');
     }
 
-    // Poll GET report until 200. The /ready endpoint can return 200 before report is actually ready,
-    // and GET /report/account/{id} returns 400 { msg: 'Report not ready.' } until ready.
-    const maxAttempts = 60;
-    const pollInterval = 1000;
+    const id = String(reportId);
+    const readyPollInterval = 1000;
+    const getPollInterval = 2000;
 
-    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    // Phase 1 (per Postman): Poll GET /report/account/{id}/ready until body indicates ready.
+    // API may return 200 with body.ready !== true until report is ready. Cap at 20s then rely on GET poll.
+    const readyMaxAttempts = 20;
+    let readyFromBody = false;
+    for (let attempt = 1; attempt <= readyMaxAttempts; attempt++) {
+      const { data: readyBody, status: readyStatus } = await this.getAccountReportStatus(id);
+      const bodyReady =
+        readyBody?.ready === true ||
+        readyBody?.Ready === true ||
+        String(readyBody?.status ?? '').toLowerCase() === 'ready' ||
+        String(readyBody?.Status ?? '').toLowerCase() === 'ready';
+      if (readyStatus === 200 && bodyReady) {
+        readyFromBody = true;
+        break;
+      }
+      if (attempt < readyMaxAttempts) {
+        await new Promise(r => setTimeout(r, readyPollInterval));
+      }
+    }
+
+    if (!readyFromBody) {
+      logger.info('Account report /ready never returned body.ready, polling GET anyway', {
+        report_id: id,
+      });
+    }
+
+    // Phase 2: Poll GET /report/account/{id} until 200. API returns 400 "Report not ready." until ready.
+    const getMaxAttempts = 90;
+    for (let attempt = 1; attempt <= getMaxAttempts; attempt++) {
       try {
-        return await this.getAccountReport(reportId);
+        return await this.getAccountReport(id);
       } catch (err) {
         const status = err.response?.status;
         const msg = err.response?.data?.msg ?? err.response?.data?.message ?? '';
@@ -262,13 +299,13 @@ class ReportsApiService {
           (String(msg).toLowerCase().includes('not ready') ||
             String(msg).toLowerCase().includes('report not ready'));
 
-        if (isNotReady && attempt < maxAttempts) {
-          logger.info('Account report not ready yet, retrying', {
-            report_id: reportId,
+        if (isNotReady && attempt < getMaxAttempts) {
+          logger.info('Account report GET not ready yet, retrying', {
+            report_id: id,
             attempt,
-            maxAttempts,
+            maxAttempts: getMaxAttempts,
           });
-          await new Promise(resolve => setTimeout(resolve, pollInterval));
+          await new Promise(r => setTimeout(r, getPollInterval));
           continue;
         }
         throw err;
