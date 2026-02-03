@@ -183,7 +183,7 @@ class ReportsApiService {
   }
 
   /**
-   * Get account report data
+   * Get account report data. May throw on 400 "Report not ready" from external API.
    * @param {string} reportId - Report ID
    * @returns {Promise<object>} - Report data
    */
@@ -246,32 +246,36 @@ class ReportsApiService {
       throw new Error('Failed to create account report: No report_id returned');
     }
 
-    const maxAttempts = 30;
+    // Poll GET report until 200. The /ready endpoint can return 200 before report is actually ready,
+    // and GET /report/account/{id} returns 400 { msg: 'Report not ready.' } until ready.
+    const maxAttempts = 60;
     const pollInterval = 1000;
-    let attempts = 0;
-    let isReady = false;
 
-    while (attempts < maxAttempts && !isReady) {
-      attempts++;
-      const { data: statusBody, status: httpStatus } = await this.getAccountReportStatus(reportId);
-      // External API often returns 200 when report is ready; body may not include ready/status
-      isReady =
-        httpStatus === 200 ||
-        statusBody?.ready === true ||
-        statusBody?.Ready === true ||
-        statusBody?.status === 'ready' ||
-        statusBody?.Status === 'ready' ||
-        statusBody?.Status === 'Ready';
-      if (!isReady) {
-        await new Promise(resolve => setTimeout(resolve, pollInterval));
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        return await this.getAccountReport(reportId);
+      } catch (err) {
+        const status = err.response?.status;
+        const msg = err.response?.data?.msg ?? err.response?.data?.message ?? '';
+        const isNotReady =
+          status === 400 &&
+          (String(msg).toLowerCase().includes('not ready') ||
+            String(msg).toLowerCase().includes('report not ready'));
+
+        if (isNotReady && attempt < maxAttempts) {
+          logger.info('Account report not ready yet, retrying', {
+            report_id: reportId,
+            attempt,
+            maxAttempts,
+          });
+          await new Promise(resolve => setTimeout(resolve, pollInterval));
+          continue;
+        }
+        throw err;
       }
     }
 
-    if (!isReady) {
-      throw new Error('Account report generation timed out');
-    }
-
-    return await this.getAccountReport(reportId);
+    throw new Error('Account report generation timed out');
   }
 
   /**
