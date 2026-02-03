@@ -223,7 +223,9 @@ class ReportsApiService {
     if (activeDateEnd) reportParams.active_date_end = activeDateEnd;
 
     const createResponse = await this.createAccountReport(reportParams);
-    const reportId = createResponse.report_id;
+    // Postman/API returns report_id; accept alternate casing from external API
+    const reportId =
+      createResponse.report_id ?? createResponse.Report_ID ?? createResponse.report_Id;
 
     if (!reportId) {
       throw new Error('Failed to create account report: No report_id returned');

@@ -66,8 +66,12 @@ export const reportsApi = {
   /**
    * GET /reports/account - Create, poll, and return account report (Accounts Create → Ready → Get).
    * Shows accounts with address/phones per Reports API.
+   * Uses longer timeout (2 min) because backend polls external API until report is ready.
    */
   async getAccountReport(): Promise<AccountReportResponse> {
-    return apiClient.get<AccountReportResponse>('/reports/account');
+    const ACCOUNT_REPORT_TIMEOUT_MS = 120000;
+    return apiClient.get<AccountReportResponse>('/reports/account', {
+      timeout: ACCOUNT_REPORT_TIMEOUT_MS,
+    });
   },
 };

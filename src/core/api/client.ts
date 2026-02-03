@@ -137,7 +137,10 @@ class ApiClient {
       const fullUrl = `${baseUrl}${url}`;
 
       // Provide helpful error message for common issues
-      let errorMessage = 'Network error. Please check your connection.';
+      const isTimeout = (error as AxiosError & { code?: string }).code === 'ECONNABORTED';
+      let errorMessage = isTimeout
+        ? 'Request timed out. The server is taking too long to respond—please try again.'
+        : 'Network error. Please check your connection.';
 
       if (baseUrl.includes('api.example.com')) {
         errorMessage = `API URL not configured. Please create a .env file with API_BASE_URL set to your backend URL (e.g., http://localhost:3000). See ENV_SETUP.md for details.`;
