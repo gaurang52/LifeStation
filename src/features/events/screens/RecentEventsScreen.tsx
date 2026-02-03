@@ -54,7 +54,7 @@ const RecentEventsScreen: React.FC = () => {
   }, []);
 
   const fetchEvents = useCallback(
-    async (deviceToUse?: Device | null) => {
+    async (deviceToUse?: Device | null, bypassCache = false) => {
       const targetDevice = deviceToUse || device;
       if (!targetDevice || !targetDevice.device_id) {
         setLoading(false);
@@ -64,7 +64,11 @@ const RecentEventsScreen: React.FC = () => {
 
       try {
         setError(null);
-        const response = await eventsApi.getEvents(targetDevice.device_id, 'last_24_hours');
+        const response = await eventsApi.getEvents(
+          targetDevice.device_id,
+          'last_24_hours',
+          bypassCache,
+        );
         const eventList = response.data || [];
         // Sort by actual event date (rawevent.originalEvent.event_date), most recent first
         eventList.sort((a, b) => {
@@ -105,7 +109,7 @@ const RecentEventsScreen: React.FC = () => {
     setRefreshing(true);
     const fetchedDevice = await fetchDevice();
     if (fetchedDevice) {
-      await fetchEvents(fetchedDevice);
+      await fetchEvents(fetchedDevice, true); // bypass cache so Affiliated Recent is hit
     } else {
       setRefreshing(false);
     }

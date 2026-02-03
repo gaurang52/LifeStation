@@ -383,11 +383,11 @@ const HomeScreen: React.FC = () => {
     [fetchDevices],
   );
 
-  const fetchEvents = useCallback(async (device: Device) => {
+  const fetchEvents = useCallback(async (device: Device, bypassCache = false) => {
     if (!device || !device.device_id) return;
 
     try {
-      const response = await eventsApi.getEvents(device.device_id, 'last_24_hours');
+      const response = await eventsApi.getEvents(device.device_id, 'last_24_hours', bypassCache);
       const eventList = response.data || [];
       eventList.sort((a, b) => {
         const timeA = new Date(a.eventtime).getTime();
@@ -492,7 +492,7 @@ const HomeScreen: React.FC = () => {
     await fetchDevices(true);
     if (activeDevice && activeDevice.id_type && activeDevice.device_id) {
       await fetchDeviceRecent(activeDevice);
-      await fetchEvents(activeDevice);
+      await fetchEvents(activeDevice, true); // bypass cache so events are fresh
     }
     setRefreshing(false);
   }, [fetchDevices, activeDevice, fetchDeviceRecent, fetchEvents]);

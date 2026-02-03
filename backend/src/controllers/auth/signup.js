@@ -126,7 +126,7 @@ const signup = async (req, res) => {
         });
       }
     } else {
-      // OPTION A: For seniors, cs_no is required (they need LifeStation account)
+      // Seniors must provide cs_no at signup so we can authorize (validate against LifeStation Account API)
       if (user_type_normalized === 'senior') {
         return res.status(400).json({
           error: 'cs_no required',
@@ -134,7 +134,7 @@ const signup = async (req, res) => {
             'Senior accounts require a LifeStation account number (cs_no). Please provide your cs_no.',
         });
       }
-      // Caregivers and admins can signup without cs_no initially
+      // Caregivers and admins can signup without cs_no
       logger.debug('Signup without cs_no (allowed for caregivers/admins)');
     }
 

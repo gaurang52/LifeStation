@@ -167,6 +167,20 @@ const addDevice = async (req, res) => {
       device_name: trimmedDeviceName,
     });
 
+    // Backfill User.cs_no if senior didn't provide it at signup (so access control / reports work)
+    if (csNo && user) {
+      const currentCsNo = user.cs_no ? String(user.cs_no).trim() : '';
+      if (!currentCsNo) {
+        await db.Users.update({ cs_no: String(csNo).trim() }, { where: { id: userId } });
+        logger.info(
+          `Backfilled User.cs_no for senior ${userId} from device add (cs_no: ${String(csNo).slice(
+            0,
+            12,
+          )}...)`,
+        );
+      }
+    }
+
     // Log audit entry
     await auditLogService.log({
       user_id: userId,

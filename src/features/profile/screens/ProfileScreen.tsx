@@ -20,10 +20,12 @@ import {
   Lock,
   User,
   Smartphone,
+  ClipboardList,
 } from 'lucide-react-native';
 import { Screen, AppText, Card, TopNavbar, Input, Button } from '@shared/components';
 import { useAuthStore } from '@core/store';
 import { authApi } from '@core/api/authApi';
+import { reportsApi } from '@core/api/reportsApi';
 import { spacing, colors, borderRadius } from '@shared/theme';
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import type { AppStackParamList } from '@core/constants/routes';
@@ -32,6 +34,57 @@ import { ROUTES } from '@core/constants/routes';
 import { ENV } from '@core/constants/env';
 
 type NavigationProp = StackNavigationProp<AppStackParamList>;
+
+const LIFESTATION_HELP_URL = 'https://www.lifestation.com';
+
+/** Renders account report data (array of accounts or object with accounts/list). */
+function AccountReportContent({ data }: { data: unknown }) {
+  const list: Record<string, unknown>[] = Array.isArray(data)
+    ? data
+    : (data as Record<string, unknown>)?.accounts &&
+      Array.isArray((data as Record<string, unknown>).accounts)
+    ? ((data as Record<string, unknown>).accounts as Record<string, unknown>[])
+    : (data as Record<string, unknown>)?.report &&
+      Array.isArray((data as Record<string, unknown>).report)
+    ? ((data as Record<string, unknown>).report as Record<string, unknown>[])
+    : (data as Record<string, unknown>)?.data &&
+      Array.isArray((data as Record<string, unknown>).data)
+    ? ((data as Record<string, unknown>).data as Record<string, unknown>[])
+    : [];
+  if (list.length > 0) {
+    return (
+      <View style={styles.accountReportList}>
+        {list.map((item, i) => (
+          <View key={i} style={styles.accountReportItem}>
+            <AppText variant="bodyBold" style={styles.accountReportItemTitle}>
+              {String(item.name ?? item.account_name ?? item.cs_no ?? `Account ${i + 1}`)}
+            </AppText>
+            {item.addr1 != null && (
+              <AppText variant="small" color={colors.textSecondary}>
+                {String(item.addr1)}
+              </AppText>
+            )}
+            {item.status != null && (
+              <AppText variant="small" color={colors.textSecondary}>
+                Status: {String(item.status)}
+              </AppText>
+            )}
+            {item.phone1 != null && (
+              <AppText variant="small" color={colors.textSecondary}>
+                Phone: {String(item.phone1)}
+              </AppText>
+            )}
+          </View>
+        ))}
+      </View>
+    );
+  }
+  return (
+    <AppText variant="small" color={colors.textSecondary} style={styles.accountReportRaw}>
+      {typeof data === 'object' ? JSON.stringify(data, null, 2) : String(data)}
+    </AppText>
+  );
+}
 
 const LIFESTATION_HELP_URL = 'https://www.lifestation.com';
 const LIFESTATION_TERMS_URL = 'https://www.lifestation.com/terms-and-conditions/';
@@ -59,6 +112,11 @@ const ProfileScreen: React.FC = () => {
   const [editMobile, setEditMobile] = useState(user?.mobile ?? '');
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
+
+  const [showAccountReport, setShowAccountReport] = useState(false);
+  const [accountReportLoading, setAccountReportLoading] = useState(false);
+  const [accountReportError, setAccountReportError] = useState<string | null>(null);
+  const [accountReportData, setAccountReportData] = useState<unknown>(null);
 
   useEffect(() => {
     if (user?.notification_enabled !== undefined) {
@@ -133,6 +191,32 @@ const ProfileScreen: React.FC = () => {
 
   const handleDevicePress = () => {
     navigation.navigate(ROUTES.DEVICE_DETAILS_TAB);
+  };
+
+  const openAccountReport = async () => {
+    setAccountReportError(null);
+    setAccountReportData(null);
+    setAccountReportLoading(true);
+    setShowAccountReport(true);
+    try {
+      const res = await reportsApi.getAccountReport();
+      setAccountReportData(res.data ?? null);
+    } catch (e: unknown) {
+      const msg =
+        (e as { response?: { data?: { message?: string } }; message?: string })?.response?.data
+          ?.message ??
+        (e as { message?: string })?.message ??
+        'Failed to load account report';
+      setAccountReportError(msg);
+    } finally {
+      setAccountReportLoading(false);
+    }
+  };
+
+  const closeAccountReport = () => {
+    setShowAccountReport(false);
+    setAccountReportError(null);
+    setAccountReportData(null);
   };
 
   const openUpdatePassword = () => {
@@ -305,6 +389,26 @@ const ProfileScreen: React.FC = () => {
                 </View>
                 <ChevronRight size={20} color={colors.textSecondary} />
               </TouchableOpacity>
+              <View style={styles.divider} />
+              <TouchableOpacity
+                style={styles.settingRow}
+                activeOpacity={0.7}
+                onPress={openAccountReport}
+                disabled={accountReportLoading}>
+                <View style={styles.settingLeft}>
+                  <View style={styles.settingIconContainer}>
+                    <ClipboardList size={20} color={colors.primary} />
+                  </View>
+                  <AppText variant="body" style={styles.settingLabel}>
+                    Account report
+                  </AppText>
+                </View>
+                {accountReportLoading ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <ChevronRight size={20} color={colors.textSecondary} />
+                )}
+              </TouchableOpacity>
             </Card>
           </View>
 
@@ -435,6 +539,57 @@ const ProfileScreen: React.FC = () => {
               </Card>
             </TouchableOpacity>
           </KeyboardAvoidingView>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Account Report Modal */}
+      <Modal
+        visible={showAccountReport}
+        transparent
+        animationType="fade"
+        onRequestClose={closeAccountReport}>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={closeAccountReport}>
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={e => e.stopPropagation()}
+            style={styles.modalContentWrap}>
+            <Card style={styles.updatePasswordCard}>
+              <AppText variant="h3" style={styles.updatePasswordTitle}>
+                Account report
+              </AppText>
+              {accountReportLoading ? (
+                <View style={styles.accountReportLoading}>
+                  <ActivityIndicator size="large" color={colors.primary} />
+                  <AppText
+                    variant="small"
+                    color={colors.textSecondary}
+                    style={styles.accountReportLoadingText}>
+                    Generating report…
+                  </AppText>
+                </View>
+              ) : accountReportError ? (
+                <>
+                  <AppText variant="small" color={colors.error} style={styles.updatePasswordError}>
+                    {accountReportError}
+                  </AppText>
+                  <Button label="Close" onPress={closeAccountReport} />
+                </>
+              ) : accountReportData != null ? (
+                <ScrollView
+                  style={styles.accountReportScroll}
+                  contentContainerStyle={styles.accountReportScrollContent}
+                  showsVerticalScrollIndicator={false}>
+                  <AccountReportContent data={accountReportData} />
+                  <View style={styles.updatePasswordActions}>
+                    <Button label="Close" onPress={closeAccountReport} />
+                  </View>
+                </ScrollView>
+              ) : null}
+            </Card>
+          </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
 
@@ -755,6 +910,38 @@ const styles = StyleSheet.create({
   },
   updatePasswordSubmitWrap: {
     minWidth: 140,
+  },
+  accountReportLoading: {
+    alignItems: 'center',
+    paddingVertical: spacing.xl,
+    gap: spacing.sm,
+  },
+  accountReportLoadingText: {
+    marginTop: spacing.sm,
+  },
+  accountReportScroll: {
+    maxHeight: 400,
+  },
+  accountReportScrollContent: {
+    paddingBottom: spacing.lg,
+  },
+  accountReportList: {
+    gap: spacing.md,
+  },
+  accountReportItem: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.lightGray,
+    borderRadius: borderRadius.md,
+    gap: spacing.xs,
+  },
+  accountReportItemTitle: {
+    marginBottom: spacing.xs,
+  },
+  accountReportRaw: {
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+    fontSize: 12,
   },
 });
 

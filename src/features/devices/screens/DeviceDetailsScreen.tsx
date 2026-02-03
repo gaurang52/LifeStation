@@ -10,6 +10,7 @@ import {
   Modal,
   KeyboardAvoidingView,
   Platform,
+  Switch,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { Screen, AppText, Button, Card, TopNavbar, Input } from '@shared/components';
@@ -41,7 +42,8 @@ const DeviceDetailsScreen: React.FC<DeviceDetailsScreenProps> = ({ route }) => {
     !routeParams?.deviceId || !routeParams?.idType,
   );
   const [device, setDevice] = useState<Device | null>(null);
-  const [fallDetectionEnabled, setFallDetectionEnabled] = useState(false); // Display only
+  const [fallDetectionEnabled, setFallDetectionEnabled] = useState(false);
+  const [fallDetectionToggling, setFallDetectionToggling] = useState(false);
   const [battery, setBattery] = useState<number | undefined>(undefined);
   const [signal, setSignal] = useState<number | undefined>(undefined);
   const [lastUpdate, setLastUpdate] = useState<string | undefined>(undefined);
@@ -625,7 +627,7 @@ const DeviceDetailsScreen: React.FC<DeviceDetailsScreenProps> = ({ route }) => {
             </TouchableOpacity>
           </Card>
 
-          {/* Fall Detection - Display Only (matching reference app) */}
+          {/* Fall Detection - Toggle (Device API PUT/DELETE falldetection) */}
           <Card style={styles.settingCard}>
             <View style={styles.fallDetectionHeader}>
               <View style={styles.fallDetectionInfo}>
@@ -646,9 +648,32 @@ const DeviceDetailsScreen: React.FC<DeviceDetailsScreenProps> = ({ route }) => {
                   {fallDetectionEnabled ? 'Active' : 'Inactive'}
                 </AppText>
               </View>
-              <AppText variant="bodyBold" color={fallDetectionEnabled ? colors.green : colors.red}>
-                {fallDetectionEnabled ? 'ON' : 'OFF'}
-              </AppText>
+              <View style={styles.fallDetectionSwitchRow}>
+                {fallDetectionToggling ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Switch
+                    value={fallDetectionEnabled}
+                    onValueChange={async value => {
+                      if (!idType || !deviceId) return;
+                      setFallDetectionToggling(true);
+                      try {
+                        await deviceApi.toggleFallDetection(idType, deviceId, value);
+                        setFallDetectionEnabled(value);
+                      } catch (err) {
+                        const msg =
+                          ErrorHandler.getErrorMessage(err) || 'Failed to update fall detection';
+                        Alert.alert('Error', msg);
+                      } finally {
+                        setFallDetectionToggling(false);
+                      }
+                    }}
+                    trackColor={{ false: colors.divider, true: colors.lightPrimary }}
+                    thumbColor={fallDetectionEnabled ? colors.primary : colors.textSecondary}
+                    disabled={fallDetectionToggling}
+                  />
+                )}
+              </View>
             </View>
           </Card>
 
@@ -907,6 +932,11 @@ const styles = StyleSheet.create({
   },
   fallDetectionDesc: {
     marginTop: spacing.xs,
+  },
+  fallDetectionSwitchRow: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 52,
   },
   editNameDisabled: {
     opacity: 0.7,

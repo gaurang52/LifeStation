@@ -127,7 +127,7 @@ const SignupScreen: React.FC = () => {
   };
 
   const validateCsNo = (csNoValue: string): boolean => {
-    // OPTION A: cs_no is required for seniors
+    // cs_no is required for seniors (so we can authorize against LifeStation Account API)
     if (userType === 'senior') {
       if (!csNoValue || csNoValue.trim().length === 0) {
         setErrors(prev => ({
@@ -357,7 +357,7 @@ const SignupScreen: React.FC = () => {
               />
             </View>
 
-            {/* OPTION A: cs_no field - required for seniors */}
+            {/* cs_no required for seniors only (authorize against LifeStation); hidden for caregivers */}
             {userType === 'senior' && (
               <View style={styles.inputContainer}>
                 <MaterialIcons

@@ -17,6 +17,12 @@ export interface DownloadReportsResponse {
   contentType: string;
 }
 
+/** Account report from Reports API (Accounts Create → Ready → Get). Shape depends on external API. */
+export interface AccountReportResponse {
+  data: unknown;
+  message?: string;
+}
+
 /** Reports API matching backend routes exactly */
 export const reportsApi = {
   /**
@@ -55,5 +61,13 @@ export const reportsApi = {
     }
 
     return apiClient.downloadFile('/reports/recent/download', params);
+  },
+
+  /**
+   * GET /reports/account - Create, poll, and return account report (Accounts Create → Ready → Get).
+   * Shows accounts with address/phones per Reports API.
+   */
+  async getAccountReport(): Promise<AccountReportResponse> {
+    return apiClient.get<AccountReportResponse>('/reports/account');
   },
 };

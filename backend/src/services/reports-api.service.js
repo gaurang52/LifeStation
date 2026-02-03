@@ -184,6 +184,73 @@ class ReportsApiService {
   }
 
   /**
+   * Create and fetch account report (Accounts Create → Ready → Get).
+   * Matches ReportsAPI.postman_collection.json "Accounts Create" flow.
+   * Body per Postman: Report_Title, OOS_Status, ShowAddress, ShowPhones; optional: servco_no, corpacct_servco_no, active_date_start, active_date_end.
+   *
+   * @param {object} params - Report parameters
+   * @param {string} [params.reportTitle] - Report_Title (default: "Accounts Report")
+   * @param {string} [params.oosStatus] - OOS_Status: "Both" | "In Service" (default: "Both")
+   * @param {boolean} [params.showAddress] - ShowAddress (default: true)
+   * @param {boolean} [params.showPhones] - ShowPhones (default: true)
+   * @param {string} [params.servcoNo] - servco_no (optional)
+   * @param {string} [params.corpacctServcoNo] - corpacct_servco_no (optional)
+   * @param {string} [params.activeDateStart] - active_date_start Y-m-d H:i:s (optional)
+   * @param {string} [params.activeDateEnd] - active_date_end Y-m-d H:i:s (optional)
+   * @returns {Promise<object>} - Account report data
+   */
+  async getAccountReportFlow(params = {}) {
+    const {
+      reportTitle = 'Accounts Report',
+      oosStatus = 'Both',
+      showAddress = true,
+      showPhones = true,
+      servcoNo,
+      corpacctServcoNo,
+      activeDateStart,
+      activeDateEnd,
+    } = params;
+
+    const reportParams = {
+      Report_Title: String(reportTitle).slice(0, 40),
+      OOS_Status: oosStatus,
+      ShowAddress: showAddress ? 'true' : 'false',
+      ShowPhones: showPhones ? 'true' : 'false',
+    };
+    if (servcoNo) reportParams.servco_no = String(servcoNo).trim();
+    if (corpacctServcoNo) reportParams.corpacct_servco_no = String(corpacctServcoNo).trim();
+    if (activeDateStart) reportParams.active_date_start = activeDateStart;
+    if (activeDateEnd) reportParams.active_date_end = activeDateEnd;
+
+    const createResponse = await this.createAccountReport(reportParams);
+    const reportId = createResponse.report_id;
+
+    if (!reportId) {
+      throw new Error('Failed to create account report: No report_id returned');
+    }
+
+    const maxAttempts = 30;
+    const pollInterval = 1000;
+    let attempts = 0;
+    let isReady = false;
+
+    while (attempts < maxAttempts && !isReady) {
+      attempts++;
+      const statusResponse = await this.getAccountReportStatus(reportId);
+      isReady = statusResponse.ready === true || statusResponse.status === 'ready';
+      if (!isReady) {
+        await new Promise(resolve => setTimeout(resolve, pollInterval));
+      }
+    }
+
+    if (!isReady) {
+      throw new Error('Account report generation timed out');
+    }
+
+    return await this.getAccountReport(reportId);
+  }
+
+  /**
    * Get available signal types
    * @returns {Promise<Array>} - Signal types list
    */

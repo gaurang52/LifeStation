@@ -34,13 +34,15 @@ function isAffiliatedStatusPayload(body) {
 }
 
 /**
- * Map Affiliated signaltype to our critical event codes (B, F, HU, M, RN).
- * Affiliated may send SOS, PANIC, EMERGENCY, etc.; we map to CRITICAL_EVENT_TYPES.
+ * Map Affiliated signaltype to our critical event codes (B, F, FD, HU, M, RN).
+ * Affiliated may send SOS, PANIC, EMERGENCY, Fall Detection, etc.; we map to CRITICAL_EVENT_TYPES.
+ * Umbrella sends alerts for both Panic and Fall Detection; we do the same.
  */
 function mapAffiliatedSignalTypeToCritical(signaltype) {
   if (!signaltype || typeof signaltype !== 'string') return 'M';
-  const upper = signaltype.toUpperCase();
-  if (['B', 'F', 'HU', 'M', 'RN'].includes(upper)) return upper;
+  const upper = signaltype.toUpperCase().replace(/\s+/g, '');
+  if (['B', 'F', 'FD', 'HU', 'M', 'RN'].includes(upper)) return upper;
+  if (['FALL', 'FALLDETECTION', 'FALL_DETECTION'].includes(upper)) return 'FD';
   if (['SOS', 'PANIC', 'EMERGENCY', 'EM', 'PERSONAL'].includes(upper)) return 'M';
   if (['HOLDUP', 'DURESS'].includes(upper)) return 'HU';
   return 'M'; // default Personal Emergency

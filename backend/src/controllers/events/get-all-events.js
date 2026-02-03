@@ -180,7 +180,7 @@ const mapSignalTypeToEventType = signalType => {
 
 const getAllEvents = async (req, res) => {
   try {
-    const { device_id, frequency = 'last_24_hours' } = req.body;
+    const { device_id, frequency = 'last_24_hours', refresh: skipCache = false } = req.body;
     const userId = req.user_id;
 
     // Validate input
@@ -275,17 +275,19 @@ const getAllEvents = async (req, res) => {
       }
     }
 
-    // Try to get from cache first
+    // Try to get from cache first (skip when refresh/skip_cache so pull-to-refresh gets fresh data)
     const cacheKey = `events:${csNo}:${frequency}:all`;
-    const cached = await cacheService.get(cacheKey);
-
-    if (cached) {
-      logger.debug(`Returning cached events for cs_no: ${csNo}`);
-      return res.status(200).json({
-        data: cached,
-        message: 'Events retrieved successfully',
-        cached: true,
-      });
+    let cached = null;
+    if (!skipCache) {
+      cached = await cacheService.get(cacheKey);
+      if (cached) {
+        logger.debug(`Returning cached events for cs_no: ${csNo}`);
+        return res.status(200).json({
+          data: cached,
+          message: 'Events retrieved successfully',
+          cached: true,
+        });
+      }
     }
 
     // Verify external API authentication before fetching events
@@ -414,8 +416,10 @@ const getAllEvents = async (req, res) => {
       return timeB - timeA;
     });
 
-    // Cache for 5 minutes
-    await cacheService.set(cacheKey, eventsData, 300);
+    // Cache for 5 minutes (skip when refresh was requested)
+    if (!skipCache) {
+      await cacheService.set(cacheKey, eventsData, 300);
+    }
 
     // Do NOT process critical events here. This endpoint is for fetching event history for the UI.
     // Sending push/SMS for every historical critical event on each refresh caused repeated

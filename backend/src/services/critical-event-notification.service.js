@@ -6,13 +6,26 @@ const smsService = require('./sms.service');
 
 /**
  * Critical event types that trigger caregiver notifications
+ * Aligned with umbrella: Panic and Fall Detection both send FCM + SMS (and we add FD for fall).
  */
 const CRITICAL_EVENT_TYPES = {
   B: 'Burglary Alarm',
   F: 'Fire',
+  FD: 'Fall Detection',
   HU: 'HoldUp / Panic / Duress',
   M: 'Personal Emergency',
   RN: 'Runaway Notification',
+};
+
+/**
+ * Normalize event type to critical code (B, F, FD, HU, M, RN) for lookup
+ */
+const normalizeToCriticalCode = value => {
+  if (!value || typeof value !== 'string') return null;
+  const upper = value.toUpperCase().replace(/\s+/g, '');
+  if (['B', 'F', 'FD', 'HU', 'M', 'RN'].includes(upper)) return upper;
+  if (['FALL', 'FALLDETECTION', 'FALL_DETECTION'].includes(upper)) return 'FD';
+  return null;
 };
 
 /**
@@ -21,20 +34,27 @@ const CRITICAL_EVENT_TYPES = {
  * @returns {boolean} - True if event is critical
  */
 const isCriticalEvent = event => {
-  const eventrptId = event.eventrpt_id || event.signal_type || event.eventtype;
-  if (!eventrptId) return false;
+  const raw =
+    event.eventrpt_id ||
+    event.signal_type ||
+    event.eventtype ||
+    event.event_type ||
+    event.eventName;
+  if (!raw) return false;
 
-  return Object.keys(CRITICAL_EVENT_TYPES).includes(eventrptId.toUpperCase());
+  const code = normalizeToCriticalCode(raw);
+  return code != null && Object.keys(CRITICAL_EVENT_TYPES).includes(code);
 };
 
 /**
  * Get event description for a critical event
- * @param {string} eventrptId - Event report ID
+ * @param {string} eventrptId - Event report ID (e.g. M, FD, Fall Detection)
  * @returns {string} - Event description
  */
 const getEventDescription = eventrptId => {
   if (!eventrptId) return 'Emergency Event';
-  return CRITICAL_EVENT_TYPES[eventrptId.toUpperCase()] || 'Emergency Event';
+  const code = normalizeToCriticalCode(eventrptId) || eventrptId.toUpperCase().replace(/\s+/g, '');
+  return CRITICAL_EVENT_TYPES[code] || 'Emergency Event';
 };
 
 /**
@@ -156,7 +176,14 @@ const getSeniorForDevice = async (deviceId, idType = null) => {
  */
 const isNotificationAlreadySent = async (event, caregiverId) => {
   try {
-    const eventrptId = event.eventrpt_id || event.signal_type || event.eventtype;
+    const raw =
+      event.eventrpt_id ||
+      event.signal_type ||
+      event.eventtype ||
+      event.event_type ||
+      event.eventName;
+    const eventrptId =
+      normalizeToCriticalCode(raw) || (raw && raw.toUpperCase().replace(/\s+/g, ''));
     const eventTime = event.eventtime || event.event_time || event.timestamp;
     const deviceId = event.device_id || event.imei;
 
@@ -172,7 +199,7 @@ const isNotificationAlreadySent = async (event, caregiverId) => {
     const existingNotification = await db.EventNotificationLogs.findOne({
       where: {
         caregiver_id: caregiverId,
-        eventrpt_id: eventrptId.toUpperCase(),
+        eventrpt_id: eventrptId,
         device_id: deviceId,
         event_time: {
           [Op.between]: [oneHourAgo, oneHourLater],
@@ -204,11 +231,15 @@ const logEventNotification = async ({
   errorMessage = null,
 }) => {
   try {
+    const normalizedId =
+      normalizeToCriticalCode(eventrptId) ||
+      (eventrptId && eventrptId.toUpperCase().replace(/\s+/g, '')) ||
+      '';
     return await db.EventNotificationLogs.create({
       caregiver_id: caregiverId,
       senior_id: seniorId,
       device_id: deviceId,
-      eventrpt_id: eventrptId.toUpperCase(),
+      eventrpt_id: normalizedId,
       event_time: eventTime ? new Date(eventTime) : new Date(),
       notification_type: notificationType, // 'push', 'sms', or 'both'
       status: status, // 'success' or 'failed'
@@ -247,12 +278,13 @@ const notifyCaregiversOfCriticalEvent = async (event, senior, deviceName = null)
     return results;
   }
 
-  const eventrptId = (
+  const eventrptId =
     event.eventrpt_id ||
     event.signal_type ||
     event.eventtype ||
-    ''
-  ).toUpperCase();
+    event.event_type ||
+    event.eventName ||
+    '';
   const eventDescription = getEventDescription(eventrptId);
   const eventTime =
     event.eventtime || event.event_time || event.timestamp || new Date().toISOString();
@@ -448,9 +480,19 @@ const processCriticalEvent = async (event, deviceId, idType = null) => {
     // Notify caregivers
     const notificationResults = await notifyCaregiversOfCriticalEvent(event, senior, deviceName);
 
+    const raw =
+      event.eventrpt_id ||
+      event.signal_type ||
+      event.eventtype ||
+      event.event_type ||
+      event.eventName ||
+      '';
+    const eventrptId =
+      normalizeToCriticalCode(raw) ||
+      (typeof raw === 'string' ? raw.toUpperCase().replace(/\s+/g, '') : '');
     return {
       processed: true,
-      eventrptId: (event.eventrpt_id || event.signal_type || event.eventtype || '').toUpperCase(),
+      eventrptId,
       seniorId: senior.id,
       notificationResults,
     };

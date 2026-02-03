@@ -8,6 +8,7 @@ const getRecentReports = require('../controllers/reports/get-recent-reports');
 const downloadRecentReports = require('../controllers/reports/download-recent-reports');
 const downloadHistoryReport = require('../controllers/reports/download-history-report');
 const getSignalTypes = require('../controllers/reports/get-signal-types');
+const getAccountReport = require('../controllers/reports/get-account-report');
 
 // All routes require authentication
 router.use(verifyToken);
@@ -24,5 +25,8 @@ router.post('/history/download', externalApiLimiter, downloadHistoryReport);
 
 // GET /reports/signal-types - Get available report signal types
 router.get('/signal-types', externalApiLimiter, getSignalTypes);
+
+// GET /reports/account - Create, poll, and return account report (Accounts Create → Ready → Get)
+router.get('/account', externalApiLimiter, getAccountReport);
 
 module.exports = router;

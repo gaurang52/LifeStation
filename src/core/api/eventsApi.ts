@@ -31,14 +31,17 @@ export const eventsApi = {
    * POST /events/get-all-events - Get all events for a device
    * @param deviceId - Device ID (IMEI, serial, or UUID)
    * @param frequency - Time range for events
+   * @param refresh - If true, bypass backend cache (use for pull-to-refresh)
    */
   async getEvents(
     deviceId: string,
     frequency: EventFrequency = 'last_24_hours',
+    refresh = false,
   ): Promise<GetEventsResponse> {
     return apiClient.post<GetEventsResponse>('/events/get-all-events', {
       device_id: deviceId,
       frequency,
+      refresh,
     });
   },
 

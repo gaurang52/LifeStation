@@ -9,9 +9,9 @@ const getDevices = require('../controllers/devices/get-devices');
 const getDevice = require('../controllers/devices/get-device');
 const getDeviceRecent = require('../controllers/devices/get-device-recent');
 const getFallDetection = require('../controllers/devices/get-fall-detection');
+const toggleFallDetection = require('../controllers/devices/toggle-fall-detection');
 const getDeviceTelemetry = require('../controllers/devices/get-device-telemetry');
 const getDeviceMetadata = require('../controllers/devices/get-device-metadata');
-// Fall Detection toggle controllers removed - display only (matching reference app)
 const requestSignal = require('../controllers/devices/request-signal');
 const saveGeofenceSettings = require('../controllers/devices/save-geofence-settings');
 const getGeofenceSettings = require('../controllers/devices/get-geofence-settings');
@@ -35,9 +35,11 @@ router.get('/:id_type/:id/recent', getDeviceRecent);
 // GET /devices/:id_type/:id/telemetry - Get telemetry (battery, signal, location)
 router.get('/:id_type/:id/telemetry', getDeviceTelemetry);
 
-// Fall Detection route (display only - matching reference app)
 // GET /devices/:id_type/:id/fall-detection - Get fall detection status
 router.get('/:id_type/:id/fall-detection', getFallDetection);
+
+// PUT /devices/:id_type/:id/fall-detection - Toggle fall detection (body: { enabled: boolean })
+router.put('/:id_type/:id/fall-detection', toggleFallDetection);
 
 // POST /devices/:id_type/:id/signal - Request device signal
 router.post('/:id_type/:id/signal', requestSignal);

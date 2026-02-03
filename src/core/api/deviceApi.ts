@@ -135,7 +135,26 @@ export const deviceApi = {
     };
   },
 
-  // Fall Detection toggle endpoints removed - display only (matching reference app)
+  /**
+   * PUT /devices/:id_type/:id/fall-detection - Toggle fall detection (body: { enabled: boolean })
+   */
+  async toggleFallDetection(
+    idType: DeviceIdType,
+    id: string,
+    enabled: boolean,
+  ): Promise<{
+    message: string;
+    device_id: string;
+    id_type: DeviceIdType;
+    fall_detection_enabled: boolean;
+  }> {
+    return apiClient.put<{
+      message: string;
+      device_id: string;
+      id_type: DeviceIdType;
+      fall_detection_enabled: boolean;
+    }>(`/devices/${idType}/${id}/fall-detection`, { enabled });
+  },
 
   /**
    * POST /devices/:id_type/:id/signal - Request device signal
