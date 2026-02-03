@@ -36,6 +36,7 @@ import { ENV } from '@core/constants/env';
 type NavigationProp = StackNavigationProp<AppStackParamList>;
 
 const LIFESTATION_HELP_URL = 'https://www.lifestation.com';
+const LIFESTATION_TERMS_URL = 'https://www.lifestation.com/terms-and-conditions/';
 
 /** Renders account report data (array of accounts or object with accounts/list). */
 function AccountReportContent({ data }: { data: unknown }) {
@@ -85,9 +86,6 @@ function AccountReportContent({ data }: { data: unknown }) {
     </AppText>
   );
 }
-
-const LIFESTATION_HELP_URL = 'https://www.lifestation.com';
-const LIFESTATION_TERMS_URL = 'https://www.lifestation.com/terms-and-conditions/';
 
 const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
