@@ -37,5 +37,21 @@ target 'Lifestation' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+
+    # Fix RCTSwiftUI.modulemap not found when Archiving (Release-iphoneos)
+    project_path = File.join(installer.sandbox.root, '..', 'Lifestation.xcodeproj')
+    if File.exist?(project_path)
+      require 'xcodeproj'
+      project = Xcodeproj::Project.open(project_path)
+      project.targets.each do |target|
+        next unless target.respond_to?(:name) && target.name == 'Lifestation'
+        target.build_configurations.each do |config|
+          config.build_settings['SWIFT_INCLUDE_PATHS'] ||= ['$(inherited)']
+          path = '$(BUILT_PRODUCTS_DIR)'
+          config.build_settings['SWIFT_INCLUDE_PATHS'] << path unless config.build_settings['SWIFT_INCLUDE_PATHS'].include?(path)
+        end
+      end
+      project.save
+    end
   end
 end

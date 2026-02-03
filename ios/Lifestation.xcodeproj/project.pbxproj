@@ -289,7 +289,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION = YES;
 				CODE_SIGN_ENTITLEMENTS = Lifestation/Lifestation.entitlements;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = P6C8KYN28F;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = Lifestation/Info.plist;
@@ -307,6 +307,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.lifestation.careassist;
 				PRODUCT_NAME = Lifestation;
+				SWIFT_INCLUDE_PATHS = "$(inherited) $(BUILT_PRODUCTS_DIR)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
@@ -321,7 +322,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION = YES;
 				CODE_SIGN_ENTITLEMENTS = Lifestation/Lifestation.entitlements;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEVELOPMENT_TEAM = P6C8KYN28F;
 				INFOPLIST_FILE = Lifestation/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
@@ -338,6 +339,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.lifestation.careassist;
 				PRODUCT_NAME = Lifestation;
+				SWIFT_INCLUDE_PATHS = "$(inherited) $(BUILT_PRODUCTS_DIR)";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
 			};
