@@ -109,6 +109,7 @@ class ReportsApiService {
         method,
         endpoint,
         status: error.response?.status,
+        response_data: error.response?.data,
         error_code: error.code,
         message: error.message,
         duration_ms: Date.now() - startTime,
@@ -225,9 +226,16 @@ class ReportsApiService {
     const createResponse = await this.createAccountReport(reportParams);
     // Postman/API returns report_id; accept alternate casing from external API
     const reportId =
-      createResponse.report_id ?? createResponse.Report_ID ?? createResponse.report_Id;
+      createResponse.report_id ??
+      createResponse.Report_ID ??
+      createResponse.report_Id ??
+      createResponse.Report_Id;
 
     if (!reportId) {
+      logger.error('Account report create response missing report_id', {
+        response_keys: createResponse ? Object.keys(createResponse) : [],
+        response_sample: typeof createResponse === 'object' ? createResponse : createResponse,
+      });
       throw new Error('Failed to create account report: No report_id returned');
     }
 
@@ -239,7 +247,12 @@ class ReportsApiService {
     while (attempts < maxAttempts && !isReady) {
       attempts++;
       const statusResponse = await this.getAccountReportStatus(reportId);
-      isReady = statusResponse.ready === true || statusResponse.status === 'ready';
+      isReady =
+        statusResponse.ready === true ||
+        statusResponse.Ready === true ||
+        statusResponse.status === 'ready' ||
+        statusResponse.Status === 'ready' ||
+        statusResponse.Status === 'Ready';
       if (!isReady) {
         await new Promise(resolve => setTimeout(resolve, pollInterval));
       }

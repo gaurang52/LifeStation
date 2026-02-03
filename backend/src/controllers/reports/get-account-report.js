@@ -47,9 +47,17 @@ const getAccountReport = async (req, res) => {
     try {
       reportData = await reportsApiService.getAccountReportFlow(params);
     } catch (error) {
+      const status = error.response?.status;
+      const responseData = error.response?.data;
       logger.error('Error fetching account report from Reports API:', {
         error: error.message,
         user_id: userId,
+        external_status: status,
+        external_response: responseData,
+        external_error_message:
+          typeof responseData === 'object'
+            ? responseData?.message ?? responseData?.error
+            : responseData,
       });
 
       await auditLogService.log({

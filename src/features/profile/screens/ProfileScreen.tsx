@@ -215,6 +215,7 @@ const ProfileScreen: React.FC = () => {
     setShowAccountReport(false);
     setAccountReportError(null);
     setAccountReportData(null);
+    setAccountReportLoading(false);
   };
 
   const openUpdatePassword = () => {
@@ -401,11 +402,7 @@ const ProfileScreen: React.FC = () => {
                     Account report
                   </AppText>
                 </View>
-                {accountReportLoading ? (
-                  <ActivityIndicator size="small" color={colors.primary} />
-                ) : (
-                  <ChevronRight size={20} color={colors.textSecondary} />
-                )}
+                <ChevronRight size={20} color={colors.textSecondary} />
               </TouchableOpacity>
             </Card>
           </View>

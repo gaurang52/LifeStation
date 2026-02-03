@@ -709,13 +709,34 @@ const MapScreen: React.FC = () => {
 
             <View style={styles.modalButtons}>
               <TouchableOpacity
-                style={styles.clearButton}
+                style={[
+                  styles.clearButton,
+                  !geofenceCenter &&
+                    (geofenceRadius === null || geofenceRadius === 0) &&
+                    styles.clearButtonDisabled,
+                ]}
                 onPress={() => {
                   setGeofenceRadius(0);
                   setGeofenceCenter(null);
                 }}
+                disabled={!geofenceCenter && (geofenceRadius === null || geofenceRadius === 0)}
                 activeOpacity={0.8}>
-                <AppText variant="bodyBold" color={colors.error}>
+                <MaterialIcons
+                  name="clear"
+                  size={20}
+                  color={
+                    !geofenceCenter && (geofenceRadius === null || geofenceRadius === 0)
+                      ? colors.textSecondary
+                      : colors.error
+                  }
+                />
+                <AppText
+                  variant="bodyBold"
+                  color={
+                    !geofenceCenter && (geofenceRadius === null || geofenceRadius === 0)
+                      ? colors.textSecondary
+                      : colors.error
+                  }>
                   Clear
                 </AppText>
               </TouchableOpacity>
@@ -911,12 +932,24 @@ const styles = StyleSheet.create({
   modalButtons: {
     flexDirection: 'row',
     gap: spacing.md,
+    alignItems: 'stretch',
+    justifyContent: 'flex-end',
   },
   clearButton: {
-    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: colors.surface,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.error,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: borderRadius.lg,
+    gap: spacing.xs,
+  },
+  clearButtonDisabled: {
+    borderColor: colors.border,
+    backgroundColor: colors.lightGray,
   },
 });
 

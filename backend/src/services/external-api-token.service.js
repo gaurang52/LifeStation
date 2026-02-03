@@ -231,10 +231,10 @@ class ExternalApiTokenService {
    */
   buildAuthRequest(apiName, config, clientId) {
     if (apiName === 'reports') {
-      // Reports API: Postman collection shows mode: "formdata" with "grant type" (space in key)
-      // Use form-encoded format as primary (matching Postman collection exactly)
+      // Reports API: Use grant_type (standard OAuth2). Postman "Refresh" uses grant_type;
+      // if token endpoint fails with 400, try reverting to 'grant type' (space) per Postman Auth.
       const formData = new URLSearchParams();
-      formData.append('grant type', 'password'); // Space in key name as per Postman collection
+      formData.append('grant_type', 'password');
       formData.append('username', config.username);
       formData.append('password', config.password);
       formData.append('client_id', clientId);
