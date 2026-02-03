@@ -20,7 +20,6 @@ import {
   Lock,
   User,
   Smartphone,
-  ClipboardList,
 } from 'lucide-react-native';
 import { Screen, AppText, Card, TopNavbar, Input, Button } from '@shared/components';
 import { useAuthStore } from '@core/store';
@@ -191,6 +190,8 @@ const ProfileScreen: React.FC = () => {
     navigation.navigate(ROUTES.DEVICE_DETAILS_TAB);
   };
 
+  /** Used when Account report row is uncommented (see SUPPORT section). */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const openAccountReport = async () => {
     setAccountReportError(null);
     setAccountReportData(null);
@@ -388,6 +389,7 @@ const ProfileScreen: React.FC = () => {
                 </View>
                 <ChevronRight size={20} color={colors.textSecondary} />
               </TouchableOpacity>
+              {/* Account report – commented out until API is fixed
               <View style={styles.divider} />
               <TouchableOpacity
                 style={styles.settingRow}
@@ -404,6 +406,7 @@ const ProfileScreen: React.FC = () => {
                 </View>
                 <ChevronRight size={20} color={colors.textSecondary} />
               </TouchableOpacity>
+              */}
             </Card>
           </View>
 
@@ -793,21 +796,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: colors.text,
     fontSize: 16,
-  },
-  settingRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  badge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs / 2,
-    borderRadius: borderRadius.xl,
-    backgroundColor: colors.primary,
-  },
-  badgeText: {
-    fontWeight: '600',
-    fontSize: 12,
   },
   divider: {
     height: 1,
