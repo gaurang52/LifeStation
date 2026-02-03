@@ -43,16 +43,27 @@ const externalApiLimiter = rateLimit({
   },
 });
 
+// Auth: relaxed for QA testing (backend-only change, no app release needed)
+const AUTH_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const AUTH_MAX_REQUESTS = 100; // 100 failed attempts per window
+
 /**
- * Auth rate limiter (stricter for login/register)
+ * Auth rate limiter (login/register)
  */
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 requests per window
+  windowMs: AUTH_WINDOW_MS,
+  max: AUTH_MAX_REQUESTS,
   message: 'Too many authentication attempts, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: true,
+  handler: (req, res) => {
+    res.status(429).json({
+      error: 'Too many requests',
+      message: 'Too many authentication attempts, please try again later.',
+      retryAfter: Math.ceil(AUTH_WINDOW_MS / 1000),
+    });
+  },
 });
 
 module.exports = {
