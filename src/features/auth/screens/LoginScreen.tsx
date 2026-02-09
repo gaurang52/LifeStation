@@ -108,54 +108,49 @@ const LoginScreen: React.FC = () => {
           </View>
 
           <View style={styles.form}>
-            <View style={styles.inputContainer}>
-              <Input
-                label="Email Address"
-                placeholder="Enter your email"
-                autoCapitalize="none"
-                keyboardType="email-address"
-                value={email}
-                onChangeText={text => {
-                  setEmail(text);
-                  if (emailError) validateEmail(text);
-                }}
-                error={emailError || undefined}
-                onBlur={() => validateEmail(email)}
-                style={styles.input}
-              />
-              <View style={styles.inputIconContainer}>
-                <MaterialIcons name="email" size={20} color={colors.textSecondary} />
-              </View>
-            </View>
+            <Input
+              label="Email Address"
+              placeholder="Enter your email"
+              autoCapitalize="none"
+              keyboardType="email-address"
+              value={email}
+              onChangeText={text => {
+                setEmail(text);
+                if (emailError) validateEmail(text);
+              }}
+              error={emailError || undefined}
+              onBlur={() => validateEmail(email)}
+              leftIcon={<MaterialIcons name="email" size={20} color={colors.textSecondary} />}
+            />
 
-            <View style={styles.inputContainer}>
-              <Input
-                label="Password"
-                placeholder="Enter your password"
-                secureTextEntry={!showPassword}
-                value={password}
-                onChangeText={text => {
-                  setPassword(text);
-                  if (passwordError) validatePassword(text);
-                }}
-                error={passwordError || undefined}
-                onBlur={() => validatePassword(password)}
-                style={styles.input}
-              />
-              <View style={styles.inputIconContainer}>
+            <Input
+              label="Password"
+              placeholder="Enter your password"
+              secureTextEntry={!showPassword}
+              value={password}
+              onChangeText={text => {
+                setPassword(text);
+                if (passwordError) validatePassword(text);
+              }}
+              error={passwordError || undefined}
+              onBlur={() => validatePassword(password)}
+              hasRightIcon
+              leftIcon={
                 <MaterialIcons name="lock-outline" size={20} color={colors.textSecondary} />
-              </View>
-              <TouchableOpacity
-                style={styles.eyeIcon}
-                onPress={() => setShowPassword(!showPassword)}
-                activeOpacity={0.7}>
-                <MaterialIcons
-                  name={showPassword ? 'visibility' : 'visibility-off'}
-                  size={20}
-                  color={colors.textSecondary}
-                />
-              </TouchableOpacity>
-            </View>
+              }
+              rightIcon={
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <MaterialIcons
+                    name={showPassword ? 'visibility' : 'visibility-off'}
+                    size={20}
+                    color={colors.textSecondary}
+                  />
+                </TouchableOpacity>
+              }
+            />
 
             {error ? (
               <View style={styles.errorContainer}>
@@ -205,7 +200,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: spacing.lg, // px-6 in Figma = 24px
+    paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
     paddingBottom: spacing.xxl,
   },
@@ -225,26 +220,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   form: {
-    gap: spacing.md, // space-y-4 in Figma = 16px
-  },
-  inputContainer: {
-    position: 'relative',
-  },
-  inputIconContainer: {
-    position: 'absolute',
-    left: spacing.md, // left-4 in Figma = 16px
-    top: 48, // Adjusted for new input height (56px) - icon center (10px) = 48px
-    zIndex: 1,
-  },
-  input: {
-    paddingLeft: spacing.xl + spacing.md, // pl-12 in Figma = 48px (12*4)
-  },
-  eyeIcon: {
-    position: 'absolute',
-    right: spacing.md,
-    top: 48, // Aligned with inputIconContainer
-    zIndex: 1,
-    padding: spacing.xs,
+    gap: spacing.md,
   },
   errorContainer: {
     flexDirection: 'row',
