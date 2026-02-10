@@ -157,6 +157,42 @@ const getDevices = async (req, res) => {
           error_message: error.message,
         });
 
+        // Fallback: return device from internal DB when LifeStation Device API fails (e.g. device not found, error status)
+        const customDeviceName = customNameByDevice.get(`${device.device_id}|${device.id_type}`);
+        const mapping = await db.UserDeviceMapping.findOne({
+          where: {
+            user_id: userId,
+            external_device_id: device.device_id,
+            id_type: device.id_type,
+          },
+          include: [
+            {
+              model: db.Devices,
+              as: 'device',
+              attributes: ['name', 'status', 'device_imei'],
+              required: false,
+            },
+          ],
+        });
+        if (mapping) {
+          const internalDevice = mapping.device;
+          return {
+            device_id: device.device_id,
+            id_type: device.id_type,
+            name:
+              customDeviceName ||
+              mapping.device_name?.trim() ||
+              internalDevice?.name ||
+              'Unnamed Device',
+            status: internalDevice?.status || 'unknown',
+            imei: internalDevice?.device_imei || device.device_id,
+            battery_level: null,
+            signal_strength: null,
+            location: null,
+            fall_detection_enabled: false,
+            last_seen: null,
+          };
+        }
         return null;
       }
     });

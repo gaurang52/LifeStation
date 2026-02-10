@@ -344,7 +344,10 @@ class AccessControlService {
           filters.status = 'A'; // Active devices only
 
           const devicesData = await deviceApiService.getDevices(filters);
-          const devices = devicesData.devices || devicesData || [];
+          let devices = devicesData.devices || devicesData || [];
+          if (!Array.isArray(devices)) {
+            devices = [];
+          }
 
           // Filter devices by cs_no match (for seniors) or linked seniors (for caregivers)
           const authorizedDevices = [];
@@ -387,6 +390,65 @@ class AccessControlService {
           logger.debug(
             `getAccessibleDevicesForUser: Found ${authorizedDevices.length} devices via LifeStation API for user ${userId}`,
           );
+
+          // Fallback when Device API returns empty: (1) try without status filter, (2) use internal UserDeviceMapping
+          if (authorizedDevices.length === 0 && userType === 'senior') {
+            // 1) Retry Device API without status filter - devices with "error" status are excluded by status='A'
+            try {
+              const retryFilters = {};
+              if (servcoNo) retryFilters.servco = servcoNo;
+              const retryData = await deviceApiService.getDevices(retryFilters);
+              let retryDevices = retryData.devices || retryData || [];
+              if (!Array.isArray(retryDevices)) retryDevices = [];
+              for (const device of retryDevices) {
+                const deviceCsNo = device.cs_no || device.csNo;
+                const deviceId = device.IMEI || device.device_id || device.id;
+                const deviceIdType = device.id_type || 'imei';
+                if (deviceId && deviceCsNo === user.cs_no) {
+                  authorizedDevices.push({ device_id: deviceId, id_type: deviceIdType });
+                }
+              }
+              if (authorizedDevices.length > 0) {
+                logger.debug(
+                  `getAccessibleDevicesForUser: Found ${authorizedDevices.length} devices via retry without status filter`,
+                  { userId },
+                );
+                return authorizedDevices;
+              }
+            } catch (retryErr) {
+              logger.debug('getAccessibleDevicesForUser: Retry without status filter failed', {
+                error: retryErr.message,
+              });
+            }
+
+            // 2) Fall back to internal UserDeviceMapping (use external_device_id if Devices join fails)
+            const mappings = await db.UserDeviceMapping.findAll({
+              where: { user_id: userId },
+              include: [
+                {
+                  model: db.Devices,
+                  as: 'device',
+                  attributes: ['device_id', 'id_type'],
+                  required: false,
+                },
+              ],
+            });
+            const internalDevices = mappings
+              .map(m => {
+                const deviceId = m.device?.device_id || m.external_device_id;
+                const idType = m.device?.id_type || m.id_type;
+                return deviceId ? { device_id: deviceId, id_type: idType } : null;
+              })
+              .filter(Boolean);
+            if (internalDevices.length > 0) {
+              logger.info(
+                `getAccessibleDevicesForUser: Using ${internalDevices.length} devices from internal mapping (Device API returned empty)`,
+                { userId },
+              );
+              return internalDevices;
+            }
+          }
+
           return authorizedDevices;
         } catch (deviceApiError) {
           logger.warn(
