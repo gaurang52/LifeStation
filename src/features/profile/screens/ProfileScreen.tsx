@@ -4,6 +4,7 @@ import {
   View,
   ScrollView,
   TouchableOpacity,
+  Pressable,
   Modal,
   KeyboardAvoidingView,
   Platform,
@@ -651,132 +652,147 @@ const ProfileScreen: React.FC = () => {
         transparent
         animationType="fade"
         onRequestClose={closeUpdatePassword}>
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={closeUpdatePassword}>
+        <View style={styles.modalOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={closeUpdatePassword}
+            accessible={false}
+          />
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={styles.modalContentWrap}>
-            <TouchableOpacity activeOpacity={1} onPress={e => e.stopPropagation()}>
-              <Card style={styles.updatePasswordCard}>
-                <AppText variant="h3" style={styles.updatePasswordTitle}>
-                  Update Password
+            <Card style={styles.updatePasswordCard}>
+              <AppText variant="h3" style={styles.updatePasswordTitle}>
+                Update Password
+              </AppText>
+              <AppText
+                variant="small"
+                color={colors.textSecondary}
+                style={styles.updatePasswordSubtitle}>
+                Enter your current password and choose a new one. Password must be 8+ characters and
+                include at least 3 of: uppercase, lowercase, number, special character.
+              </AppText>
+              <View style={styles.passwordFieldWrap}>
+                <Input
+                  label="Current password"
+                  value={currentPassword}
+                  onChangeText={setCurrentPassword}
+                  placeholder="Current password"
+                  secureTextEntry={!showCurrentPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  hasRightIcon
+                  rightIcon={
+                    <Pressable
+                      onPress={() => setShowCurrentPassword(!showCurrentPassword)}
+                      style={({ pressed }) => [
+                        styles.passwordEyePressable,
+                        pressed && styles.passwordEyePressablePressed,
+                      ]}
+                      hitSlop={12}
+                      accessibilityLabel="Toggle password visibility"
+                      accessibilityRole="button">
+                      <MaterialIcons
+                        name={showCurrentPassword ? 'visibility' : 'visibility-off'}
+                        size={22}
+                        color={colors.textSecondary}
+                      />
+                    </Pressable>
+                  }
+                />
+              </View>
+              <View style={styles.passwordFieldWrap}>
+                <Input
+                  label="New password"
+                  value={newPassword}
+                  onChangeText={setNewPassword}
+                  placeholder="New password"
+                  secureTextEntry={!showNewPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  hasRightIcon
+                  rightIcon={
+                    <Pressable
+                      onPress={() => setShowNewPassword(!showNewPassword)}
+                      style={({ pressed }) => [
+                        styles.passwordEyePressable,
+                        pressed && styles.passwordEyePressablePressed,
+                      ]}
+                      hitSlop={12}
+                      accessibilityLabel="Toggle password visibility"
+                      accessibilityRole="button">
+                      <MaterialIcons
+                        name={showNewPassword ? 'visibility' : 'visibility-off'}
+                        size={22}
+                        color={colors.textSecondary}
+                      />
+                    </Pressable>
+                  }
+                />
+              </View>
+              <View style={styles.passwordFieldWrap}>
+                <Input
+                  label="Confirm new password"
+                  value={confirmPassword}
+                  onChangeText={setConfirmPassword}
+                  placeholder="Confirm new password"
+                  secureTextEntry={!showConfirmPassword}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  hasRightIcon
+                  rightIcon={
+                    <Pressable
+                      onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                      style={({ pressed }) => [
+                        styles.passwordEyePressable,
+                        pressed && styles.passwordEyePressablePressed,
+                      ]}
+                      hitSlop={12}
+                      accessibilityLabel="Toggle password visibility"
+                      accessibilityRole="button">
+                      <MaterialIcons
+                        name={showConfirmPassword ? 'visibility' : 'visibility-off'}
+                        size={22}
+                        color={colors.textSecondary}
+                      />
+                    </Pressable>
+                  }
+                />
+              </View>
+              {passwordError ? (
+                <AppText variant="small" color={colors.error} style={styles.updatePasswordError}>
+                  {passwordError}
                 </AppText>
+              ) : null}
+              {passwordSuccess ? (
                 <AppText
                   variant="small"
-                  color={colors.textSecondary}
-                  style={styles.updatePasswordSubtitle}>
-                  Enter your current password and choose a new one. Password must be 8+ characters
-                  and include at least 3 of: uppercase, lowercase, number, special character.
+                  color={colors.success}
+                  style={styles.updatePasswordSuccess}>
+                  Password updated. Logging you out…
                 </AppText>
-                <View style={styles.passwordInputWrap}>
-                  <Input
-                    label="Current password"
-                    value={currentPassword}
-                    onChangeText={setCurrentPassword}
-                    placeholder="Current password"
-                    secureTextEntry={!showCurrentPassword}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    style={styles.updatePasswordInput}
-                  />
-                  <TouchableOpacity
-                    style={styles.passwordEyeIcon}
-                    onPress={() => setShowCurrentPassword(!showCurrentPassword)}
-                    activeOpacity={0.7}
-                    accessibilityLabel="Toggle password visibility"
-                    accessibilityRole="button">
-                    <MaterialIcons
-                      name={showCurrentPassword ? 'visibility' : 'visibility-off'}
-                      size={22}
-                      color={colors.textSecondary}
-                    />
-                  </TouchableOpacity>
-                </View>
-                <View style={styles.passwordInputWrap}>
-                  <Input
-                    label="New password"
-                    value={newPassword}
-                    onChangeText={setNewPassword}
-                    placeholder="New password"
-                    secureTextEntry={!showNewPassword}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    style={styles.updatePasswordInput}
-                  />
-                  <TouchableOpacity
-                    style={styles.passwordEyeIcon}
-                    onPress={() => setShowNewPassword(!showNewPassword)}
-                    activeOpacity={0.7}
-                    accessibilityLabel="Toggle password visibility"
-                    accessibilityRole="button">
-                    <MaterialIcons
-                      name={showNewPassword ? 'visibility' : 'visibility-off'}
-                      size={22}
-                      color={colors.textSecondary}
-                    />
-                  </TouchableOpacity>
-                </View>
-                <View style={styles.passwordInputWrap}>
-                  <Input
-                    label="Confirm new password"
-                    value={confirmPassword}
-                    onChangeText={setConfirmPassword}
-                    placeholder="Confirm new password"
-                    secureTextEntry={!showConfirmPassword}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    style={styles.updatePasswordInput}
-                  />
-                  <TouchableOpacity
-                    style={styles.passwordEyeIcon}
-                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                    activeOpacity={0.7}
-                    accessibilityLabel="Toggle password visibility"
-                    accessibilityRole="button">
-                    <MaterialIcons
-                      name={showConfirmPassword ? 'visibility' : 'visibility-off'}
-                      size={22}
-                      color={colors.textSecondary}
-                    />
-                  </TouchableOpacity>
-                </View>
-                {passwordError ? (
-                  <AppText variant="small" color={colors.error} style={styles.updatePasswordError}>
-                    {passwordError}
+              ) : null}
+              <View style={styles.updatePasswordActions}>
+                <TouchableOpacity
+                  style={styles.updatePasswordCancelBtn}
+                  onPress={closeUpdatePassword}
+                  disabled={passwordLoading}>
+                  <AppText variant="body" color={colors.textSecondary}>
+                    Cancel
                   </AppText>
-                ) : null}
-                {passwordSuccess ? (
-                  <AppText
-                    variant="small"
-                    color={colors.success}
-                    style={styles.updatePasswordSuccess}>
-                    Password updated. Logging you out…
-                  </AppText>
-                ) : null}
-                <View style={styles.updatePasswordActions}>
-                  <TouchableOpacity
-                    style={styles.updatePasswordCancelBtn}
-                    onPress={closeUpdatePassword}
-                    disabled={passwordLoading}>
-                    <AppText variant="body" color={colors.textSecondary}>
-                      Cancel
-                    </AppText>
-                  </TouchableOpacity>
-                  <View style={styles.updatePasswordSubmitWrap}>
-                    <Button
-                      label="Update Password"
-                      onPress={handleUpdatePassword}
-                      loading={passwordLoading}
-                      disabled={passwordLoading}
-                    />
-                  </View>
+                </TouchableOpacity>
+                <View style={styles.updatePasswordSubmitWrap}>
+                  <Button
+                    label="Update Password"
+                    onPress={handleUpdatePassword}
+                    loading={passwordLoading}
+                    disabled={passwordLoading}
+                  />
                 </View>
-              </Card>
-            </TouchableOpacity>
+              </View>
+            </Card>
           </KeyboardAvoidingView>
-        </TouchableOpacity>
+        </View>
       </Modal>
     </Screen>
   );
@@ -975,15 +991,16 @@ const styles = StyleSheet.create({
   updatePasswordInput: {
     marginBottom: spacing.md,
   },
-  passwordInputWrap: {
-    position: 'relative',
+  passwordFieldWrap: {
+    marginBottom: spacing.md,
   },
-  passwordEyeIcon: {
-    position: 'absolute',
-    right: spacing.md,
-    top: 48,
-    padding: spacing.xs,
-    zIndex: 1,
+  passwordEyePressable: {
+    padding: spacing.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  passwordEyePressablePressed: {
+    opacity: 0.6,
   },
   nameInput: {
     minHeight: 72,
