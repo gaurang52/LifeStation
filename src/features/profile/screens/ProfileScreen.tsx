@@ -10,6 +10,7 @@ import {
   Switch,
   Linking,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import {
   Bell,
@@ -245,8 +246,14 @@ const ProfileScreen: React.FC = () => {
   const openTerms = () => Linking.openURL(LIFESTATION_TERMS_URL).catch(() => {});
 
   const handleLogout = () => {
+    Alert.alert('Log Out', 'Are you sure you want to log out?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Log Out', style: 'destructive', onPress: doLogout },
+    ]);
+  };
+
+  const doLogout = () => {
     logout();
-    // Reset root to Auth stack with Login (sign in) screen
     const rootNav = navigation.getParent()?.getParent();
     if (rootNav) {
       rootNav.dispatch(
@@ -346,7 +353,7 @@ const ProfileScreen: React.FC = () => {
       setPasswordSuccess(true);
       setTimeout(() => {
         closeUpdatePassword();
-        handleLogout();
+        doLogout();
       }, 1500);
     } catch (e: unknown) {
       const message =
