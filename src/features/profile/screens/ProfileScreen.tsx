@@ -119,7 +119,6 @@ const ProfileScreen: React.FC = () => {
   const [notificationEnabled, setNotificationEnabled] = useState(
     user?.notification_enabled !== false,
   );
-  const [notificationUpdating, setNotificationUpdating] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [editName, setEditName] = useState(user?.name ?? '');
   const [editMobile, setEditMobile] = useState(user?.mobile ?? '');
@@ -138,16 +137,14 @@ const ProfileScreen: React.FC = () => {
   }, [user?.notification_enabled]);
 
   const handleNotificationToggle = async (value: boolean) => {
-    setNotificationUpdating(true);
+    const previousValue = notificationEnabled;
+    setNotificationEnabled(value);
+    setUser({ ...user!, notification_enabled: value });
     try {
       await authApi.updateProfile({ notification_enabled: value });
-      setNotificationEnabled(value);
-      setUser({ ...user!, notification_enabled: value });
     } catch {
-      // Revert on error
-      setNotificationEnabled(!value);
-    } finally {
-      setNotificationUpdating(false);
+      setNotificationEnabled(previousValue);
+      setUser({ ...user!, notification_enabled: previousValue });
     }
   };
 
@@ -398,16 +395,12 @@ const ProfileScreen: React.FC = () => {
                     Push notifications
                   </AppText>
                 </View>
-                {notificationUpdating ? (
-                  <ActivityIndicator size="small" color={colors.primary} />
-                ) : (
-                  <Switch
-                    value={notificationEnabled}
-                    onValueChange={handleNotificationToggle}
-                    trackColor={{ false: colors.lightGray, true: colors.lightPrimary }}
-                    thumbColor={notificationEnabled ? colors.primary : colors.white}
-                  />
-                )}
+                <Switch
+                  value={notificationEnabled}
+                  onValueChange={handleNotificationToggle}
+                  trackColor={{ false: colors.lightGray, true: colors.lightPrimary }}
+                  thumbColor={notificationEnabled ? colors.primary : colors.white}
+                />
               </View>
               <View style={styles.divider} />
               <TouchableOpacity

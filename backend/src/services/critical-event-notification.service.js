@@ -73,7 +73,15 @@ const getActiveCaregivers = async seniorId => {
           where: {
             status: 'ACTIVATED', // Only active caregivers
           },
-          attributes: ['id', 'name', 'email', 'mobile', 'fcm_token', 'notification_enabled'],
+          attributes: [
+            'id',
+            'name',
+            'email',
+            'mobile',
+            'fcm_token',
+            'notification_enabled',
+            'extra_info',
+          ],
         },
       ],
     });
@@ -290,26 +298,28 @@ const notifyCaregiversOfCriticalEvent = async (event, senior, deviceName = null)
     event.eventtime || event.event_time || event.timestamp || new Date().toISOString();
   const deviceId = event.device_id || event.imei || 'Unknown Device';
 
-  // Format timestamp for display
-  const formattedTime = new Date(eventTime).toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
+  /** Format timestamp in recipient's timezone (IANA e.g. Asia/Kolkata) for display */
+  const formatTimeForTimezone = tz => {
+    const options = {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    };
+    if (tz) {
+      try {
+        Intl.DateTimeFormat(undefined, { timeZone: tz });
+        options.timeZone = tz;
+      } catch {
+        // Fallback to device default if invalid
+      }
+    }
+    return new Date(eventTime).toLocaleString('en-US', options);
+  };
 
-  // Prepare notification messages
+  // Prepare notification messages (formatted per caregiver in loop)
   const pushTitle = `🚨 ${eventDescription} Alert`;
-  const pushMessage = `${
-    senior.name || 'Senior'
-  } has triggered a ${eventDescription.toLowerCase()} alert${
-    deviceName ? ` from ${deviceName}` : ''
-  } at ${formattedTime}.`;
-
-  const smsMessage = `🚨 EMERGENCY ALERT: ${eventDescription} - ${senior.name || 'Senior'}${
-    deviceName ? ` (${deviceName})` : ''
-  } - ${formattedTime}. Please check the LifeStation app immediately.`;
 
   // Send notifications to each caregiver
   for (const caregiver of caregivers) {
@@ -322,6 +332,17 @@ const notifyCaregiversOfCriticalEvent = async (event, senior, deviceName = null)
         );
         continue;
       }
+
+      const recipientTimezone = caregiver.extra_info?.timezone || null;
+      const formattedTime = formatTimeForTimezone(recipientTimezone);
+      const pushMessage = `${
+        senior.name || 'Senior'
+      } has triggered a ${eventDescription.toLowerCase()} alert${
+        deviceName ? ` from ${deviceName}` : ''
+      } at ${formattedTime}.`;
+      const smsMessage = `🚨 EMERGENCY ALERT: ${eventDescription} - ${senior.name || 'Senior'}${
+        deviceName ? ` (${deviceName})` : ''
+      } - ${formattedTime}. Please check the LifeStation app immediately.`;
 
       // Send push notification
       if (caregiver.fcm_token) {

@@ -23,7 +23,7 @@ function normalizePhone(val) {
 const updateProfile = async (req, res) => {
   try {
     const userId = req.user?.id;
-    const { name, mobile, notification_enabled } = req.body;
+    const { name, mobile, notification_enabled, timezone } = req.body;
 
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
@@ -73,6 +73,20 @@ const updateProfile = async (req, res) => {
     }
     if (typeof notification_enabled === 'boolean') {
       updates.notification_enabled = notification_enabled;
+    }
+    if (timezone !== undefined) {
+      const tz = typeof timezone === 'string' ? timezone.trim() : null;
+      if (tz) {
+        try {
+          Intl.DateTimeFormat(undefined, { timeZone: tz });
+        } catch {
+          return res.status(400).json({ error: 'Invalid timezone' });
+        }
+        updates.extra_info = { ...(user.extra_info || {}), timezone: tz };
+      } else {
+        updates.extra_info = { ...(user.extra_info || {}) };
+        delete updates.extra_info.timezone;
+      }
     }
 
     if (Object.keys(updates).length === 0) {

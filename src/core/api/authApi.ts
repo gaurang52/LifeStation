@@ -6,6 +6,7 @@ export interface LoginRequest {
   password: string;
   fcm_token?: string;
   platform?: string;
+  timezone?: string; // IANA timezone e.g. 'Asia/Kolkata' for correct notification times
 }
 
 export interface LoginResponse {
@@ -25,6 +26,7 @@ export interface SignupRequest {
   gender?: string;
   fcm_token?: string;
   platform?: string;
+  timezone?: string;
   privacy_accepted: boolean;
   terms_accepted: boolean;
   cs_no?: string; // OPTION A: LifeStation account number (required for seniors)
@@ -70,6 +72,7 @@ export interface UpdateProfileRequest {
   name?: string;
   mobile?: string | null;
   notification_enabled?: boolean;
+  timezone?: string; // IANA timezone e.g. 'Asia/Kolkata' for correct notification times
 }
 
 export interface UpdateProfileResponse {

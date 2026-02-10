@@ -30,6 +30,8 @@ import {
 } from '@core/utils/notificationPermissions';
 import { setupNotificationHandlers } from '@core/services/notificationHandler';
 import { registerDeviceForRemoteMessages } from '@core/services/fcmService';
+import { authApi } from '@core/api/authApi';
+import { getDeviceTimezone } from '@core/utils/deviceTimezone';
 import {
   ActivityIndicator,
   StatusBar,
@@ -257,6 +259,17 @@ const App = (): React.JSX.Element => {
       return () => clearTimeout(timeout);
     }
   }, [hasHydrated]);
+
+  const user = useAuthStore(state => state.user);
+
+  // Sync device timezone to backend so notifications show correct local time
+  useEffect(() => {
+    if (hasHydrated && user) {
+      authApi.updateProfile({ timezone: getDeviceTimezone() }).catch(() => {
+        /* Ignore - non-critical, notifications will use last known timezone */
+      });
+    }
+  }, [hasHydrated, user?.id]);
 
   // Setup notification handlers and request permission after app has hydrated
   useEffect(() => {

@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import type { User } from '@core/types';
 import { authApi } from '@core/api/authApi';
+import { getDeviceTimezone } from '@core/utils/deviceTimezone';
 
 interface AuthState {
   user: User | null;
@@ -48,6 +49,7 @@ export const useAuthStore = create<AuthState>()(
             password,
             fcm_token: fcmToken,
             platform: Platform.OS,
+            timezone: getDeviceTimezone(),
           });
           set({
             user: response.user,
@@ -68,6 +70,7 @@ export const useAuthStore = create<AuthState>()(
             ...payload,
             fcm_token: payload.fcm_token,
             platform: Platform.OS,
+            timezone: getDeviceTimezone(),
           });
           set({
             user: response.user,
