@@ -67,7 +67,8 @@ const toCsv = rows => {
 };
 
 /**
- * Generate PDF from report data
+ * Generate PDF from report data.
+ * Data comes from third-party Reports API; PDF layout is our code (pdfkit).
  * @param {Array} rows - Report rows
  * @param {Object} deviceInfo - Device information
  * @returns {Promise<Buffer>} - PDF buffer
@@ -75,7 +76,9 @@ const toCsv = rows => {
 const generatePDF = (rows, deviceInfo) => {
   return new Promise((resolve, reject) => {
     try {
-      const doc = new PDFDocument({ margin: 50 });
+      const margin = 50;
+      const bottomMargin = 60; // Reserve space for footer to avoid overlap
+      const doc = new PDFDocument({ margin });
       const buffers = [];
 
       doc.on('data', buffers.push.bind(buffers));
@@ -87,10 +90,10 @@ const generatePDF = (rows, deviceInfo) => {
 
       // Header
       doc.fontSize(20).text('Recent Reports', { align: 'center' });
-      doc.moveDown();
-      doc.fontSize(12).text(`Device ID: ${deviceInfo.device_id}`, { align: 'left' });
-      doc.text(`Generated: ${new Date().toLocaleString()}`, { align: 'left' });
-      doc.moveDown(2);
+      doc.moveDown(0.5);
+      doc.fontSize(11).text(`Device ID: ${deviceInfo.device_id}`, { align: 'left' });
+      doc.fontSize(10).text(`Generated: ${new Date().toLocaleString()}`, { align: 'left' });
+      doc.moveDown(1.5);
 
       if (!rows || rows.length === 0) {
         doc.fontSize(14).text('No report data available.', { align: 'center' });
@@ -98,7 +101,6 @@ const generatePDF = (rows, deviceInfo) => {
         return;
       }
 
-      // Get all unique keys from all rows
       const allKeys = Array.from(
         rows.reduce((set, row) => {
           if (row && typeof row === 'object') {
@@ -108,66 +110,106 @@ const generatePDF = (rows, deviceInfo) => {
         }, new Set()),
       );
 
-      // Table header
-      doc.fontSize(10).font('Helvetica-Bold');
-      const columnWidth = (doc.page.width - 100) / Math.min(allKeys.length, 5); // Max 5 columns
-      const startX = 50;
+      const maxColumns = 5;
+      const pageWidth = doc.page.width;
+      const usableWidth = pageWidth - margin * 2;
+      const columnWidth = Math.max(60, usableWidth / Math.min(allKeys.length, maxColumns));
+      const keysToShow = allKeys.slice(0, maxColumns);
+      const startX = margin;
       let currentY = doc.y;
 
-      // Draw header row
-      allKeys.slice(0, 5).forEach((key, index) => {
-        doc.text(String(key).substring(0, 20), startX + index * columnWidth, currentY, {
+      // Header row - use heightOfString to reserve correct space
+      doc.fontSize(10).font('Helvetica-Bold');
+      let headerHeight = 0;
+      keysToShow.forEach((key, index) => {
+        const label = String(key).substring(0, 25);
+        const h = doc.heightOfString(label, { width: columnWidth });
+        headerHeight = Math.max(headerHeight, h);
+      });
+      keysToShow.forEach((key, index) => {
+        const label = String(key).substring(0, 25);
+        doc.text(label, startX + index * columnWidth, currentY, {
           width: columnWidth,
           align: 'left',
+          lineBreak: true,
         });
       });
-      currentY += 20;
+      currentY += headerHeight + 6;
 
-      // Draw line under header
+      // Line under header
       doc
-        .moveTo(50, currentY)
-        .lineTo(doc.page.width - 50, currentY)
+        .moveTo(margin, currentY)
+        .lineTo(pageWidth - margin, currentY)
         .stroke();
       currentY += 10;
 
-      // Table rows
-      doc.font('Helvetica');
+      // Table rows - calculate row height from wrapped text to prevent overlap
+      doc.font('Helvetica').fontSize(9);
+      const rowPadding = 4;
+
       rows.forEach((row, rowIndex) => {
-        // Check if we need a new page
-        if (currentY > doc.page.height - 100) {
-          doc.addPage();
-          currentY = 50;
+        if (currentY > doc.page.height - bottomMargin) {
+          doc.addPage({ margin });
+          currentY = margin;
+          // Redraw header on new page
+          doc.fontSize(10).font('Helvetica-Bold');
+          keysToShow.forEach((key, index) => {
+            const label = String(key).substring(0, 25);
+            doc.text(label, startX + index * columnWidth, currentY, {
+              width: columnWidth,
+              align: 'left',
+              lineBreak: true,
+            });
+          });
+          currentY += headerHeight + 6;
+          doc
+            .moveTo(margin, currentY)
+            .lineTo(pageWidth - margin, currentY)
+            .stroke();
+          currentY += 10;
+          doc.font('Helvetica').fontSize(9);
         }
 
         const normalizedRow = row && typeof row === 'object' ? row : { value: row };
-        allKeys.slice(0, 5).forEach((key, colIndex) => {
+        let rowHeight = 0;
+        keysToShow.forEach(key => {
           const value = normalizedRow[key];
           const displayValue =
-            value !== null && value !== undefined ? String(value).substring(0, 30) : '--';
+            value !== null && value !== undefined ? String(value).substring(0, 40) : '--';
+          const h = doc.heightOfString(displayValue, { width: columnWidth });
+          rowHeight = Math.max(rowHeight, h);
+        });
 
-          doc.fontSize(9).text(displayValue, startX + colIndex * columnWidth, currentY, {
+        keysToShow.forEach((key, colIndex) => {
+          const value = normalizedRow[key];
+          const displayValue =
+            value !== null && value !== undefined ? String(value).substring(0, 40) : '--';
+          doc.text(displayValue, startX + colIndex * columnWidth, currentY, {
             width: columnWidth,
             align: 'left',
+            lineBreak: true,
           });
         });
-        currentY += 15;
+        currentY += rowHeight + rowPadding;
 
-        // Draw separator line every 5 rows
         if ((rowIndex + 1) % 5 === 0) {
           doc
-            .moveTo(50, currentY)
-            .lineTo(doc.page.width - 50, currentY)
+            .moveTo(margin, currentY)
+            .lineTo(pageWidth - margin, currentY)
             .stroke();
-          currentY += 5;
+          currentY += 6;
         }
       });
 
-      // Footer
-      doc
-        .fontSize(8)
-        .text(`Page ${doc.page.number} - Total Records: ${rows.length}`, 50, doc.page.height - 50, {
-          align: 'center',
-        });
+      // Footer - drawn on each page via continued flow, or add once at end
+      doc.fontSize(8).fillColor('#666666');
+      doc.text(
+        `Page ${doc.page.number} - Total Records: ${rows.length}`,
+        margin,
+        doc.page.height - 40,
+        { width: pageWidth - margin * 2, align: 'center' },
+      );
+      doc.fillColor('#000000');
 
       doc.end();
     } catch (error) {
