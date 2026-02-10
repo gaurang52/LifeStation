@@ -58,18 +58,6 @@ export interface GetDevicesResponse {
   message?: string;
 }
 
-/** Light device item for list endpoint (internal DB only, no external APIs) */
-export interface DeviceListItem {
-  device_id: string;
-  id_type: DeviceIdType;
-  name?: string | null;
-}
-
-export interface GetDevicesListResponse {
-  devices: DeviceListItem[];
-  message?: string;
-}
-
 export interface GetDeviceResponse {
   device: Device;
 }
@@ -117,14 +105,6 @@ export const deviceApi = {
     if (page !== undefined) params.page = page.toString();
     if (limit !== undefined) params.limit = limit.toString();
     return apiClient.getWithParams<GetDevicesResponse>('/devices', params);
-  },
-
-  /**
-   * GET /devices/list - Light device list (internal DB only, no external APIs)
-   * Use for Map/selectors instead of getDevices to avoid Device/Account API calls.
-   */
-  async getDevicesList(): Promise<GetDevicesListResponse> {
-    return apiClient.get<GetDevicesListResponse>('/devices/list');
   },
 
   /**

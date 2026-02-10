@@ -6,7 +6,6 @@ const { apiLimiter } = require('../middleware/rate-limit');
 
 const addDevice = require('../controllers/devices/add-device');
 const getDevices = require('../controllers/devices/get-devices');
-const getDevicesList = require('../controllers/devices/get-devices-list');
 const getDevice = require('../controllers/devices/get-device');
 const getDeviceRecent = require('../controllers/devices/get-device-recent');
 const getFallDetection = require('../controllers/devices/get-fall-detection');
@@ -28,9 +27,6 @@ router.post('/', addDevice);
 
 // GET /devices - List all accessible devices
 router.get('/', getDevices);
-
-// GET /devices/list - Light device list (internal DB only, no external APIs) - for Map/selectors
-router.get('/list', getDevicesList);
 
 // Specific routes must come before generic :id_type/:id route
 // GET /devices/:id_type/:id/recent - Get most recent device information
