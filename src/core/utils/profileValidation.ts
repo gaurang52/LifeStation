@@ -11,7 +11,10 @@ export function filterNameInput(text: string): string {
   return text.replace(/[\r\n]/g, '').replace(/[^\p{L}\s\-'.]/gu, '');
 }
 
-/** Restrict phone to digits and optional leading +. */
+/** Max display length for phone (optional + plus up to 14 digits; 15 total chars for backend). */
+export const PHONE_MAX_DISPLAY_LENGTH = PHONE_MAX_LENGTH; // Backend caps normalized form at 15 chars
+
+/** Restrict phone to digits and optional leading +. Keeps total length ≤ 15 for backend. */
 export function filterPhoneInput(text: string): string {
   if (text.startsWith('+')) {
     const rest = text.slice(1).replace(/\D/g, '');

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   StyleSheet,
   View,
@@ -9,9 +9,6 @@ import {
   PanResponder,
 } from 'react-native';
 import MapView, { Marker, Polyline, Circle, PROVIDER_GOOGLE } from 'react-native-maps';
-// Note: Install @react-native-community/slider if not already installed
-// npm install @react-native-community/slider
-// For now, using a simple implementation
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { Screen, TopNavbar, Button, AppText } from '@shared/components';
 import { colors, spacing, borderRadius } from '@shared/theme';
@@ -58,40 +55,72 @@ const MapScreen: React.FC = () => {
 
   // Track layout for accurate position calculation (pan is on track so locationX is relative to track)
   const trackLayoutRef = useRef({ width: 300 });
+  const [trackWidth, setTrackWidth] = useState(300);
 
-  // Handle slider value change - uses ref to avoid stale closure in panResponder
-  const handleSliderChange = useCallback((locationX: number) => {
-    const { width } = trackLayoutRef.current;
-    if (width <= 0) return;
-    const percentage = Math.max(0, Math.min(1, locationX / width));
-    setGeofenceRadius(Math.round(percentage * 10000));
-  }, []);
+  // Slider display value: updates every frame during drag for smooth UI; geofenceRadius throttled for map
+  const [sliderDisplayValue, setSliderDisplayValue] = useState<number>(1000);
+  const pendingSliderRef = useRef<number | null>(null);
+  const rafIdRef = useRef<number | null>(null);
 
-  const handleSliderChangeRef = useRef(handleSliderChange);
-  handleSliderChangeRef.current = handleSliderChange;
+  // Throttle geofenceRadius for map Circle during drag (expensive re-renders)
+  const lastMapUpdateRef = useRef(0);
+  const MAP_UPDATE_INTERVAL_MS = 80;
 
-  // Throttle state updates during drag to prevent flickering (MapView Circle re-renders are expensive)
-  const lastSliderUpdateRef = useRef(0);
-  const SLIDER_THROTTLE_MS = 32; // ~30fps for smooth but not excessive updates
+  const isDraggingRef = useRef(false);
 
-  // Pan responder on the track (so locationX is relative to track, not thumb)
+  // Sync sliderDisplayValue with geofenceRadius when modal opens or radius changes externally (not during drag)
+  useEffect(() => {
+    if (showGeofenceModal && !isDraggingRef.current) {
+      setSliderDisplayValue(geofenceRadius ?? 1000);
+    }
+  }, [showGeofenceModal, geofenceRadius]);
+
+  // Pan responder: rAF batches updates to one per frame; map updates throttled
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {},
+      onPanResponderGrant: () => {
+        isDraggingRef.current = true;
+      },
       onPanResponderMove: evt => {
         const { locationX } = evt.nativeEvent;
-        const now = Date.now();
-        if (now - lastSliderUpdateRef.current >= SLIDER_THROTTLE_MS) {
-          lastSliderUpdateRef.current = now;
-          handleSliderChangeRef.current(locationX);
+        const { width } = trackLayoutRef.current;
+        if (width <= 0) return;
+        const percentage = Math.max(0, Math.min(1, locationX / width));
+        pendingSliderRef.current = percentage * 10000;
+        if (rafIdRef.current == null) {
+          rafIdRef.current = requestAnimationFrame(() => {
+            rafIdRef.current = null;
+            const pending = pendingSliderRef.current;
+            if (pending !== null) {
+              pendingSliderRef.current = null;
+              const rounded = Math.round(pending);
+              setSliderDisplayValue(rounded);
+              const now = Date.now();
+              if (now - lastMapUpdateRef.current >= MAP_UPDATE_INTERVAL_MS) {
+                lastMapUpdateRef.current = now;
+                setGeofenceRadius(rounded);
+              }
+            }
+          });
         }
       },
       onPanResponderRelease: evt => {
-        // Always sync final value on release (catches tap and drag end)
+        isDraggingRef.current = false;
         const { locationX } = evt.nativeEvent;
-        handleSliderChangeRef.current(locationX);
+        const { width } = trackLayoutRef.current;
+        if (width > 0) {
+          const percentage = Math.max(0, Math.min(1, locationX / width));
+          const rounded = Math.round(percentage * 10000);
+          setSliderDisplayValue(rounded);
+          setGeofenceRadius(rounded);
+        }
+        pendingSliderRef.current = null;
+        if (rafIdRef.current != null) {
+          cancelAnimationFrame(rafIdRef.current);
+          rafIdRef.current = null;
+        }
       },
     }),
   ).current;
@@ -681,7 +710,7 @@ const MapScreen: React.FC = () => {
           <View style={styles.modalControls}>
             <View style={styles.sliderContainer}>
               <AppText variant="body" color={colors.text} style={styles.sliderLabel}>
-                Radius: {Math.round(geofenceRadius || 1000)} meters
+                Radius: {Math.round(sliderDisplayValue)} meters
               </AppText>
               <View style={styles.sliderWrapper}>
                 <View
@@ -689,6 +718,7 @@ const MapScreen: React.FC = () => {
                   onLayout={e => {
                     const { width } = e.nativeEvent.layout;
                     trackLayoutRef.current = { width };
+                    setTrackWidth(width);
                   }}
                   style={styles.sliderTrack}
                   {...panResponder.panHandlers}
@@ -696,13 +726,19 @@ const MapScreen: React.FC = () => {
                   <View
                     style={[
                       styles.sliderFill,
-                      { width: `${((geofenceRadius || 1000) / 10000) * 100}%` },
+                      { width: `${((sliderDisplayValue || 1000) / 10000) * 100}%` },
                     ]}
                   />
                   <View
                     style={[
                       styles.sliderThumb,
-                      { left: `${((geofenceRadius || 1000) / 10000) * 100}%` },
+                      {
+                        transform: [
+                          {
+                            translateX: ((sliderDisplayValue || 1000) / 10000) * trackWidth - 10,
+                          },
+                        ],
+                      },
                     ]}
                   />
                 </View>
@@ -906,12 +942,12 @@ const styles = StyleSheet.create({
   },
   sliderThumb: {
     position: 'absolute',
+    left: 0,
     width: 20,
     height: 20,
     borderRadius: 10,
     backgroundColor: colors.primary,
     top: -8,
-    marginLeft: -10,
     borderWidth: 2,
     borderColor: colors.white,
   },

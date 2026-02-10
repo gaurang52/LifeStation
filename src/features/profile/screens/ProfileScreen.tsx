@@ -41,6 +41,7 @@ import {
   validatePasswordComplexity,
   NAME_MAX_LENGTH,
   PHONE_MAX_LENGTH,
+  PHONE_MAX_DISPLAY_LENGTH,
 } from '@core/utils/profileValidation';
 
 type NavigationProp = StackNavigationProp<AppStackParamList>;
@@ -539,6 +540,9 @@ const ProfileScreen: React.FC = () => {
                   numberOfLines={2}
                   style={[styles.updatePasswordInput, styles.nameInput]}
                 />
+                <AppText variant="small" color={colors.textSecondary} style={styles.fieldHint}>
+                  Max {NAME_MAX_LENGTH} characters. Letters, spaces, hyphens, apostrophes only.
+                </AppText>
                 <Input
                   label="Email"
                   value={user?.email ?? ''}
@@ -553,11 +557,14 @@ const ProfileScreen: React.FC = () => {
                   label="Mobile"
                   value={editMobile}
                   onChangeText={t => setEditMobile(filterPhoneInput(t))}
-                  placeholder="Phone number"
+                  placeholder="Phone number (e.g. +1234567890)"
                   keyboardType="phone-pad"
-                  maxLength={PHONE_MAX_LENGTH + 1}
+                  maxLength={PHONE_MAX_DISPLAY_LENGTH}
                   style={styles.updatePasswordInput}
                 />
+                <AppText variant="small" color={colors.textSecondary} style={styles.fieldHint}>
+                  Max {PHONE_MAX_LENGTH} characters. Use + for international numbers.
+                </AppText>
                 {profileError ? (
                   <AppText variant="small" color={colors.error} style={styles.updatePasswordError}>
                     {profileError}
@@ -893,6 +900,10 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.sm,
   },
   emailHint: {
+    marginTop: -spacing.sm,
+    marginBottom: spacing.md,
+  },
+  fieldHint: {
     marginTop: -spacing.sm,
     marginBottom: spacing.md,
   },
