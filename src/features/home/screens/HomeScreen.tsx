@@ -47,6 +47,7 @@ const HomeScreen: React.FC = () => {
   const [events, setEvents] = useState<DeviceEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingDeviceInfo, setLoadingDeviceInfo] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [helpLoading, setHelpLoading] = useState(false);
   const [helpSuccess, setHelpSuccess] = useState<string | null>(null);
@@ -72,6 +73,7 @@ const HomeScreen: React.FC = () => {
       return;
     }
 
+    let deviceList: Device[] = [];
     try {
       isFetchingDevices.current = true;
       if (isRefresh) {
@@ -87,16 +89,19 @@ const HomeScreen: React.FC = () => {
       setDeviceInfo(null);
 
       const response = await deviceApi.getDevices(1, 1);
-      const deviceList = response.devices || [];
+      deviceList = response.devices || [];
       setDevices(deviceList);
 
       if (deviceList.length > 0) {
         // Always set the first device as active, even if one already exists
         // This ensures we refresh the device data
         setActiveDevice(deviceList[0]);
+        // Don't clear loading/refreshing here - fetchDeviceRecent will when device info is ready
       } else {
         setActiveDevice(null);
         setDeviceInfo(null);
+        setLoading(false);
+        setRefreshing(false);
       }
 
       // Mark devices as fetched
@@ -137,8 +142,11 @@ const HomeScreen: React.FC = () => {
       hasFetchedDevices.current = true;
     } finally {
       isFetchingDevices.current = false;
-      setLoading(false);
-      setRefreshing(false);
+      // Only clear loader here when no devices (fetchDeviceRecent will clear when we have devices)
+      if (deviceList.length === 0) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, []);
 
@@ -242,9 +250,12 @@ const HomeScreen: React.FC = () => {
           lastUpdate: device.last_seen || undefined,
           location: device.location || undefined,
         });
+        setLoading(false);
+        setRefreshing(false);
         return;
       }
 
+      setLoadingDeviceInfo(true);
       try {
         isFetchingDeviceRecent.current = true;
         console.log('Calling Get Recent Device Info API:', {
@@ -378,6 +389,9 @@ const HomeScreen: React.FC = () => {
         }
       } finally {
         isFetchingDeviceRecent.current = false;
+        setLoadingDeviceInfo(false);
+        setLoading(false);
+        setRefreshing(false);
       }
     },
     [fetchDevices],
@@ -413,27 +427,30 @@ const HomeScreen: React.FC = () => {
     }
   }, [fetchDevices]);
 
-  // Fetch when screen comes into focus
+  // Fetch when screen comes into focus (do NOT include loading in deps - would cause
+  // cleanup to run when loading flips, wrongly set hasBlurred, and trigger duplicate fetch)
   useFocusEffect(
     useCallback(() => {
       if (!hasInitialFetch.current) return;
 
-      // Initial load: fetch if not yet fetched
-      if (!hasFetchedDevices.current && !loading && !isFetchingDevices.current) {
+      // Initial load: fetch if not yet fetched (isFetchingDevices guards against duplicate)
+      if (!hasFetchedDevices.current && !isFetchingDevices.current) {
         fetchDevices();
         return;
       }
 
       // Refetch when returning to Home (e.g. after updating device name in Device Details)
       if (hasBlurred.current && hasFetchedDevices.current && !isFetchingDevices.current) {
+        hasBlurred.current = false;
         hasFetchedDevices.current = false;
+        fetchedDeviceRecentId.current = null;
         fetchDevices(true);
       }
 
       return () => {
         hasBlurred.current = true;
       };
-    }, [fetchDevices, loading]),
+    }, [fetchDevices]),
   );
 
   // Automatically call Get Recent Device Info API when active device is set
@@ -460,9 +477,11 @@ const HomeScreen: React.FC = () => {
         // Automatically call Get Recent Device Info API as part of post-login flow
         // This will only be called ONCE per device
         fetchDeviceRecent(activeDevice);
-        fetchEvents(activeDevice);
+        fetchEvents(activeDevice); // Events load in background, shown when ready
       } else if (deviceKey && fetchedDeviceRecentId.current === deviceKey) {
         console.log('Skipping fetchDeviceRecent - already fetched for device:', deviceKey);
+        setLoading(false);
+        setRefreshing(false);
       }
     } else if (activeDevice) {
       // If device exists but missing required fields, set deviceInfo with basic data
@@ -478,6 +497,8 @@ const HomeScreen: React.FC = () => {
         lastUpdate: activeDevice.last_seen || undefined,
         location: activeDevice.location || undefined,
       });
+      setLoading(false);
+      setRefreshing(false);
     } else {
       console.log('No active device, clearing deviceInfo');
       setDeviceInfo(null);
@@ -486,16 +507,11 @@ const HomeScreen: React.FC = () => {
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    // Reset the fetched flags so we can fetch again on manual refresh
     fetchedDeviceRecentId.current = null;
     hasFetchedDevices.current = false;
     await fetchDevices(true);
-    if (activeDevice && activeDevice.id_type && activeDevice.device_id) {
-      await fetchDeviceRecent(activeDevice);
-      await fetchEvents(activeDevice, true); // bypass cache so events are fresh
-    }
-    setRefreshing(false);
-  }, [fetchDevices, activeDevice, fetchDeviceRecent, fetchEvents]);
+    // Loader cleared by fetchDevices (no devices) or fetchDeviceRecent (has devices, triggered by useEffect)
+  }, [fetchDevices]);
 
   const handleHelp = useCallback(async () => {
     // Debounce: prevent rapid repeated presses
@@ -591,13 +607,15 @@ const HomeScreen: React.FC = () => {
     return 'event';
   };
 
+  const isShowingLoader = loading || refreshing || loadingDeviceInfo;
+
   const renderContent = () => {
-    if (loading && !refreshing) {
+    if (isShowingLoader) {
       return (
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
           <AppText variant="body" color={colors.textSecondary} style={styles.loadingText}>
-            Loading...
+            {refreshing ? 'Refreshing...' : 'Loading...'}
           </AppText>
         </View>
       );
@@ -622,18 +640,6 @@ const HomeScreen: React.FC = () => {
               Add Device
             </AppText>
           </TouchableOpacity>
-        </View>
-      );
-    }
-
-    // Show loading only if we're still loading and have a device but no deviceInfo yet
-    if (activeDevice && !deviceInfo && loading) {
-      return (
-        <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <AppText variant="body" color={colors.textSecondary} style={styles.loadingText}>
-            Loading device information...
-          </AppText>
         </View>
       );
     }
@@ -1097,10 +1103,13 @@ const HomeScreen: React.FC = () => {
       ) : (
         <ScrollView
           style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[
+            styles.scrollContent,
+            isShowingLoader && styles.scrollContentLoading,
+          ]}
           refreshControl={
             <RefreshControl
-              refreshing={refreshing}
+              refreshing={false}
               onRefresh={handleRefresh}
               tintColor={colors.primary}
             />
@@ -1142,16 +1151,11 @@ const HomeScreen: React.FC = () => {
                   style={styles.refreshButton}
                   onPress={handleRefresh}
                   activeOpacity={0.7}>
-                  <MaterialIcons
-                    name="refresh"
-                    size={20}
-                    color={colors.white}
-                    style={refreshing && styles.refreshIconSpinning}
-                  />
+                  <MaterialIcons name="refresh" size={20} color={colors.white} />
                 </TouchableOpacity>
               </View>
             </View>
-            {activeDevice && (
+            {activeDevice && deviceInfo && (
               <View style={styles.statusBarWrapper}>
                 <View style={styles.statusBarOnHeader}>
                   <View style={styles.statusBarTop}>
@@ -1284,7 +1288,9 @@ const HomeScreen: React.FC = () => {
               </AppText>
             </View>
           )}
-          <View style={styles.paddedContent}>{renderContent()}</View>
+          <View style={[styles.paddedContent, isShowingLoader && styles.paddedContentLoading]}>
+            {renderContent()}
+          </View>
         </ScrollView>
       )}
     </Screen>
@@ -1299,6 +1305,12 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.lg,
     paddingHorizontal: spacing.md, // Tighter left/right; was spacing.lg
     paddingTop: spacing.sm,
+  },
+  scrollContentLoading: {
+    flexGrow: 1,
+  },
+  paddedContentLoading: {
+    flex: 1,
   },
   homeHeaderCard: {
     backgroundColor: colors.primary,
