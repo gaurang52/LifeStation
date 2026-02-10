@@ -33,64 +33,20 @@ import type { AppStackParamList } from '@core/constants/routes';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { ROUTES } from '@core/constants/routes';
 import { ENV } from '@core/constants/env';
+import {
+  filterNameInput,
+  filterPhoneInput,
+  validateName,
+  validatePhone,
+  validatePasswordComplexity,
+  NAME_MAX_LENGTH,
+  PHONE_MAX_LENGTH,
+} from '@core/utils/profileValidation';
 
 type NavigationProp = StackNavigationProp<AppStackParamList>;
 
 const LIFESTATION_HELP_URL = 'https://www.lifestation.com';
 const LIFESTATION_TERMS_URL = 'https://www.lifestation.com/terms-and-conditions/';
-
-const NAME_MAX_LENGTH = 100;
-const PHONE_MAX_LENGTH = 15;
-
-/** Restrict name to letters, spaces, hyphens, apostrophes, periods (no newlines) */
-function filterNameInput(text: string): string {
-  return text.replace(/[\r\n]/g, '').replace(/[^\p{L}\s\-'.]/gu, '');
-}
-
-/** Restrict phone to digits and optional leading + */
-function filterPhoneInput(text: string): string {
-  if (text.startsWith('+')) {
-    const rest = text.slice(1).replace(/\D/g, '');
-    return rest.length <= PHONE_MAX_LENGTH - 1
-      ? '+' + rest
-      : '+' + rest.slice(0, PHONE_MAX_LENGTH - 1);
-  }
-  const digits = text.replace(/\D/g, '');
-  return digits.slice(0, PHONE_MAX_LENGTH);
-}
-
-function validateName(name: string): string | null {
-  const t = name.trim();
-  if (!t) return 'Please enter a valid name';
-  if (t.length > NAME_MAX_LENGTH) return `Name must be ${NAME_MAX_LENGTH} characters or less`;
-  if (!/^[\p{L}\s\-'.]+$/u.test(t)) {
-    return 'Name can only contain letters, spaces, hyphens, and apostrophes';
-  }
-  return null;
-}
-
-function validatePhone(phone: string): string | null {
-  const t = phone.trim();
-  if (!t) return null; // Phone is optional
-  const normalized = t.startsWith('+') ? '+' + t.replace(/\D/g, '') : t.replace(/\D/g, '');
-  if (normalized.length > PHONE_MAX_LENGTH)
-    return `Phone must be ${PHONE_MAX_LENGTH} characters or less`;
-  if (!/^\+?[1-9]\d{1,14}$/.test(normalized)) return 'Please enter a valid phone number';
-  return null;
-}
-
-/** Password complexity (Affiliated rules: 8+ chars, 3 of: upper, lower, number, special) */
-function validatePasswordComplexity(password: string): string | null {
-  if (password.length < 8) return 'Password must be at least 8 characters long.';
-  let count = 0;
-  if (/[a-z]/.test(password)) count++;
-  if (/[A-Z]/.test(password)) count++;
-  if (/\d/.test(password)) count++;
-  if (/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/.test(password)) count++;
-  if (count < 3)
-    return 'Password must contain at least three of: uppercase, lowercase, number, special character.';
-  return null;
-}
 
 /** Renders account report data (array of accounts or object with accounts/list). */
 function AccountReportContent({ data }: { data: unknown }) {
@@ -110,7 +66,9 @@ function AccountReportContent({ data }: { data: unknown }) {
     return (
       <View style={styles.accountReportList}>
         {list.map((item, i) => (
-          <View key={i} style={styles.accountReportItem}>
+          <View
+            key={String(item.cs_no ?? item.contact_no ?? `item-${i}`)}
+            style={styles.accountReportItem}>
             <AppText variant="bodyBold" style={styles.accountReportItemTitle}>
               {String(item.name ?? item.account_name ?? item.cs_no ?? `Account ${i + 1}`)}
             </AppText>
