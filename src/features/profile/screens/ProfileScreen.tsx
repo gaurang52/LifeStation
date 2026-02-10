@@ -21,6 +21,7 @@ import {
   User,
   Smartphone,
 } from 'lucide-react-native';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { Screen, AppText, Card, TopNavbar, Input, Button } from '@shared/components';
 import { useAuthStore } from '@core/store';
 import { authApi } from '@core/api/authApi';
@@ -36,6 +37,59 @@ type NavigationProp = StackNavigationProp<AppStackParamList>;
 
 const LIFESTATION_HELP_URL = 'https://www.lifestation.com';
 const LIFESTATION_TERMS_URL = 'https://www.lifestation.com/terms-and-conditions/';
+
+const NAME_MAX_LENGTH = 100;
+const PHONE_MAX_LENGTH = 15;
+
+/** Restrict name to letters, spaces, hyphens, apostrophes, periods (no newlines) */
+function filterNameInput(text: string): string {
+  return text.replace(/[\r\n]/g, '').replace(/[^\p{L}\s\-'.]/gu, '');
+}
+
+/** Restrict phone to digits and optional leading + */
+function filterPhoneInput(text: string): string {
+  if (text.startsWith('+')) {
+    const rest = text.slice(1).replace(/\D/g, '');
+    return rest.length <= PHONE_MAX_LENGTH - 1
+      ? '+' + rest
+      : '+' + rest.slice(0, PHONE_MAX_LENGTH - 1);
+  }
+  const digits = text.replace(/\D/g, '');
+  return digits.slice(0, PHONE_MAX_LENGTH);
+}
+
+function validateName(name: string): string | null {
+  const t = name.trim();
+  if (!t) return 'Please enter a valid name';
+  if (t.length > NAME_MAX_LENGTH) return `Name must be ${NAME_MAX_LENGTH} characters or less`;
+  if (!/^[\p{L}\s\-'.]+$/u.test(t)) {
+    return 'Name can only contain letters, spaces, hyphens, and apostrophes';
+  }
+  return null;
+}
+
+function validatePhone(phone: string): string | null {
+  const t = phone.trim();
+  if (!t) return null; // Phone is optional
+  const normalized = t.startsWith('+') ? '+' + t.replace(/\D/g, '') : t.replace(/\D/g, '');
+  if (normalized.length > PHONE_MAX_LENGTH)
+    return `Phone must be ${PHONE_MAX_LENGTH} characters or less`;
+  if (!/^\+?[1-9]\d{1,14}$/.test(normalized)) return 'Please enter a valid phone number';
+  return null;
+}
+
+/** Password complexity (Affiliated rules: 8+ chars, 3 of: upper, lower, number, special) */
+function validatePasswordComplexity(password: string): string | null {
+  if (password.length < 8) return 'Password must be at least 8 characters long.';
+  let count = 0;
+  if (/[a-z]/.test(password)) count++;
+  if (/[A-Z]/.test(password)) count++;
+  if (/\d/.test(password)) count++;
+  if (/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/.test(password)) count++;
+  if (count < 3)
+    return 'Password must contain at least three of: uppercase, lowercase, number, special character.';
+  return null;
+}
 
 /** Renders account report data (array of accounts or object with accounts/list). */
 function AccountReportContent({ data }: { data: unknown }) {
@@ -96,6 +150,9 @@ const ProfileScreen: React.FC = () => {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
@@ -144,11 +201,31 @@ const ProfileScreen: React.FC = () => {
 
   const handleSaveProfile = async () => {
     setProfileError(null);
+
+    const nameErr = validateName(editName);
+    if (nameErr) {
+      setProfileError(nameErr);
+      return;
+    }
+    const phoneErr = validatePhone(editMobile);
+    if (phoneErr) {
+      setProfileError(phoneErr);
+      return;
+    }
+
     setProfileSaving(true);
     try {
+      const trimmedName = editName.trim();
+      const trimmedMobile = editMobile.trim();
+      const normalizedMobile = trimmedMobile
+        ? trimmedMobile.startsWith('+')
+          ? '+' + trimmedMobile.replace(/\D/g, '')
+          : trimmedMobile.replace(/\D/g, '')
+        : null;
+
       const res = await authApi.updateProfile({
-        name: editName.trim() || undefined,
-        mobile: editMobile.trim() || null,
+        name: trimmedName,
+        mobile: normalizedMobile,
       });
       if (res.user) setUser({ ...user!, ...res.user });
       setShowEditProfile(false);
@@ -224,6 +301,9 @@ const ProfileScreen: React.FC = () => {
     setCurrentPassword('');
     setNewPassword('');
     setConfirmPassword('');
+    setShowCurrentPassword(false);
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
     setPasswordError(null);
     setPasswordSuccess(false);
   };
@@ -244,12 +324,17 @@ const ProfileScreen: React.FC = () => {
       setPasswordError('Enter a new password');
       return;
     }
-    if (newPassword.length < 8) {
-      setPasswordError('New password must be at least 8 characters');
+    const complexityErr = validatePasswordComplexity(newPassword);
+    if (complexityErr) {
+      setPasswordError(complexityErr);
       return;
     }
     if (newPassword !== confirmPassword) {
       setPasswordError('New passwords do not match');
+      return;
+    }
+    if (currentPassword === newPassword) {
+      setPasswordError('New password must be different from your current password');
       return;
     }
     setPasswordLoading(true);
@@ -488,10 +573,13 @@ const ProfileScreen: React.FC = () => {
                 <Input
                   label="Name"
                   value={editName}
-                  onChangeText={setEditName}
+                  onChangeText={t => setEditName(filterNameInput(t).slice(0, NAME_MAX_LENGTH))}
                   placeholder="Your name"
                   autoCapitalize="words"
-                  style={styles.updatePasswordInput}
+                  maxLength={NAME_MAX_LENGTH}
+                  multiline
+                  numberOfLines={2}
+                  style={[styles.updatePasswordInput, styles.nameInput]}
                 />
                 <Input
                   label="Email"
@@ -506,9 +594,10 @@ const ProfileScreen: React.FC = () => {
                 <Input
                   label="Mobile"
                   value={editMobile}
-                  onChangeText={setEditMobile}
+                  onChangeText={t => setEditMobile(filterPhoneInput(t))}
                   placeholder="Phone number"
                   keyboardType="phone-pad"
+                  maxLength={PHONE_MAX_LENGTH + 1}
                   style={styles.updatePasswordInput}
                 />
                 {profileError ? (
@@ -613,38 +702,81 @@ const ProfileScreen: React.FC = () => {
                   variant="small"
                   color={colors.textSecondary}
                   style={styles.updatePasswordSubtitle}>
-                  Enter your current password and choose a new one (min 8 characters).
+                  Enter your current password and choose a new one. Password must be 8+ characters
+                  and include at least 3 of: uppercase, lowercase, number, special character.
                 </AppText>
-                <Input
-                  label="Current password"
-                  value={currentPassword}
-                  onChangeText={setCurrentPassword}
-                  placeholder="Current password"
-                  secureTextEntry
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  style={styles.updatePasswordInput}
-                />
-                <Input
-                  label="New password"
-                  value={newPassword}
-                  onChangeText={setNewPassword}
-                  placeholder="New password"
-                  secureTextEntry
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  style={styles.updatePasswordInput}
-                />
-                <Input
-                  label="Confirm new password"
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  placeholder="Confirm new password"
-                  secureTextEntry
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  style={styles.updatePasswordInput}
-                />
+                <View style={styles.passwordInputWrap}>
+                  <Input
+                    label="Current password"
+                    value={currentPassword}
+                    onChangeText={setCurrentPassword}
+                    placeholder="Current password"
+                    secureTextEntry={!showCurrentPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    style={styles.updatePasswordInput}
+                  />
+                  <TouchableOpacity
+                    style={styles.passwordEyeIcon}
+                    onPress={() => setShowCurrentPassword(!showCurrentPassword)}
+                    activeOpacity={0.7}
+                    accessibilityLabel="Toggle password visibility"
+                    accessibilityRole="button">
+                    <MaterialIcons
+                      name={showCurrentPassword ? 'visibility' : 'visibility-off'}
+                      size={22}
+                      color={colors.textSecondary}
+                    />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.passwordInputWrap}>
+                  <Input
+                    label="New password"
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                    placeholder="New password"
+                    secureTextEntry={!showNewPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    style={styles.updatePasswordInput}
+                  />
+                  <TouchableOpacity
+                    style={styles.passwordEyeIcon}
+                    onPress={() => setShowNewPassword(!showNewPassword)}
+                    activeOpacity={0.7}
+                    accessibilityLabel="Toggle password visibility"
+                    accessibilityRole="button">
+                    <MaterialIcons
+                      name={showNewPassword ? 'visibility' : 'visibility-off'}
+                      size={22}
+                      color={colors.textSecondary}
+                    />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.passwordInputWrap}>
+                  <Input
+                    label="Confirm new password"
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    placeholder="Confirm new password"
+                    secureTextEntry={!showConfirmPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    style={styles.updatePasswordInput}
+                  />
+                  <TouchableOpacity
+                    style={styles.passwordEyeIcon}
+                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                    activeOpacity={0.7}
+                    accessibilityLabel="Toggle password visibility"
+                    accessibilityRole="button">
+                    <MaterialIcons
+                      name={showConfirmPassword ? 'visibility' : 'visibility-off'}
+                      size={22}
+                      color={colors.textSecondary}
+                    />
+                  </TouchableOpacity>
+                </View>
                 {passwordError ? (
                   <AppText variant="small" color={colors.error} style={styles.updatePasswordError}>
                     {passwordError}
@@ -873,6 +1005,21 @@ const styles = StyleSheet.create({
   },
   updatePasswordInput: {
     marginBottom: spacing.md,
+  },
+  passwordInputWrap: {
+    position: 'relative',
+  },
+  passwordEyeIcon: {
+    position: 'absolute',
+    right: spacing.md,
+    top: 48,
+    padding: spacing.xs,
+    zIndex: 1,
+  },
+  nameInput: {
+    minHeight: 72,
+    height: 80,
+    textAlignVertical: 'top',
   },
   updatePasswordError: {
     marginBottom: spacing.sm,

@@ -61,6 +61,57 @@ function sanitizeString(input) {
 }
 
 /**
+ * Validates display name (letters, spaces, hyphens, apostrophes only; no numbers or special chars)
+ * @param {string} name - Name to validate
+ * @returns {{ valid: boolean; error?: string }} - Validation result
+ */
+function isValidDisplayName(name) {
+  if (typeof name !== 'string') {
+    return { valid: false, error: 'Name must be a string' };
+  }
+  const trimmed = name.trim();
+  if (!trimmed) {
+    return { valid: false, error: 'Name is required' };
+  }
+  if (trimmed.length > 100) {
+    return { valid: false, error: 'Name must be 100 characters or less' };
+  }
+  // Allow letters (including Unicode), spaces, hyphens, apostrophes, periods
+  const nameRegex = /^[\p{L}\s\-'.]+$/u;
+  if (!nameRegex.test(trimmed)) {
+    return {
+      valid: false,
+      error: 'Name can only contain letters, spaces, hyphens, and apostrophes',
+    };
+  }
+  return { valid: true };
+}
+
+/**
+ * Validates password complexity (Affiliated API rules: at least 8 chars, 3 of: uppercase, lowercase, number, special)
+ * @param {string} password - Password to validate
+ * @returns {{ valid: boolean; error?: string }} - Validation result
+ */
+function isValidPasswordComplexity(password) {
+  if (typeof password !== 'string' || password.length < 8) {
+    return { valid: false, error: 'Password must be at least 8 characters long.' };
+  }
+  let count = 0;
+  if (/[a-z]/.test(password)) count++;
+  if (/[A-Z]/.test(password)) count++;
+  if (/\d/.test(password)) count++;
+  if (/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?`~]/.test(password)) count++;
+  if (count < 3) {
+    return {
+      valid: false,
+      error:
+        'Password must contain at least three of the following: uppercase letter, lowercase letter, number, special character.',
+    };
+  }
+  return { valid: true };
+}
+
+/**
  * Validates pagination parameters
  * @param {number} page - Page number
  * @param {number} limit - Items per page
@@ -83,6 +134,8 @@ module.exports = {
   isValidUserType,
   isValidIdType,
   isValidIMEI,
+  isValidDisplayName,
+  isValidPasswordComplexity,
   sanitizeString,
   validatePagination,
 };
