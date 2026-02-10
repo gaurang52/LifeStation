@@ -1,4 +1,5 @@
 const reportsApiService = require('../../services/reports-api.service');
+const accountApiService = require('../../services/account-api.service');
 const deviceApiService = require('../../services/device-api.service');
 const accessControlService = require('../../services/access-control.service');
 const db = require('../../models');
@@ -329,6 +330,17 @@ const getEventsByType = async (req, res) => {
       });
     }
 
+    // Get servco_no per Postman History Create example (optional but may be required for some accounts)
+    let servcoNo = targetDevice.servco_no;
+    if (!servcoNo) {
+      try {
+        const servcoData = await accountApiService.getServcoNo(csNo);
+        servcoNo = servcoData?.servco_no ?? servcoData?.servco ?? servcoData?.servcoNo ?? null;
+      } catch (servcoErr) {
+        logger.debug('Could not fetch servco_no for Reports API:', servcoErr.message);
+      }
+    }
+
     // Try to get base events from cache first
     const baseCacheKey = `events:${csNo}:${frequency}:all`;
     let eventsData = await cacheService.get(baseCacheKey);
@@ -347,6 +359,7 @@ const getEventsByType = async (req, res) => {
               before: dateRange.before,
               after: dateRange.after,
               signalTypes: signalTypes,
+              servcoNo: servcoNo,
             });
             eventsData = normalizeEvents(historyData);
             logger.debug(
@@ -369,17 +382,18 @@ const getEventsByType = async (req, res) => {
         // Cache base events
         await cacheService.set(baseCacheKey, eventsData, 300);
       } catch (error) {
-        logger.error('Error fetching events from Reports API:', {
+        logger.warn('Reports API unavailable, returning empty events:', {
           error: error.message,
           cs_no: csNo,
           device_id: device_id,
           event_type: event_type,
+          status: error.response?.status,
+          response: error.response?.data,
         });
 
-        return res.status(500).json({
-          error: 'Unable to fetch events',
-          message: 'The events service is currently unavailable. Please try again later.',
-        });
+        // Graceful degradation: return empty events instead of 500 so Map can still show
+        // current location from getDeviceRecent. Map will display the pin even without history.
+        eventsData = [];
       }
     }
 
