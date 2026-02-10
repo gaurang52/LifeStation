@@ -10,6 +10,7 @@ import {
   Switch,
   Linking,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import {
   Bell,
@@ -21,6 +22,7 @@ import {
   User,
   Smartphone,
 } from 'lucide-react-native';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { Screen, AppText, Card, TopNavbar, Input, Button } from '@shared/components';
 import { useAuthStore } from '@core/store';
 import { authApi } from '@core/api/authApi';
@@ -31,6 +33,15 @@ import type { AppStackParamList } from '@core/constants/routes';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { ROUTES } from '@core/constants/routes';
 import { ENV } from '@core/constants/env';
+import {
+  filterNameInput,
+  filterPhoneInput,
+  validateName,
+  validatePhone,
+  validatePasswordComplexity,
+  NAME_MAX_LENGTH,
+  PHONE_MAX_LENGTH,
+} from '@core/utils/profileValidation';
 
 type NavigationProp = StackNavigationProp<AppStackParamList>;
 
@@ -55,7 +66,9 @@ function AccountReportContent({ data }: { data: unknown }) {
     return (
       <View style={styles.accountReportList}>
         {list.map((item, i) => (
-          <View key={i} style={styles.accountReportItem}>
+          <View
+            key={String(item.cs_no ?? item.contact_no ?? `item-${i}`)}
+            style={styles.accountReportItem}>
             <AppText variant="bodyBold" style={styles.accountReportItemTitle}>
               {String(item.name ?? item.account_name ?? item.cs_no ?? `Account ${i + 1}`)}
             </AppText>
@@ -96,6 +109,9 @@ const ProfileScreen: React.FC = () => {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
@@ -103,7 +119,6 @@ const ProfileScreen: React.FC = () => {
   const [notificationEnabled, setNotificationEnabled] = useState(
     user?.notification_enabled !== false,
   );
-  const [notificationUpdating, setNotificationUpdating] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [editName, setEditName] = useState(user?.name ?? '');
   const [editMobile, setEditMobile] = useState(user?.mobile ?? '');
@@ -122,16 +137,14 @@ const ProfileScreen: React.FC = () => {
   }, [user?.notification_enabled]);
 
   const handleNotificationToggle = async (value: boolean) => {
-    setNotificationUpdating(true);
+    const previousValue = notificationEnabled;
+    setNotificationEnabled(value);
+    setUser({ ...user!, notification_enabled: value });
     try {
       await authApi.updateProfile({ notification_enabled: value });
-      setNotificationEnabled(value);
-      setUser({ ...user!, notification_enabled: value });
     } catch {
-      // Revert on error
-      setNotificationEnabled(!value);
-    } finally {
-      setNotificationUpdating(false);
+      setNotificationEnabled(previousValue);
+      setUser({ ...user!, notification_enabled: previousValue });
     }
   };
 
@@ -144,11 +157,31 @@ const ProfileScreen: React.FC = () => {
 
   const handleSaveProfile = async () => {
     setProfileError(null);
+
+    const nameErr = validateName(editName);
+    if (nameErr) {
+      setProfileError(nameErr);
+      return;
+    }
+    const phoneErr = validatePhone(editMobile);
+    if (phoneErr) {
+      setProfileError(phoneErr);
+      return;
+    }
+
     setProfileSaving(true);
     try {
+      const trimmedName = editName.trim();
+      const trimmedMobile = editMobile.trim();
+      const normalizedMobile = trimmedMobile
+        ? trimmedMobile.startsWith('+')
+          ? '+' + trimmedMobile.replace(/\D/g, '')
+          : trimmedMobile.replace(/\D/g, '')
+        : null;
+
       const res = await authApi.updateProfile({
-        name: editName.trim() || undefined,
-        mobile: editMobile.trim() || null,
+        name: trimmedName,
+        mobile: normalizedMobile,
       });
       if (res.user) setUser({ ...user!, ...res.user });
       setShowEditProfile(false);
@@ -168,8 +201,14 @@ const ProfileScreen: React.FC = () => {
   const openTerms = () => Linking.openURL(LIFESTATION_TERMS_URL).catch(() => {});
 
   const handleLogout = () => {
+    Alert.alert('Log Out', 'Are you sure you want to log out?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Log Out', style: 'destructive', onPress: doLogout },
+    ]);
+  };
+
+  const doLogout = () => {
     logout();
-    // Reset root to Auth stack with Login (sign in) screen
     const rootNav = navigation.getParent()?.getParent();
     if (rootNav) {
       rootNav.dispatch(
@@ -224,6 +263,9 @@ const ProfileScreen: React.FC = () => {
     setCurrentPassword('');
     setNewPassword('');
     setConfirmPassword('');
+    setShowCurrentPassword(false);
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
     setPasswordError(null);
     setPasswordSuccess(false);
   };
@@ -244,12 +286,17 @@ const ProfileScreen: React.FC = () => {
       setPasswordError('Enter a new password');
       return;
     }
-    if (newPassword.length < 8) {
-      setPasswordError('New password must be at least 8 characters');
+    const complexityErr = validatePasswordComplexity(newPassword);
+    if (complexityErr) {
+      setPasswordError(complexityErr);
       return;
     }
     if (newPassword !== confirmPassword) {
       setPasswordError('New passwords do not match');
+      return;
+    }
+    if (currentPassword === newPassword) {
+      setPasswordError('New password must be different from your current password');
       return;
     }
     setPasswordLoading(true);
@@ -261,7 +308,7 @@ const ProfileScreen: React.FC = () => {
       setPasswordSuccess(true);
       setTimeout(() => {
         closeUpdatePassword();
-        handleLogout();
+        doLogout();
       }, 1500);
     } catch (e: unknown) {
       const message =
@@ -348,16 +395,12 @@ const ProfileScreen: React.FC = () => {
                     Push notifications
                   </AppText>
                 </View>
-                {notificationUpdating ? (
-                  <ActivityIndicator size="small" color={colors.primary} />
-                ) : (
-                  <Switch
-                    value={notificationEnabled}
-                    onValueChange={handleNotificationToggle}
-                    trackColor={{ false: colors.lightGray, true: colors.lightPrimary }}
-                    thumbColor={notificationEnabled ? colors.primary : colors.white}
-                  />
-                )}
+                <Switch
+                  value={notificationEnabled}
+                  onValueChange={handleNotificationToggle}
+                  trackColor={{ false: colors.lightGray, true: colors.lightPrimary }}
+                  thumbColor={notificationEnabled ? colors.primary : colors.white}
+                />
               </View>
               <View style={styles.divider} />
               <TouchableOpacity
@@ -488,10 +531,13 @@ const ProfileScreen: React.FC = () => {
                 <Input
                   label="Name"
                   value={editName}
-                  onChangeText={setEditName}
+                  onChangeText={t => setEditName(filterNameInput(t).slice(0, NAME_MAX_LENGTH))}
                   placeholder="Your name"
                   autoCapitalize="words"
-                  style={styles.updatePasswordInput}
+                  maxLength={NAME_MAX_LENGTH}
+                  multiline
+                  numberOfLines={2}
+                  style={[styles.updatePasswordInput, styles.nameInput]}
                 />
                 <Input
                   label="Email"
@@ -506,9 +552,10 @@ const ProfileScreen: React.FC = () => {
                 <Input
                   label="Mobile"
                   value={editMobile}
-                  onChangeText={setEditMobile}
+                  onChangeText={t => setEditMobile(filterPhoneInput(t))}
                   placeholder="Phone number"
                   keyboardType="phone-pad"
+                  maxLength={PHONE_MAX_LENGTH + 1}
                   style={styles.updatePasswordInput}
                 />
                 {profileError ? (
@@ -613,38 +660,81 @@ const ProfileScreen: React.FC = () => {
                   variant="small"
                   color={colors.textSecondary}
                   style={styles.updatePasswordSubtitle}>
-                  Enter your current password and choose a new one (min 8 characters).
+                  Enter your current password and choose a new one. Password must be 8+ characters
+                  and include at least 3 of: uppercase, lowercase, number, special character.
                 </AppText>
-                <Input
-                  label="Current password"
-                  value={currentPassword}
-                  onChangeText={setCurrentPassword}
-                  placeholder="Current password"
-                  secureTextEntry
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  style={styles.updatePasswordInput}
-                />
-                <Input
-                  label="New password"
-                  value={newPassword}
-                  onChangeText={setNewPassword}
-                  placeholder="New password"
-                  secureTextEntry
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  style={styles.updatePasswordInput}
-                />
-                <Input
-                  label="Confirm new password"
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  placeholder="Confirm new password"
-                  secureTextEntry
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  style={styles.updatePasswordInput}
-                />
+                <View style={styles.passwordInputWrap}>
+                  <Input
+                    label="Current password"
+                    value={currentPassword}
+                    onChangeText={setCurrentPassword}
+                    placeholder="Current password"
+                    secureTextEntry={!showCurrentPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    style={styles.updatePasswordInput}
+                  />
+                  <TouchableOpacity
+                    style={styles.passwordEyeIcon}
+                    onPress={() => setShowCurrentPassword(!showCurrentPassword)}
+                    activeOpacity={0.7}
+                    accessibilityLabel="Toggle password visibility"
+                    accessibilityRole="button">
+                    <MaterialIcons
+                      name={showCurrentPassword ? 'visibility' : 'visibility-off'}
+                      size={22}
+                      color={colors.textSecondary}
+                    />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.passwordInputWrap}>
+                  <Input
+                    label="New password"
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                    placeholder="New password"
+                    secureTextEntry={!showNewPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    style={styles.updatePasswordInput}
+                  />
+                  <TouchableOpacity
+                    style={styles.passwordEyeIcon}
+                    onPress={() => setShowNewPassword(!showNewPassword)}
+                    activeOpacity={0.7}
+                    accessibilityLabel="Toggle password visibility"
+                    accessibilityRole="button">
+                    <MaterialIcons
+                      name={showNewPassword ? 'visibility' : 'visibility-off'}
+                      size={22}
+                      color={colors.textSecondary}
+                    />
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.passwordInputWrap}>
+                  <Input
+                    label="Confirm new password"
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    placeholder="Confirm new password"
+                    secureTextEntry={!showConfirmPassword}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    style={styles.updatePasswordInput}
+                  />
+                  <TouchableOpacity
+                    style={styles.passwordEyeIcon}
+                    onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                    activeOpacity={0.7}
+                    accessibilityLabel="Toggle password visibility"
+                    accessibilityRole="button">
+                    <MaterialIcons
+                      name={showConfirmPassword ? 'visibility' : 'visibility-off'}
+                      size={22}
+                      color={colors.textSecondary}
+                    />
+                  </TouchableOpacity>
+                </View>
                 {passwordError ? (
                   <AppText variant="small" color={colors.error} style={styles.updatePasswordError}>
                     {passwordError}
@@ -873,6 +963,21 @@ const styles = StyleSheet.create({
   },
   updatePasswordInput: {
     marginBottom: spacing.md,
+  },
+  passwordInputWrap: {
+    position: 'relative',
+  },
+  passwordEyeIcon: {
+    position: 'absolute',
+    right: spacing.md,
+    top: 48,
+    padding: spacing.xs,
+    zIndex: 1,
+  },
+  nameInput: {
+    minHeight: 72,
+    height: 80,
+    textAlignVertical: 'top',
   },
   updatePasswordError: {
     marginBottom: spacing.sm,

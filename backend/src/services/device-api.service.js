@@ -127,13 +127,35 @@ class DeviceApiService {
   }
 
   /**
+   * Check if Device API returned an error payload (HTTP 200 but status: "error", no device data).
+   * Throws when device is not found. Does NOT throw when we have device data (even if device.status is "error").
+   */
+  _checkDeviceApiErrorResponse(data, idType, id) {
+    if (!data) return;
+    const hasDeviceData = data.device_id || (data.device && data.device.device_id);
+    if (data.status === 'error' && !hasDeviceData) {
+      const errors = data.errors || [];
+      const msg = errors.length ? errors.join('; ') : 'Device not found';
+      const err = new Error(msg);
+      err.code = 'DEVICE_NOT_FOUND';
+      err.idType = idType;
+      err.id = id;
+      throw err;
+    }
+  }
+
+  /**
    * Get device by ID
    * @param {string} idType - ID type ('imei', 'serial', 'uuid')
    * @param {string} id - Device ID
    * @returns {Promise<object>} - Device data
+   * @throws {Error} with code DEVICE_NOT_FOUND when Device API returns status "error" / "No device found"
    */
   async getDevice(idType, id) {
-    return await this.makeRequest('GET', `/device/${idType}/${id}`);
+    const data = await this.makeRequest('GET', `/device/${idType}/${id}`);
+    this._checkDeviceApiErrorResponse(data, idType, id);
+    // Unwrap { device: {...} } if present, otherwise return data as-is
+    return data.device != null ? data.device : data;
   }
 
   /**
@@ -141,9 +163,12 @@ class DeviceApiService {
    * @param {string} idType - ID type
    * @param {string} id - Device ID
    * @returns {Promise<object>} - Recent device data
+   * @throws {Error} with code DEVICE_NOT_FOUND when Device API returns status "error" / "No device found"
    */
   async getDeviceRecent(idType, id) {
-    return await this.makeRequest('GET', `/device/${idType}/${id}/recent`);
+    const data = await this.makeRequest('GET', `/device/${idType}/${id}/recent`);
+    this._checkDeviceApiErrorResponse(data, idType, id);
+    return data.device != null ? data.device : data;
   }
 
   /**
