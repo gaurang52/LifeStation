@@ -147,9 +147,26 @@ const addDevice = async (req, res) => {
       });
     }
 
-    // Extract cs_no from Device API response
-    // cs_no is used to fetch account details and reports from external APIs
-    const csNo = externalDevice.cs_no || externalDevice.csNo || null;
+    // UserDeviceMapping.cs_no must be derived from the users table (cs_no provided at sign-up),
+    // not from the request payload or the Device API response.
+    const currentUserCsNo = user.cs_no ? String(user.cs_no).trim() : '';
+    const csNoFromApi = externalDevice.cs_no || externalDevice.csNo || null;
+
+    // Backfill User.cs_no only if senior has none (e.g. legacy account) so we can derive mapping from users table
+    if (!currentUserCsNo && csNoFromApi) {
+      const trimmedApiCsNo = String(csNoFromApi).trim();
+      await db.Users.update({ cs_no: trimmedApiCsNo }, { where: { id: userId } });
+      user.cs_no = trimmedApiCsNo;
+      logger.info(
+        `Backfilled User.cs_no for senior ${userId} from device add (cs_no: ${trimmedApiCsNo.slice(
+          0,
+          12,
+        )}...)`,
+      );
+    }
+
+    // Use authenticated user's cs_no from users table for the mapping (never from request or API)
+    const mappingCsNo = user.cs_no ? String(user.cs_no).trim() : null;
 
     // Optional user-friendly name (max 255 chars); external Device API does not accept name on Add Device
     const trimmedDeviceName =
@@ -157,29 +174,15 @@ const addDevice = async (req, res) => {
         ? deviceName.trim().slice(0, 255)
         : null;
 
-    // Create user-device mapping
+    // Create user-device mapping (cs_no from users table only)
     await db.UserDeviceMapping.create({
       user_id: userId,
       device_id: device.id,
       external_device_id: device_imei,
       id_type: 'imei',
-      cs_no: csNo,
+      cs_no: mappingCsNo,
       device_name: trimmedDeviceName,
     });
-
-    // Backfill User.cs_no if senior didn't provide it at signup (so access control / reports work)
-    if (csNo && user) {
-      const currentCsNo = user.cs_no ? String(user.cs_no).trim() : '';
-      if (!currentCsNo) {
-        await db.Users.update({ cs_no: String(csNo).trim() }, { where: { id: userId } });
-        logger.info(
-          `Backfilled User.cs_no for senior ${userId} from device add (cs_no: ${String(csNo).slice(
-            0,
-            12,
-          )}...)`,
-        );
-      }
-    }
 
     // Log audit entry
     await auditLogService.log({
