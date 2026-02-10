@@ -176,6 +176,19 @@ const getDeviceRecent = async (req, res) => {
         device: normalized,
       });
     } catch (error) {
+      // Device API returned "No device found" (status: error, device: null)
+      if (error.code === 'DEVICE_NOT_FOUND') {
+        logger.info('Device not found in Device API (recent)', {
+          id_type: idTypeNormalized,
+          id: deviceId,
+          user_id: userId,
+        });
+        return res.status(404).json({
+          error: 'Device not found',
+          message: error.message || 'This device is not registered in the device service.',
+        });
+      }
+
       logger.error('Error fetching recent device from Device API:', {
         error: error.message,
         id_type: idTypeNormalized,
