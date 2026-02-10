@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   StyleSheet,
   View,
@@ -7,6 +7,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  type LayoutChangeEvent,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { Screen, AppText, Button, Input, LogoWithTagline } from '@shared/components';
@@ -31,6 +32,26 @@ const LoginScreen: React.FC = () => {
   const [emailError, setEmailError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const scrollViewRef = useRef<ScrollView>(null);
+  const formLayoutY = useRef(0);
+  const passwordLayoutY = useRef(0);
+
+  const onFormLayout = (e: LayoutChangeEvent) => {
+    formLayoutY.current = e.nativeEvent.layout.y;
+  };
+
+  const onPasswordFieldLayout = (e: LayoutChangeEvent) => {
+    passwordLayoutY.current = e.nativeEvent.layout.y;
+  };
+
+  const scrollToPasswordField = () => {
+    // Small delay so keyboard has started opening; keeps password field visible above keypad
+    setTimeout(() => {
+      const y = formLayoutY.current + passwordLayoutY.current - 100;
+      scrollViewRef.current?.scrollTo({ y: Math.max(0, y), animated: true });
+    }, 100);
+  };
 
   const validateEmail = (emailValue: string): boolean => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -92,11 +113,14 @@ const LoginScreen: React.FC = () => {
     <Screen padded={false}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.container}>
+        style={styles.container}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}>
         <ScrollView
+          ref={scrollViewRef}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}>
+          showsVerticalScrollIndicator={false}
+          keyboardDismissMode="on-drag">
           <View style={styles.header}>
             <LogoWithTagline style={styles.logoBlock} />
             <AppText variant="h1" style={styles.title}>
@@ -107,7 +131,7 @@ const LoginScreen: React.FC = () => {
             </AppText>
           </View>
 
-          <View style={styles.form}>
+          <View style={styles.form} onLayout={onFormLayout}>
             <Input
               label="Email Address"
               placeholder="Enter your email"
@@ -123,34 +147,37 @@ const LoginScreen: React.FC = () => {
               leftIcon={<MaterialIcons name="email" size={20} color={colors.textSecondary} />}
             />
 
-            <Input
-              label="Password"
-              placeholder="Enter your password"
-              secureTextEntry={!showPassword}
-              value={password}
-              onChangeText={text => {
-                setPassword(text);
-                if (passwordError) validatePassword(text);
-              }}
-              error={passwordError || undefined}
-              onBlur={() => validatePassword(password)}
-              hasRightIcon
-              leftIcon={
-                <MaterialIcons name="lock-outline" size={20} color={colors.textSecondary} />
-              }
-              rightIcon={
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  activeOpacity={0.7}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <MaterialIcons
-                    name={showPassword ? 'visibility' : 'visibility-off'}
-                    size={20}
-                    color={colors.textSecondary}
-                  />
-                </TouchableOpacity>
-              }
-            />
+            <View onLayout={onPasswordFieldLayout}>
+              <Input
+                label="Password"
+                placeholder="Enter your password"
+                secureTextEntry={!showPassword}
+                value={password}
+                onChangeText={text => {
+                  setPassword(text);
+                  if (passwordError) validatePassword(text);
+                }}
+                error={passwordError || undefined}
+                onBlur={() => validatePassword(password)}
+                onFocus={scrollToPasswordField}
+                hasRightIcon
+                leftIcon={
+                  <MaterialIcons name="lock-outline" size={20} color={colors.textSecondary} />
+                }
+                rightIcon={
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(!showPassword)}
+                    activeOpacity={0.7}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                    <MaterialIcons
+                      name={showPassword ? 'visibility' : 'visibility-off'}
+                      size={20}
+                      color={colors.textSecondary}
+                    />
+                  </TouchableOpacity>
+                }
+              />
+            </View>
 
             {error ? (
               <View style={styles.errorContainer}>
