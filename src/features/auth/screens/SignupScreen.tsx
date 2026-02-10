@@ -300,7 +300,7 @@ const SignupScreen: React.FC = () => {
 
             <Input
               label="Password *"
-              placeholder="Enter password (min 6 characters)"
+              placeholder="Enter password (min 6 chars)"
               secureTextEntry={!showPassword}
               value={password}
               onChangeText={text => {
@@ -376,8 +376,6 @@ const SignupScreen: React.FC = () => {
               }}
               error={errors.address}
               onBlur={() => validateAddress(address)}
-              multiline
-              numberOfLines={2}
               leftIcon={<MaterialIcons name="home" size={20} color={colors.icon} />}
             />
 
