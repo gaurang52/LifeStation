@@ -324,163 +324,87 @@ class AccessControlService {
         }
       }
 
-      // OPTION A: Query LifeStation Device API filtered by user's cs_no/servco_no
-      if (user.cs_no) {
+      // Seniors: use our DB (UserDeviceMapping) as primary source
+      // Devices are added via app (POST /devices) which creates the mapping; LifeStation validates at add-time
+      if (userType === 'senior') {
+        const mappings = await db.UserDeviceMapping.findAll({
+          where: { user_id: userId },
+          include: [
+            {
+              model: db.Devices,
+              as: 'device',
+              attributes: ['device_id', 'id_type'],
+            },
+          ],
+        });
+        const devices = mappings
+          .filter(m => m.device)
+          .map(m => ({
+            device_id: m.device.device_id,
+            id_type: m.device.id_type,
+          }));
+        logger.debug(
+          `getAccessibleDevicesForUser: Found ${devices.length} devices from DB for senior ${userId}`,
+        );
+        return devices;
+      }
+
+      // Caregivers: LifeStation Device API filtered by linked seniors' cs_no
+      if (user.cs_no || userType === 'caregiver') {
         try {
-          // Get servco_no from Account API
           let servcoNo = null;
-          try {
-            const servcoData = await accountApiService.getServcoNo(user.cs_no);
-            servcoNo = servcoData.servco_no || servcoData.servcoNo;
-          } catch (servcoError) {
-            logger.warn(`Failed to get servco_no for cs_no ${user.cs_no}:`, servcoError.message);
+          if (user.cs_no) {
+            try {
+              const servcoData = await accountApiService.getServcoNo(user.cs_no);
+              servcoNo = servcoData.servco_no || servcoData.servcoNo;
+            } catch (servcoError) {
+              logger.warn(`Failed to get servco_no for cs_no ${user.cs_no}:`, servcoError.message);
+            }
           }
 
-          // Query Device API with servco filter
           const filters = {};
-          if (servcoNo) {
-            filters.servco = servcoNo;
-          }
-          filters.status = 'A'; // Active devices only
+          if (servcoNo) filters.servco = servcoNo;
+          filters.status = 'A';
 
           const devicesData = await deviceApiService.getDevices(filters);
           const devices = devicesData.devices || devicesData || [];
-
-          // Filter devices by cs_no match (for seniors) or linked seniors (for caregivers)
           const authorizedDevices = [];
 
           for (const device of devices) {
             const deviceCsNo = device.cs_no || device.csNo;
             const deviceId = device.IMEI || device.device_id || device.id;
             const deviceIdType = device.id_type || 'imei';
-
             if (!deviceId) continue;
 
-            // For seniors: device cs_no must match user cs_no
-            if (userType === 'senior') {
-              if (deviceCsNo === user.cs_no) {
-                authorizedDevices.push({
-                  device_id: deviceId,
-                  id_type: deviceIdType,
-                });
-              }
-            }
-
-            // For caregivers: device must belong to a linked senior
-            if (userType === 'caregiver') {
-              if (deviceCsNo) {
-                const senior = await db.Users.findOne({
-                  where: { cs_no: deviceCsNo, user_type: 'senior' },
-                  attributes: ['id'],
-                });
-
-                if (senior && (await this.canCaregiverAccessSenior(userId, senior.id))) {
-                  authorizedDevices.push({
-                    device_id: deviceId,
-                    id_type: deviceIdType,
-                  });
-                }
+            if (userType === 'caregiver' && deviceCsNo) {
+              const senior = await db.Users.findOne({
+                where: { cs_no: deviceCsNo, user_type: 'senior' },
+                attributes: ['id'],
+              });
+              if (senior && (await this.canCaregiverAccessSenior(userId, senior.id))) {
+                authorizedDevices.push({ device_id: deviceId, id_type: deviceIdType });
               }
             }
           }
 
           logger.debug(
-            `getAccessibleDevicesForUser: Found ${authorizedDevices.length} devices via LifeStation API for user ${userId}`,
+            `getAccessibleDevicesForUser: Found ${authorizedDevices.length} devices for caregiver ${userId}`,
           );
           return authorizedDevices;
         } catch (deviceApiError) {
           logger.warn(
-            'getAccessibleDevicesForUser: Device API query failed, falling back to internal check',
-            {
-              userId,
-              error: deviceApiError.message,
-            },
+            'getAccessibleDevicesForUser: Device API failed for caregiver, falling back to internal',
+            { userId, error: deviceApiError.message },
           );
-
-          // Fallback to internal UserDeviceMapping
-          if (userType === 'senior') {
-            const mappings = await db.UserDeviceMapping.findAll({
-              where: { user_id: userId },
-              include: [
-                {
-                  model: db.Devices,
-                  as: 'device',
-                  attributes: ['device_id', 'id_type'],
-                },
-              ],
-            });
-            return mappings
-              .filter(m => m.device)
-              .map(m => ({
-                device_id: m.device.device_id,
-                id_type: m.device.id_type,
-              }));
-          }
-
-          if (userType === 'caregiver') {
-            const seniorIds = await this.getAccessibleSeniorsForCaregiver(userId);
-            if (seniorIds.length === 0) {
-              return [];
-            }
-
-            const mappings = await db.UserDeviceMapping.findAll({
-              where: { user_id: seniorIds },
-              include: [
-                {
-                  model: db.Devices,
-                  as: 'device',
-                  attributes: ['device_id', 'id_type'],
-                },
-              ],
-            });
-            return mappings
-              .filter(m => m.device)
-              .map(m => ({
-                device_id: m.device.device_id,
-                id_type: m.device.id_type,
-              }));
-          }
-        }
-      } else {
-        // User doesn't have cs_no - fall back to internal check
-        logger.debug('getAccessibleDevicesForUser: user has no cs_no, using internal check', {
-          userId,
-        });
-
-        if (userType === 'senior') {
-          const mappings = await db.UserDeviceMapping.findAll({
-            where: { user_id: userId },
-            include: [
-              {
-                model: db.Devices,
-                as: 'device',
-                attributes: ['device_id', 'id_type'],
-              },
-            ],
-          });
-          return mappings
-            .filter(m => m.device)
-            .map(m => ({
-              device_id: m.device.device_id,
-              id_type: m.device.id_type,
-            }));
         }
 
         if (userType === 'caregiver') {
           const seniorIds = await this.getAccessibleSeniorsForCaregiver(userId);
-          if (seniorIds.length === 0) {
-            return [];
-          }
+          if (seniorIds.length === 0) return [];
 
           const mappings = await db.UserDeviceMapping.findAll({
             where: { user_id: seniorIds },
-            include: [
-              {
-                model: db.Devices,
-                as: 'device',
-                attributes: ['device_id', 'id_type'],
-              },
-            ],
+            include: [{ model: db.Devices, as: 'device', attributes: ['device_id', 'id_type'] }],
           });
           return mappings
             .filter(m => m.device)
