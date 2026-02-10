@@ -1,18 +1,11 @@
-import React, { useEffect, useState, useRef } from 'react';
-import {
-  StyleSheet,
-  View,
-  Modal,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
-  PanResponder,
-} from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { StyleSheet, View, Modal, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import Slider from '@react-native-community/slider';
 import MapView, { Marker, Polyline, Circle, PROVIDER_GOOGLE } from 'react-native-maps';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { Screen, TopNavbar, Button, AppText } from '@shared/components';
 import { colors, spacing, borderRadius } from '@shared/theme';
-import { deviceApi, type Device } from '@core/api/deviceApi';
+import { deviceApi, type DeviceListItem } from '@core/api/deviceApi';
 import { eventsApi, type EventFrequency } from '@core/api/eventsApi';
 import { mapApi } from '@core/api/mapApi';
 import { ErrorHandler } from '@core/utils/errorHandler';
@@ -30,12 +23,13 @@ const FREQUENCY_OPTIONS: { label: string; value: EventFrequency }[] = [
 ];
 
 const MapScreen: React.FC = () => {
-  const [devices, setDevices] = useState<Device[]>([]);
-  const [activeDevice, setActiveDevice] = useState<Device | null>(null);
+  const [devices, setDevices] = useState<DeviceListItem[]>([]);
+  const [activeDevice, setActiveDevice] = useState<DeviceListItem | null>(null);
   const [coordinates, setCoordinates] = useState<Coordinate[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true); // Start loading – show loader before map
   const [frequency, setFrequency] = useState<EventFrequency>('last_24_hours');
   const [showFrequencyDropdown, setShowFrequencyDropdown] = useState(false);
+  const [showDeviceDropdown, setShowDeviceDropdown] = useState(false);
   const [showGeofenceModal, setShowGeofenceModal] = useState(false);
   // Geofence center and radius - initialized from API or device location (not hardcoded)
   const [geofenceCenter, setGeofenceCenter] = useState<Coordinate | null>(null);
@@ -45,7 +39,6 @@ const MapScreen: React.FC = () => {
 
   const mapRef = useRef<MapView>(null);
   const geofenceMapRef = useRef<MapView>(null);
-  const sliderTrackRef = useRef<View>(null);
 
   // Prevent duplicate API calls
   const fetchingDevicesRef = useRef(false);
@@ -53,87 +46,8 @@ const MapScreen: React.FC = () => {
   const fetchingGeofenceRef = useRef(false);
   const rateLimitRetryTimeoutRef = useRef<number | null>(null);
 
-  // Track layout for accurate position calculation (pan is on track so locationX is relative to track)
-  const trackLayoutRef = useRef({ width: 300 });
-  const [trackWidth, setTrackWidth] = useState(300);
-
-  // Slider display value: updates every frame during drag for smooth UI; geofenceRadius throttled for map
-  const [sliderDisplayValue, setSliderDisplayValue] = useState<number>(1000);
-  const pendingSliderRef = useRef<number | null>(null);
-  const rafIdRef = useRef<number | null>(null);
-
-  // Throttle geofenceRadius for map Circle during drag (expensive re-renders)
-  const lastMapUpdateRef = useRef(0);
-  const MAP_UPDATE_INTERVAL_MS = 80;
-
-  const isDraggingRef = useRef(false);
-
-  // Sync sliderDisplayValue with geofenceRadius when modal opens or radius changes externally (not during drag)
-  useEffect(() => {
-    if (showGeofenceModal && !isDraggingRef.current) {
-      setSliderDisplayValue(geofenceRadius ?? 1000);
-    }
-  }, [showGeofenceModal, geofenceRadius]);
-
-  // Pan responder: rAF batches updates to one per frame; map updates throttled
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: () => {
-        isDraggingRef.current = true;
-      },
-      onPanResponderMove: evt => {
-        const { locationX } = evt.nativeEvent;
-        const { width } = trackLayoutRef.current;
-        if (width <= 0) return;
-        const percentage = Math.max(0, Math.min(1, locationX / width));
-        pendingSliderRef.current = percentage * 10000;
-        if (rafIdRef.current == null) {
-          rafIdRef.current = requestAnimationFrame(() => {
-            rafIdRef.current = null;
-            const pending = pendingSliderRef.current;
-            if (pending !== null) {
-              pendingSliderRef.current = null;
-              const rounded = Math.round(pending);
-              setSliderDisplayValue(rounded);
-              const now = Date.now();
-              if (now - lastMapUpdateRef.current >= MAP_UPDATE_INTERVAL_MS) {
-                lastMapUpdateRef.current = now;
-                setGeofenceRadius(rounded);
-              }
-            }
-          });
-        }
-      },
-      onPanResponderRelease: evt => {
-        isDraggingRef.current = false;
-        const { locationX } = evt.nativeEvent;
-        const { width } = trackLayoutRef.current;
-        if (width > 0) {
-          const percentage = Math.max(0, Math.min(1, locationX / width));
-          const rounded = Math.round(percentage * 10000);
-          setSliderDisplayValue(rounded);
-          setGeofenceRadius(rounded);
-        }
-        pendingSliderRef.current = null;
-        if (rafIdRef.current != null) {
-          cancelAnimationFrame(rafIdRef.current);
-          rafIdRef.current = null;
-        }
-      },
-    }),
-  ).current;
-
-  // Get default location from device or coordinates (not hardcoded)
+  // Get default location from coordinates (DeviceListItem has no location - we get it from getDeviceRecent)
   const getDefaultLocation = (): Coordinate => {
-    // Try to use device location first
-    if (activeDevice?.location?.latitude && activeDevice?.location?.longitude) {
-      return {
-        latitude: activeDevice.location.latitude,
-        longitude: activeDevice.location.longitude,
-      };
-    }
     // Try to use most recent coordinate
     if (coordinates.length > 0) {
       return coordinates[coordinates.length - 1];
@@ -158,17 +72,20 @@ const MapScreen: React.FC = () => {
 
       try {
         fetchingDevicesRef.current = true;
-        const response = await deviceApi.getDevices();
+        setLoading(true);
+        const response = await deviceApi.getDevicesList();
         const deviceList = response.devices || [];
         if (isMounted) {
           setDevices(deviceList);
           if (deviceList.length > 0) {
             setActiveDevice(deviceList[0]);
+          } else {
+            setLoading(false); // No devices – stop loading, show empty state
           }
         }
       } catch (err: unknown) {
         const error = err as { statusCode?: number; message?: string };
-        // Handle rate limit errors gracefully
+        if (isMounted) setLoading(false);
         if (error.statusCode === 429) {
           console.warn('Rate limit exceeded while fetching devices. Please wait a moment.');
         } else {
@@ -215,10 +132,10 @@ const MapScreen: React.FC = () => {
       rateLimitRetryTimeoutRef.current = null;
     }
 
-    // Debounce location fetch to prevent rapid calls
+    // Brief debounce to batch rapid filter changes
     const timeoutId = setTimeout(() => {
       fetchLocationEvents();
-    }, 500);
+    }, 150);
 
     return () => clearTimeout(timeoutId);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- debounced on purpose, fetchLocationEvents is stable
@@ -280,29 +197,44 @@ const MapScreen: React.FC = () => {
     }
   };
 
-  const fetchLocationEvents = async () => {
-    if (!activeDevice?.device_id || !activeDevice?.id_type || fetchingLocationRef.current) return;
+  // Infer id_type when missing (e.g. IMEI = 15 digits)
+  const getIdType = (device: DeviceListItem): string => {
+    if (device.id_type) return device.id_type;
+    const did = String(device.device_id || '').trim();
+    if (/^\d{15}$/.test(did)) return 'imei';
+    return 'imei'; // default for device_id
+  };
 
+  const fetchLocationEvents = async () => {
+    if (!activeDevice?.device_id || fetchingLocationRef.current) return;
+
+    const idType = getIdType(activeDevice);
     try {
       fetchingLocationRef.current = true;
       setLoading(true);
       const locationCoords: Coordinate[] = [];
 
-      // 1. Fetch device recent location (most current)
+      // 1. Fetch device recent location (most current) - primary source for "current location"
       try {
         const recentResponse = await deviceApi.getDeviceRecent(
-          activeDevice.id_type,
+          idType as import('@core/api/deviceApi').DeviceIdType,
           activeDevice.device_id,
         );
-        const deviceData = recentResponse.device;
+        const deviceData = recentResponse?.device ?? recentResponse;
 
-        if (deviceData.location?.latitude && deviceData.location?.longitude) {
-          const lat = deviceData.location.latitude;
-          const lng = deviceData.location.longitude;
+        if (deviceData?.location?.latitude != null && deviceData?.location?.longitude != null) {
+          const lat =
+            typeof deviceData.location.latitude === 'string'
+              ? parseFloat(deviceData.location.latitude)
+              : deviceData.location.latitude;
+          const lng =
+            typeof deviceData.location.longitude === 'string'
+              ? parseFloat(deviceData.location.longitude)
+              : deviceData.location.longitude;
           if (!isNaN(lat) && !isNaN(lng)) {
             locationCoords.push({
-              latitude: typeof lat === 'string' ? parseFloat(lat) : lat,
-              longitude: typeof lng === 'string' ? parseFloat(lng) : lng,
+              latitude: lat,
+              longitude: lng,
               timestamp: deviceData.location.timestamp || deviceData.last_seen || undefined,
             });
           }
@@ -445,34 +377,7 @@ const MapScreen: React.FC = () => {
       };
     }
 
-    const validDevices = devices.filter(
-      d =>
-        d.location?.latitude &&
-        d.location?.longitude &&
-        !isNaN(d.location.latitude) &&
-        !isNaN(d.location.longitude),
-    );
-
-    if (validDevices.length > 0) {
-      const firstDevice = validDevices[0];
-      const lat =
-        typeof firstDevice.location!.latitude === 'string'
-          ? parseFloat(firstDevice.location!.latitude)
-          : firstDevice.location!.latitude;
-      const lng =
-        typeof firstDevice.location!.longitude === 'string'
-          ? parseFloat(firstDevice.location!.longitude)
-          : firstDevice.location!.longitude;
-
-      return {
-        latitude: lat,
-        longitude: lng,
-        latitudeDelta: 0.05,
-        longitudeDelta: 0.05,
-      };
-    }
-
-    // Use default location (from device/coordinates, not hardcoded)
+    // DeviceListItem has no location - use default (coordinates, geofence, or world center)
     const defaultLoc = getDefaultLocation();
     return {
       ...defaultLoc,
@@ -485,6 +390,27 @@ const MapScreen: React.FC = () => {
   const currentFrequencyLabel =
     FREQUENCY_OPTIONS.find(opt => opt.value === frequency)?.label || 'Last 24 Hours';
 
+  // Show full-screen loader first – correct UX: loader then map with data (never map then loader)
+  if (loading) {
+    return (
+      <Screen padded={false} edges={['top']} style={styles.screen}>
+        <View style={styles.navbarWrapper}>
+          <TopNavbar
+            title="Maps/GPS Location"
+            subtitle="Location tracking and geofencing"
+            variant="figma"
+          />
+        </View>
+        <View style={styles.loadingFullScreen}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <AppText variant="body" color={colors.textSecondary} style={styles.loadingText}>
+            Loading location data…
+          </AppText>
+        </View>
+      </Screen>
+    );
+  }
+
   return (
     <Screen padded={false} edges={['top']} style={styles.screen}>
       <View style={styles.navbarWrapper}>
@@ -495,51 +421,103 @@ const MapScreen: React.FC = () => {
         />
       </View>
       <View style={styles.content}>
-        {/* Frequency Selector */}
+        {/* Device & Time Range Selectors */}
         <View style={styles.frequencyContainer}>
-          <TouchableOpacity
-            style={styles.frequencyButton}
-            onPress={() => setShowFrequencyDropdown(!showFrequencyDropdown)}>
-            <AppText variant="body" color={colors.text}>
-              {currentFrequencyLabel}
-            </AppText>
-            <MaterialIcons
-              name={showFrequencyDropdown ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
-              size={24}
-              color={colors.text}
-            />
-          </TouchableOpacity>
-          {showFrequencyDropdown && (
-            <View style={styles.dropdown}>
-              {FREQUENCY_OPTIONS.map(option => (
-                <TouchableOpacity
-                  key={option.value}
-                  style={[
-                    styles.dropdownItem,
-                    frequency === option.value && styles.dropdownItemActive,
-                  ]}
-                  onPress={() => {
-                    setFrequency(option.value);
-                    setShowFrequencyDropdown(false);
-                  }}>
-                  <AppText
-                    variant="body"
-                    color={frequency === option.value ? colors.primary : colors.text}>
-                    {option.label}
-                  </AppText>
-                </TouchableOpacity>
-              ))}
+          {devices.length > 1 && (
+            <View style={styles.selectorRow}>
+              <AppText variant="small" color={colors.textSecondary} style={styles.selectorLabel}>
+                Device
+              </AppText>
+              <TouchableOpacity
+                style={styles.frequencyButton}
+                onPress={() => {
+                  setShowDeviceDropdown(!showDeviceDropdown);
+                  setShowFrequencyDropdown(false);
+                }}>
+                <AppText variant="body" color={colors.text} numberOfLines={1}>
+                  {activeDevice?.name || activeDevice?.device_id || 'Select device'}
+                </AppText>
+                <MaterialIcons
+                  name={showDeviceDropdown ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+                  size={24}
+                  color={colors.text}
+                />
+              </TouchableOpacity>
+              {showDeviceDropdown && (
+                <View style={styles.dropdown}>
+                  {devices.map(device => (
+                    <TouchableOpacity
+                      key={`${device.device_id}-${device.id_type}`}
+                      style={[
+                        styles.dropdownItem,
+                        activeDevice?.device_id === device.device_id && styles.dropdownItemActive,
+                      ]}
+                      onPress={() => {
+                        setActiveDevice(device);
+                        setShowDeviceDropdown(false);
+                      }}>
+                      <AppText
+                        variant="body"
+                        color={
+                          activeDevice?.device_id === device.device_id
+                            ? colors.primary
+                            : colors.text
+                        }
+                        numberOfLines={1}>
+                        {device.name || device.device_id}
+                      </AppText>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
             </View>
           )}
+          <View style={[styles.selectorRow, devices.length <= 1 && styles.selectorRowSingle]}>
+            <AppText variant="small" color={colors.textSecondary} style={styles.selectorLabel}>
+              Time range
+            </AppText>
+            <TouchableOpacity
+              style={styles.frequencyButton}
+              onPress={() => {
+                setShowFrequencyDropdown(!showFrequencyDropdown);
+                setShowDeviceDropdown(false);
+              }}>
+              <AppText variant="body" color={colors.text}>
+                {currentFrequencyLabel}
+              </AppText>
+              <MaterialIcons
+                name={showFrequencyDropdown ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+                size={24}
+                color={colors.text}
+              />
+            </TouchableOpacity>
+            {showFrequencyDropdown && (
+              <View style={styles.dropdown}>
+                {FREQUENCY_OPTIONS.map(option => (
+                  <TouchableOpacity
+                    key={option.value}
+                    style={[
+                      styles.dropdownItem,
+                      frequency === option.value && styles.dropdownItemActive,
+                    ]}
+                    onPress={() => {
+                      setFrequency(option.value);
+                      setShowFrequencyDropdown(false);
+                    }}>
+                    <AppText
+                      variant="body"
+                      color={frequency === option.value ? colors.primary : colors.text}>
+                      {option.label}
+                    </AppText>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
         </View>
 
-        {/* Map Container */}
+        {/* Map Container - map only shown when !loading (no overlay, we use full-screen loader) */}
         <View style={styles.mapContainer}>
-          {loading && (
-            <View style={styles.loadingOverlay}>
-              <ActivityIndicator size="large" color={colors.primary} />
-            </View>
-          )}
           <MapView
             ref={mapRef}
             provider={PROVIDER_GOOGLE}
@@ -591,42 +569,15 @@ const MapScreen: React.FC = () => {
               />
             )}
 
-            {/* Device Markers (if no location events) */}
-            {coordinates.length === 0 &&
-              devices
-                .filter(
-                  d =>
-                    d.location?.latitude &&
-                    d.location?.longitude &&
-                    !isNaN(d.location.latitude) &&
-                    !isNaN(d.location.longitude),
-                )
-                .map((device, index) => {
-                  const lat =
-                    typeof device.location!.latitude === 'string'
-                      ? parseFloat(device.location!.latitude)
-                      : device.location!.latitude;
-                  const lng =
-                    typeof device.location!.longitude === 'string'
-                      ? parseFloat(device.location!.longitude)
-                      : device.location!.longitude;
-
-                  return (
-                    <Marker
-                      key={`${device.device_id}-${device.id_type}-${index}`}
-                      coordinate={{ latitude: lat, longitude: lng }}
-                      title={device.name || `Device ${device.device_id}`}
-                      description={`Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}`}
-                      pinColor={colors.primary}
-                    />
-                  );
-                })}
+            {/* Markers come from coordinates (getDeviceRecent + getEventsByType); DeviceListItem has no location */}
           </MapView>
 
           {coordinates.length === 0 && !loading && (
             <View style={styles.emptyStateOverlay}>
               <AppText variant="body" color={colors.textSecondary} style={styles.emptyStateText}>
-                No location data available for selected time range
+                {devices.length === 0
+                  ? 'No devices found. Add a device to see location.'
+                  : 'No location data for selected time range. Try "All" or ensure the device has sent location updates.'}
               </AppText>
             </View>
           )}
@@ -710,38 +661,20 @@ const MapScreen: React.FC = () => {
           <View style={styles.modalControls}>
             <View style={styles.sliderContainer}>
               <AppText variant="body" color={colors.text} style={styles.sliderLabel}>
-                Radius: {Math.round(sliderDisplayValue)} meters
+                Radius: {Math.round(geofenceRadius ?? 1000)} meters
               </AppText>
               <View style={styles.sliderWrapper}>
-                <View
-                  ref={sliderTrackRef}
-                  onLayout={e => {
-                    const { width } = e.nativeEvent.layout;
-                    trackLayoutRef.current = { width };
-                    setTrackWidth(width);
-                  }}
-                  style={styles.sliderTrack}
-                  {...panResponder.panHandlers}
-                  collapsable={false}>
-                  <View
-                    style={[
-                      styles.sliderFill,
-                      { width: `${((sliderDisplayValue || 1000) / 10000) * 100}%` },
-                    ]}
-                  />
-                  <View
-                    style={[
-                      styles.sliderThumb,
-                      {
-                        transform: [
-                          {
-                            translateX: ((sliderDisplayValue || 1000) / 10000) * trackWidth - 10,
-                          },
-                        ],
-                      },
-                    ]}
-                  />
-                </View>
+                <Slider
+                  style={styles.slider}
+                  minimumValue={0}
+                  maximumValue={10000}
+                  value={geofenceRadius ?? 1000}
+                  step={1}
+                  minimumTrackTintColor={colors.primary}
+                  maximumTrackTintColor={colors.lightGray}
+                  thumbTintColor={colors.primary}
+                  onValueChange={value => setGeofenceRadius(Math.round(value))}
+                />
                 <View style={styles.sliderLabels}>
                   <AppText variant="small" color={colors.textSecondary}>
                     0m
@@ -815,6 +748,16 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
     paddingBottom: spacing.sm,
     zIndex: 1000,
+    gap: spacing.sm,
+  },
+  selectorRow: {
+    position: 'relative',
+  },
+  selectorRowSingle: {
+    marginTop: 0,
+  },
+  selectorLabel: {
+    marginBottom: spacing.xs,
   },
   frequencyButton: {
     flexDirection: 'row',
@@ -852,6 +795,15 @@ const styles = StyleSheet.create({
   dropdownItemActive: {
     backgroundColor: colors.lightPrimary,
   },
+  loadingFullScreen: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  loadingText: {
+    marginTop: spacing.sm,
+  },
   mapContainer: {
     flex: 1,
     width: '100%',
@@ -860,17 +812,6 @@ const styles = StyleSheet.create({
   map: {
     width: '100%',
     height: '100%',
-  },
-  loadingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: colors.overlayWhite80,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 100,
   },
   emptyStateOverlay: {
     position: 'absolute',
@@ -924,32 +865,9 @@ const styles = StyleSheet.create({
     width: '100%',
     marginVertical: spacing.md,
   },
-  sliderTrack: {
+  slider: {
     width: '100%',
-    height: 4,
-    backgroundColor: colors.lightGray,
-    borderRadius: 2,
-    position: 'relative',
-    marginBottom: spacing.xs,
-  },
-  sliderFill: {
-    height: '100%',
-    backgroundColor: colors.primary,
-    borderRadius: 2,
-    position: 'absolute',
-    left: 0,
-    top: 0,
-  },
-  sliderThumb: {
-    position: 'absolute',
-    left: 0,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: colors.primary,
-    top: -8,
-    borderWidth: 2,
-    borderColor: colors.white,
+    height: 60,
   },
   sliderLabels: {
     flexDirection: 'row',
