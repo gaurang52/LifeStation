@@ -111,17 +111,54 @@ const SignupScreen: React.FC = () => {
   };
 
   const validateMobile = (mobileValue: string): boolean => {
-    if (mobileValue && mobileValue.trim().length > 0) {
-      const phoneRegex = /^[+]?[(]?[0-9]{1,4}[)]?[-\s.]?[(]?[0-9]{1,4}[)]?[-\s.]?[0-9]{1,9}$/;
-      if (!phoneRegex.test(mobileValue)) {
-        setErrors(prev => ({ ...prev, mobile: 'Invalid mobile number format' }));
-        return false;
-      }
+    const trimmed = mobileValue.trim();
+    if (trimmed.length === 0) {
+      setErrors(prev => {
+        const next = { ...prev };
+        delete next.mobile;
+        return next;
+      });
+      return true;
+    }
+    // Reject blank spaces anywhere (e.g. pasted text with spaces)
+    if (/\s/.test(mobileValue)) {
+      setErrors(prev => ({ ...prev, mobile: 'Mobile number cannot contain spaces' }));
+      return false;
+    }
+    const digitsOnly = trimmed.replace(/\D/g, '');
+    const minDigits = 10;
+    const maxDigits = 15;
+    if (digitsOnly.length < minDigits) {
+      setErrors(prev => ({
+        ...prev,
+        mobile: `Mobile number must be at least ${minDigits} digits`,
+      }));
+      return false;
+    }
+    if (digitsOnly.length > maxDigits) {
+      setErrors(prev => ({
+        ...prev,
+        mobile: `Mobile number cannot exceed ${maxDigits} digits`,
+      }));
+      return false;
     }
     setErrors(prev => {
-      const newErrors = { ...prev };
-      delete newErrors.mobile;
-      return newErrors;
+      const next = { ...prev };
+      delete next.mobile;
+      return next;
+    });
+    return true;
+  };
+
+  const validateAddress = (addressValue: string): boolean => {
+    if (!addressValue || addressValue.trim().length === 0) {
+      setErrors(prev => ({ ...prev, address: 'Address is required' }));
+      return false;
+    }
+    setErrors(prev => {
+      const next = { ...prev };
+      delete next.address;
+      return next;
     });
     return true;
   };
@@ -153,6 +190,7 @@ const SignupScreen: React.FC = () => {
     const isPasswordValid = validatePassword(password);
     const isConfirmPasswordValid = validateConfirmPassword(confirmPassword);
     const isMobileValid = validateMobile(mobile);
+    const isAddressValid = validateAddress(address);
     const isCsNoValid = validateCsNo(csNo);
 
     if (
@@ -161,6 +199,7 @@ const SignupScreen: React.FC = () => {
       !isPasswordValid ||
       !isConfirmPasswordValid ||
       !isMobileValid ||
+      !isAddressValid ||
       !isCsNoValid
     ) {
       return;
@@ -213,11 +252,13 @@ const SignupScreen: React.FC = () => {
     <Screen padded={false}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.container}>
+        style={styles.container}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}>
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}>
+          showsVerticalScrollIndicator={false}
+          keyboardDismissMode="on-drag">
           <View style={styles.header}>
             <LogoWithTagline style={styles.logoBlock} />
             <AppText variant="h1" style={styles.title}>
@@ -229,156 +270,129 @@ const SignupScreen: React.FC = () => {
           </View>
 
           <View style={styles.form}>
-            <View style={styles.inputContainer}>
-              <MaterialIcons name="person" size={20} color={colors.icon} style={styles.inputIcon} />
-              <Input
-                label="Full Name *"
-                placeholder="Enter your full name"
-                value={name}
-                onChangeText={text => {
-                  setName(text);
-                  if (errors.name) validateName(text);
-                }}
-                error={errors.name}
-                onBlur={() => validateName(name)}
-                style={styles.input}
-              />
-            </View>
+            <Input
+              label="Full Name *"
+              placeholder="Enter your full name"
+              value={name}
+              onChangeText={text => {
+                setName(text);
+                if (errors.name) validateName(text);
+              }}
+              error={errors.name}
+              onBlur={() => validateName(name)}
+              leftIcon={<MaterialIcons name="person" size={20} color={colors.icon} />}
+            />
 
-            <View style={styles.inputContainer}>
-              <MaterialIcons name="email" size={20} color={colors.icon} style={styles.inputIcon} />
-              <Input
-                label="Email *"
-                placeholder="Enter your email"
-                autoCapitalize="none"
-                keyboardType="email-address"
-                value={email}
-                onChangeText={text => {
-                  setEmail(text);
-                  if (errors.email) validateEmail(text);
-                }}
-                error={errors.email}
-                onBlur={() => validateEmail(email)}
-                style={styles.input}
-              />
-            </View>
+            <Input
+              label="Email *"
+              placeholder="Enter your email"
+              autoCapitalize="none"
+              keyboardType="email-address"
+              value={email}
+              onChangeText={text => {
+                setEmail(text);
+                if (errors.email) validateEmail(text);
+              }}
+              error={errors.email}
+              onBlur={() => validateEmail(email)}
+              leftIcon={<MaterialIcons name="email" size={20} color={colors.icon} />}
+            />
 
-            <View style={styles.inputContainer}>
-              <MaterialIcons
-                name="lock-outline"
-                size={20}
-                color={colors.icon}
-                style={styles.inputIcon}
-              />
-              <Input
-                label="Password *"
-                placeholder="Enter your password (min 6 characters)"
-                secureTextEntry={!showPassword}
-                value={password}
-                onChangeText={text => {
-                  setPassword(text);
-                  if (errors.password) validatePassword(text);
-                }}
-                error={errors.password}
-                onBlur={() => validatePassword(password)}
-                style={styles.input}
-              />
-              <TouchableOpacity
-                style={styles.eyeIcon}
-                onPress={() => setShowPassword(!showPassword)}
-                activeOpacity={0.7}>
-                <MaterialIcons
-                  name={showPassword ? 'visibility' : 'visibility-off'}
-                  size={20}
-                  color={colors.icon}
-                />
-              </TouchableOpacity>
-            </View>
+            <Input
+              label="Password *"
+              placeholder="Enter password (min 6 chars)"
+              secureTextEntry={!showPassword}
+              value={password}
+              onChangeText={text => {
+                setPassword(text);
+                if (errors.password) validatePassword(text);
+              }}
+              error={errors.password}
+              onBlur={() => validatePassword(password)}
+              hasRightIcon
+              leftIcon={<MaterialIcons name="lock-outline" size={20} color={colors.icon} />}
+              rightIcon={
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <MaterialIcons
+                    name={showPassword ? 'visibility' : 'visibility-off'}
+                    size={20}
+                    color={colors.icon}
+                  />
+                </TouchableOpacity>
+              }
+            />
 
-            <View style={styles.inputContainer}>
-              <MaterialIcons
-                name="lock-outline"
-                size={20}
-                color={colors.icon}
-                style={styles.inputIcon}
-              />
-              <Input
-                label="Confirm Password *"
-                placeholder="Confirm your password"
-                secureTextEntry={!showConfirmPassword}
-                value={confirmPassword}
-                onChangeText={text => {
-                  setConfirmPassword(text);
-                  if (errors.confirmPassword) validateConfirmPassword(text);
-                }}
-                error={errors.confirmPassword}
-                onBlur={() => validateConfirmPassword(confirmPassword)}
-                style={styles.input}
-              />
-              <TouchableOpacity
-                style={styles.eyeIcon}
-                onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                activeOpacity={0.7}>
-                <MaterialIcons
-                  name={showConfirmPassword ? 'visibility' : 'visibility-off'}
-                  size={20}
-                  color={colors.icon}
-                />
-              </TouchableOpacity>
-            </View>
+            <Input
+              label="Confirm Password *"
+              placeholder="Confirm password"
+              secureTextEntry={!showConfirmPassword}
+              value={confirmPassword}
+              onChangeText={text => {
+                setConfirmPassword(text);
+                if (errors.confirmPassword) validateConfirmPassword(text);
+              }}
+              error={errors.confirmPassword}
+              onBlur={() => validateConfirmPassword(confirmPassword)}
+              hasRightIcon
+              leftIcon={<MaterialIcons name="lock-outline" size={20} color={colors.icon} />}
+              rightIcon={
+                <TouchableOpacity
+                  onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                  activeOpacity={0.7}
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <MaterialIcons
+                    name={showConfirmPassword ? 'visibility' : 'visibility-off'}
+                    size={20}
+                    color={colors.icon}
+                  />
+                </TouchableOpacity>
+              }
+            />
 
-            <View style={styles.inputContainer}>
-              <MaterialIcons name="phone" size={20} color={colors.icon} style={styles.inputIcon} />
-              <Input
-                label="Mobile Number"
-                placeholder="Enter your mobile number (optional)"
-                keyboardType="phone-pad"
-                value={mobile}
-                onChangeText={text => {
-                  setMobile(text);
-                  if (errors.mobile) validateMobile(text);
-                }}
-                error={errors.mobile}
-                onBlur={() => validateMobile(mobile)}
-                style={styles.input}
-              />
-            </View>
+            <Input
+              label="Mobile Number"
+              placeholder="Mobile number (optional, 10–15 digits)"
+              keyboardType="phone-pad"
+              value={mobile}
+              onChangeText={text => {
+                setMobile(text.replace(/\s/g, ''));
+                if (errors.mobile) validateMobile(text.replace(/\s/g, ''));
+              }}
+              error={errors.mobile}
+              onBlur={() => validateMobile(mobile)}
+              leftIcon={<MaterialIcons name="phone" size={20} color={colors.icon} />}
+            />
 
-            <View style={styles.inputContainer}>
-              <MaterialIcons name="home" size={20} color={colors.icon} style={styles.inputIcon} />
-              <Input
-                label="Address"
-                placeholder="Enter your address (optional)"
-                value={address}
-                onChangeText={setAddress}
-                multiline
-                numberOfLines={2}
-                style={styles.input}
-              />
-            </View>
+            <Input
+              label="Address *"
+              placeholder="Enter your address"
+              value={address}
+              onChangeText={text => {
+                setAddress(text);
+                if (errors.address) validateAddress(text);
+              }}
+              error={errors.address}
+              onBlur={() => validateAddress(address)}
+              leftIcon={<MaterialIcons name="home" size={20} color={colors.icon} />}
+            />
 
             {/* cs_no required for seniors only (authorize against LifeStation); hidden for caregivers */}
             {userType === 'senior' && (
-              <View style={styles.inputContainer}>
-                <MaterialIcons
-                  name="account-circle"
-                  size={20}
-                  color={colors.icon}
-                  style={styles.inputIcon}
-                />
-                <Input
-                  label="LifeStation Account Number (cs_no) *"
-                  placeholder="Enter your LifeStation account number"
-                  value={csNo}
-                  onChangeText={text => {
-                    setCsNo(text);
-                    if (errors.csNo) validateCsNo(text);
-                  }}
-                  error={errors.csNo}
-                  onBlur={() => validateCsNo(csNo)}
-                  style={styles.input}
-                />
-              </View>
+              <Input
+                label="LifeStation Account Number (cs_no) *"
+                placeholder="LifeStation account number"
+                value={csNo}
+                onChangeText={text => {
+                  setCsNo(text);
+                  if (errors.csNo) validateCsNo(text);
+                }}
+                error={errors.csNo}
+                onBlur={() => validateCsNo(csNo)}
+                leftIcon={<MaterialIcons name="account-circle" size={20} color={colors.icon} />}
+              />
             )}
 
             <View style={styles.userTypeContainer}>
@@ -506,9 +520,9 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: spacing.lg, // px-6 in Figma
+    paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
-    paddingBottom: spacing.xxl,
+    paddingBottom: spacing.xxl + 320,
     justifyContent: 'flex-start',
   },
   header: {
@@ -526,26 +540,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   form: {
-    gap: spacing.md, // space-y-4 in Figma
-  },
-  inputContainer: {
-    position: 'relative',
-  },
-  inputIcon: {
-    position: 'absolute',
-    left: spacing.md,
-    top: 48, // Adjusted for new input height
-    zIndex: 1,
-  },
-  input: {
-    paddingLeft: spacing.xl + spacing.md, // pl-12 in Figma
-  },
-  eyeIcon: {
-    position: 'absolute',
-    right: spacing.md,
-    top: 48, // Aligned with inputIcon
-    zIndex: 1,
-    padding: spacing.xs,
+    gap: spacing.md,
   },
   userTypeContainer: {
     gap: spacing.sm, // mb-6 in Figma
