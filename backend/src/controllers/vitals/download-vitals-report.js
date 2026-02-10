@@ -1,3 +1,4 @@
+const PDFDocument = require('pdfkit');
 const reportsApiService = require('../../services/reports-api.service');
 const accessControlService = require('../../services/access-control.service');
 const deviceContextService = require('../../services/device-context.service');
@@ -58,48 +59,142 @@ const generateCSV = (vitals, seniorInfo) => {
 };
 
 /**
- * Generate PDF content from vitals data (simplified text-based PDF)
- * Note: For production, consider using pdfkit library
+ * Generate PDF from vitals data using pdfkit (proper PDF, no text overlap)
+ * @param {Array} vitals - Vitals data array
+ * @param {Object} seniorInfo - { id, name }
+ * @returns {Promise<Buffer>} - PDF buffer
  */
 const generatePDF = (vitals, seniorInfo) => {
-  // Simple PDF structure (minimal PDF format)
-  // For a proper PDF, you'd want to use pdfkit or similar library
-  // This is a simplified version that works but may have formatting limitations
+  return new Promise((resolve, reject) => {
+    try {
+      const margin = 50;
+      const bottomMargin = 60;
+      const doc = new PDFDocument({ margin });
+      const buffers = [];
 
-  const lines = [
-    `Vitals Report for ${seniorInfo.name || `Senior ID: ${seniorInfo.id}`}`,
-    `Generated: ${new Date().toLocaleString()}`,
-    '',
-    'Timestamp | Heart Rate | BP (Sys/Dia) | Temp | O2 Sat | Steps',
-    '----------|------------|--------------|------|--------|------',
-  ];
+      doc.on('data', buffers.push.bind(buffers));
+      doc.on('end', () => resolve(Buffer.concat(buffers)));
+      doc.on('error', reject);
 
-  vitals.forEach(vital => {
-    const timestamp = new Date(vital.timestamp).toLocaleString();
-    const heartRate =
-      vital.heart_rate !== null && vital.heart_rate !== undefined ? vital.heart_rate : '--';
-    const systolic =
-      vital.blood_pressure?.systolic !== null && vital.blood_pressure?.systolic !== undefined
-        ? vital.blood_pressure.systolic
-        : '--';
-    const diastolic =
-      vital.blood_pressure?.diastolic !== null && vital.blood_pressure?.diastolic !== undefined
-        ? vital.blood_pressure.diastolic
-        : '--';
-    const bp = `${systolic}/${diastolic}`;
-    const temperature =
-      vital.temperature !== null && vital.temperature !== undefined ? vital.temperature : '--';
-    const oxygenSat =
-      vital.oxygen_saturation !== null && vital.oxygen_saturation !== undefined
-        ? vital.oxygen_saturation
-        : '--';
-    const steps = vital.steps !== null && vital.steps !== undefined ? vital.steps : '--';
+      doc.fontSize(20).text('Vitals Report', { align: 'center' });
+      doc.moveDown(0.5);
+      doc
+        .fontSize(11)
+        .text(`Senior: ${seniorInfo.name || `ID ${seniorInfo.id}`}`, { align: 'left' });
+      doc.fontSize(10).text(`Generated: ${new Date().toLocaleString()}`, { align: 'left' });
+      doc.moveDown(1.5);
 
-    lines.push(`${timestamp} | ${heartRate} | ${bp} | ${temperature} | ${oxygenSat} | ${steps}`);
+      if (!vitals || vitals.length === 0) {
+        doc.fontSize(14).text('No vitals data available.', { align: 'center' });
+        doc.end();
+        return;
+      }
+
+      const keys = [
+        'Timestamp',
+        'Heart Rate',
+        'Systolic BP',
+        'Diastolic BP',
+        'Temperature',
+        'O2 Sat',
+        'Steps',
+      ];
+      const pageWidth = doc.page.width;
+      const columnWidth = Math.max(50, (pageWidth - margin * 2) / keys.length);
+      const startX = margin;
+      let currentY = doc.y;
+
+      // Header row
+      doc.fontSize(10).font('Helvetica-Bold');
+      let headerHeight = 0;
+      keys.forEach(key => {
+        const h = doc.heightOfString(key, { width: columnWidth });
+        headerHeight = Math.max(headerHeight, h);
+      });
+      keys.forEach((key, i) => {
+        doc.text(key, startX + i * columnWidth, currentY, {
+          width: columnWidth,
+          align: 'left',
+          lineBreak: true,
+        });
+      });
+      currentY += headerHeight + 6;
+      doc
+        .moveTo(margin, currentY)
+        .lineTo(pageWidth - margin, currentY)
+        .stroke();
+      currentY += 10;
+
+      // Data rows
+      doc.font('Helvetica').fontSize(9);
+      const rowPadding = 4;
+
+      vitals.forEach((vital, idx) => {
+        if (currentY > doc.page.height - bottomMargin) {
+          doc.addPage({ margin });
+          currentY = margin;
+          doc.fontSize(10).font('Helvetica-Bold');
+          keys.forEach((key, i) => {
+            doc.text(key, startX + i * columnWidth, currentY, {
+              width: columnWidth,
+              align: 'left',
+              lineBreak: true,
+            });
+          });
+          currentY += headerHeight + 6;
+          doc
+            .moveTo(margin, currentY)
+            .lineTo(pageWidth - margin, currentY)
+            .stroke();
+          currentY += 10;
+          doc.font('Helvetica').fontSize(9);
+        }
+
+        const timestamp = new Date(vital.timestamp).toLocaleString();
+        const systolic =
+          vital.blood_pressure?.systolic != null ? String(vital.blood_pressure.systolic) : '--';
+        const diastolic =
+          vital.blood_pressure?.diastolic != null ? String(vital.blood_pressure.diastolic) : '--';
+        const values = [
+          timestamp,
+          vital.heart_rate != null ? String(vital.heart_rate) : '--',
+          systolic,
+          diastolic,
+          vital.temperature != null ? String(vital.temperature) : '--',
+          vital.oxygen_saturation != null ? String(vital.oxygen_saturation) : '--',
+          vital.steps != null ? String(vital.steps) : '--',
+        ];
+
+        let rowHeight = 0;
+        values.forEach(val => {
+          const h = doc.heightOfString(val.substring(0, 25), { width: columnWidth });
+          rowHeight = Math.max(rowHeight, h);
+        });
+
+        values.forEach((val, colIndex) => {
+          doc.text(val.substring(0, 30), startX + colIndex * columnWidth, currentY, {
+            width: columnWidth,
+            align: 'left',
+            lineBreak: true,
+          });
+        });
+        currentY += rowHeight + rowPadding;
+      });
+
+      doc.fontSize(8).fillColor('#666666');
+      doc.text(
+        `Page ${doc.page.number} - Total Records: ${vitals.length}`,
+        margin,
+        doc.page.height - 40,
+        { width: pageWidth - margin * 2, align: 'center' },
+      );
+      doc.fillColor('#000000');
+
+      doc.end();
+    } catch (error) {
+      reject(error);
+    }
   });
-
-  // Return as plain text for now - in production, use pdfkit to generate proper PDF
-  return lines.join('\n');
 };
 
 const downloadVitalsReport = async (req, res) => {
@@ -333,27 +428,8 @@ const downloadVitalsReport = async (req, res) => {
           : senior.email || `Senior ${targetSeniorId}`,
     };
 
-    let fileContent;
-    let contentType;
-    let filename;
+    const filenameBase = `vitals-report-${seniorInfo.id}-${Date.now()}`;
 
-    if (format.toLowerCase() === 'csv') {
-      fileContent = generateCSV(normalizedData, seniorInfo);
-      contentType = 'text/csv';
-      filename = `vitals-report-${seniorInfo.id}-${Date.now()}.csv`;
-    } else {
-      // PDF format
-      fileContent = generatePDF(normalizedData, seniorInfo);
-      contentType = 'application/pdf';
-      filename = `vitals-report-${seniorInfo.id}-${Date.now()}.pdf`;
-
-      // Note: For proper PDF generation, you'd want to use pdfkit
-      // This returns plain text formatted as a simple PDF-like structure
-      // In production, replace this with actual PDF generation
-      contentType = 'text/plain'; // Temporary - use pdfkit for real PDF
-    }
-
-    // Log audit entry (don't fail if logging fails)
     try {
       await auditLogService.log({
         user_id: userId,
@@ -370,15 +446,22 @@ const downloadVitalsReport = async (req, res) => {
         user_agent: req.get('user-agent'),
       });
     } catch (auditError) {
-      // Log audit error but don't fail the request
       logger.warn('Failed to log audit entry for vitals download:', auditError.message);
     }
 
-    // Set headers and send file
-    res.setHeader('Content-Type', contentType);
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Content-Length', Buffer.byteLength(fileContent, 'utf8'));
-    res.status(200).send(fileContent);
+    if (format.toLowerCase() === 'csv') {
+      const fileContent = generateCSV(normalizedData, seniorInfo);
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="${filenameBase}.csv"`);
+      res.setHeader('Content-Length', Buffer.byteLength(fileContent, 'utf8'));
+      res.status(200).send(fileContent);
+    } else {
+      const pdfBuffer = await generatePDF(normalizedData, seniorInfo);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${filenameBase}.pdf"`);
+      res.setHeader('Content-Length', pdfBuffer.length);
+      res.status(200).send(pdfBuffer);
+    }
   } catch (error) {
     logger.error('Error in download-vitals-report:', {
       error: error.message,

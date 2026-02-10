@@ -1,5 +1,6 @@
 const db = require('../../models');
 const bcrypt = require('bcrypt');
+const { isValidPasswordComplexity } = require('../../utils/validators');
 
 /**
  * Update password for authenticated user
@@ -26,9 +27,16 @@ const updatePassword = async (req, res) => {
     if (!match) {
       return res.status(401).json({ error: 'Current password incorrect' });
     }
-    // Validate new password complexity (example: at least 8 chars)
-    if (new_password.length < 8) {
-      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    // New password must differ from current
+    if (current_password === new_password) {
+      return res.status(400).json({
+        error: 'New password must be different from your current password',
+      });
+    }
+    // Validate new password complexity (Affiliated rules: 8+ chars, 3 of: upper, lower, number, special)
+    const complexity = isValidPasswordComplexity(new_password);
+    if (!complexity.valid) {
+      return res.status(400).json({ error: complexity.error });
     }
     // Update password
     const hash = await bcrypt.hash(new_password, 10);

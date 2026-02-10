@@ -32,6 +32,7 @@ const signup = async (req, res) => {
       gender,
       fcm_token,
       platform,
+      timezone,
       privacy_accepted,
       terms_accepted,
       cs_no, // OPTION A: cs_no from LifeStation account
@@ -256,9 +257,19 @@ const signup = async (req, res) => {
       status: 'ACTIVATED',
       is_login: true,
       cs_no: cs_no ? cs_no.trim() : null, // OPTION A: Link to LifeStation account
-      extra_info: {
-        isPro: false,
-      },
+      extra_info: (() => {
+        const info = { isPro: false };
+        if (timezone && typeof timezone === 'string' && timezone.trim()) {
+          const tz = timezone.trim();
+          try {
+            Intl.DateTimeFormat(undefined, { timeZone: tz });
+            info.timezone = tz;
+          } catch {
+            /* Ignore invalid timezone */
+          }
+        }
+        return info;
+      })(),
     });
 
     // Log FCM token for debugging

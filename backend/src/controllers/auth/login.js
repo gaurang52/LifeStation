@@ -12,7 +12,7 @@ const REFRESH_SECRET_KEY = process.env.REFRESH_SECRET_KEY;
 
 const login = async (req, res) => {
   try {
-    const { email, password, fcm_token, platform } = req.body;
+    const { email, password, fcm_token, platform, timezone } = req.body;
 
     // Log received FCM token for debugging (first 20 chars only for security)
     if (fcm_token) {
@@ -107,13 +107,22 @@ const login = async (req, res) => {
       );
     }
 
-    // Update user login status and FCM token
+    // Update user login status, FCM token, and timezone
     const updateData = {
       is_login: true,
       status: 'ACTIVATED',
       fcm_token: fcm_token || null,
       platform: platform || null,
     };
+    if (timezone && typeof timezone === 'string' && timezone.trim()) {
+      const tz = timezone.trim();
+      try {
+        Intl.DateTimeFormat(undefined, { timeZone: tz });
+        updateData.extra_info = { ...(user.extra_info || {}), timezone: tz };
+      } catch {
+        // Ignore invalid timezone
+      }
+    }
 
     await user.update(updateData);
 

@@ -22,6 +22,7 @@ import AddCaregiverScreen from '@features/caregivers/screens/AddCaregiverScreen'
 import { useAuthStore } from '@core/store';
 import { ErrorBoundary } from '@shared/components';
 import { colors, spacing } from '@shared/theme';
+import { logger } from '@core/utils/logger';
 import { ROUTES } from '@core/constants/routes';
 import {
   requestNotificationPermission,
@@ -29,6 +30,8 @@ import {
 } from '@core/utils/notificationPermissions';
 import { setupNotificationHandlers } from '@core/services/notificationHandler';
 import { registerDeviceForRemoteMessages } from '@core/services/fcmService';
+import { authApi } from '@core/api/authApi';
+import { getDeviceTimezone } from '@core/utils/deviceTimezone';
 import {
   ActivityIndicator,
   StatusBar,
@@ -43,17 +46,25 @@ const AuthStack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 const AppStack = createStackNavigator();
 
-// Styles for tab bar
+// Tab bar layout constants - compact to fit 5 tabs on smaller screens (e.g. Realme X2 Pro)
+const TAB_BAR_BUTTON_PADDING_H = 2;
+const TAB_BAR_BUTTON_MARGIN_H = 2;
+const TAB_BAR_BUTTON_MIN_HEIGHT = 40;
+const TAB_BAR_BASE_HEIGHT = 64;
+const TAB_BAR_LABEL_FONT_SIZE = 11;
+const TAB_BAR_LABEL_MARGIN_TOP = 2;
+const TAB_BAR_ITEM_PADDING_V = 4;
+
 const tabBarStyles = StyleSheet.create({
   tabBarButton: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: TAB_BAR_BUTTON_PADDING_H,
     borderRadius: spacing.md,
-    marginHorizontal: spacing.xs / 2,
-    minHeight: 44, // Ensure touch target meets accessibility guidelines
+    marginHorizontal: TAB_BAR_BUTTON_MARGIN_H,
+    minHeight: TAB_BAR_BUTTON_MIN_HEIGHT,
   },
   tabBarButtonSelected: {
     backgroundColor: colors.lightPrimary,
@@ -127,10 +138,16 @@ const tabBarIconByRoute: Record<
   [ROUTES.PROFILE]: ProfileTabIcon,
 };
 
+/** Minimum bottom padding for Android (some devices report 0 for insets.bottom) */
+const ANDROID_MIN_BOTTOM_PADDING = 12;
+
 const Tabs = () => {
   const insets = useSafeAreaInsets();
-  const baseTabBarHeight = 60;
-  const tabBarHeight = baseTabBarHeight + insets.bottom;
+  const bottomPadding =
+    Platform.OS === 'android'
+      ? Math.max(insets.bottom, ANDROID_MIN_BOTTOM_PADDING)
+      : Math.max(insets.bottom, spacing.sm);
+  const tabBarHeight = TAB_BAR_BASE_HEIGHT + bottomPadding;
 
   return (
     <Tab.Navigator
@@ -142,10 +159,10 @@ const Tabs = () => {
           backgroundColor: colors.surface,
           borderTopWidth: 1,
           borderTopColor: colors.divider,
-          paddingBottom: Math.max(insets.bottom, spacing.sm),
+          paddingBottom: bottomPadding,
           paddingTop: spacing.sm,
           height: tabBarHeight,
-          paddingHorizontal: spacing.xs,
+          paddingHorizontal: TAB_BAR_BUTTON_PADDING_H,
           ...Platform.select({
             ios: {
               shadowColor: colors.black,
@@ -164,13 +181,15 @@ const Tabs = () => {
         tabBarButton: CustomTabBarButton,
         tabBarIcon: tabBarIconByRoute[route.name] ?? ProfileTabIcon,
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: TAB_BAR_LABEL_FONT_SIZE,
           fontWeight: '500',
-          marginTop: spacing.xs / 2,
+          marginTop: TAB_BAR_LABEL_MARGIN_TOP,
+          maxWidth: '100%',
         },
         tabBarItemStyle: {
-          paddingVertical: spacing.xs,
+          paddingVertical: TAB_BAR_ITEM_PADDING_V,
         },
+        tabBarAllowFontScaling: false,
       })}>
       <Tab.Screen
         name={ROUTES.HOME}
@@ -241,6 +260,17 @@ const App = (): React.JSX.Element => {
     }
   }, [hasHydrated]);
 
+  const user = useAuthStore(state => state.user);
+
+  // Sync device timezone to backend so notifications show correct local time
+  useEffect(() => {
+    if (hasHydrated && user) {
+      authApi.updateProfile({ timezone: getDeviceTimezone() }).catch(() => {
+        /* Ignore - non-critical, notifications will use last known timezone */
+      });
+    }
+  }, [hasHydrated, user?.id]);
+
   // Setup notification handlers and request permission after app has hydrated
   useEffect(() => {
     if (hasHydrated) {
@@ -251,10 +281,7 @@ const App = (): React.JSX.Element => {
 
           // Setup notification handlers
           setupNotificationHandlers(remoteMessage => {
-            // Handle notification opened - you can navigate to specific screens here
-            console.log('Notification opened:', remoteMessage);
-            // Example: Navigate to events screen if notification has event data
-            // navigation.navigate(ROUTES.RECENT_EVENTS);
+            logger.debug('Notification opened', { messageId: remoteMessage?.messageId });
           });
 
           // Check if permission is already granted
@@ -264,7 +291,7 @@ const App = (): React.JSX.Element => {
             await requestNotificationPermission();
           }
         } catch (error) {
-          console.warn('Failed to initialize notifications:', error);
+          logger.warn('Failed to initialize notifications', error);
         }
       };
 

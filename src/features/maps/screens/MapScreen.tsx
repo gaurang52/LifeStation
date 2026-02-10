@@ -49,7 +49,6 @@ const MapScreen: React.FC = () => {
   const mapRef = useRef<MapView>(null);
   const geofenceMapRef = useRef<MapView>(null);
   const sliderTrackRef = useRef<View>(null);
-  const [sliderTrackWidth, setSliderTrackWidth] = useState(300);
 
   // Prevent duplicate API calls
   const fetchingDevicesRef = useRef(false);
@@ -57,16 +56,25 @@ const MapScreen: React.FC = () => {
   const fetchingGeofenceRef = useRef(false);
   const rateLimitRetryTimeoutRef = useRef<number | null>(null);
 
-  // Handle slider value change
-  const handleSliderChange = useCallback(
-    (locationX: number) => {
-      const percentage = Math.max(0, Math.min(1, locationX / sliderTrackWidth));
-      setGeofenceRadius(Math.round(percentage * 10000));
-    },
-    [sliderTrackWidth],
-  );
+  // Track layout for accurate position calculation (pan is on track so locationX is relative to track)
+  const trackLayoutRef = useRef({ width: 300 });
 
-  // Pan responder for slider thumb drag
+  // Handle slider value change - uses ref to avoid stale closure in panResponder
+  const handleSliderChange = useCallback((locationX: number) => {
+    const { width } = trackLayoutRef.current;
+    if (width <= 0) return;
+    const percentage = Math.max(0, Math.min(1, locationX / width));
+    setGeofenceRadius(Math.round(percentage * 10000));
+  }, []);
+
+  const handleSliderChangeRef = useRef(handleSliderChange);
+  handleSliderChangeRef.current = handleSliderChange;
+
+  // Throttle state updates during drag to prevent flickering (MapView Circle re-renders are expensive)
+  const lastSliderUpdateRef = useRef(0);
+  const SLIDER_THROTTLE_MS = 32; // ~30fps for smooth but not excessive updates
+
+  // Pan responder on the track (so locationX is relative to track, not thumb)
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -74,9 +82,17 @@ const MapScreen: React.FC = () => {
       onPanResponderGrant: () => {},
       onPanResponderMove: evt => {
         const { locationX } = evt.nativeEvent;
-        handleSliderChange(locationX);
+        const now = Date.now();
+        if (now - lastSliderUpdateRef.current >= SLIDER_THROTTLE_MS) {
+          lastSliderUpdateRef.current = now;
+          handleSliderChangeRef.current(locationX);
+        }
       },
-      onPanResponderRelease: () => {},
+      onPanResponderRelease: evt => {
+        // Always sync final value on release (catches tap and drag end)
+        const { locationX } = evt.nativeEvent;
+        handleSliderChangeRef.current(locationX);
+      },
     }),
   ).current;
 
@@ -613,17 +629,15 @@ const MapScreen: React.FC = () => {
         animationType="slide"
         transparent={false}
         onRequestClose={() => setShowGeofenceModal(false)}>
-        <View style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity
-              onPress={() => setShowGeofenceModal(false)}
-              style={styles.modalCloseButton}>
-              <MaterialIcons name="arrow-back" size={24} color={colors.text} />
-            </TouchableOpacity>
-            <AppText variant="h3" color={colors.text} style={styles.modalTitle}>
-              Set Geofence
-            </AppText>
-            <View style={styles.modalCloseButton} />
+        <Screen padded={false} style={styles.modalContainer}>
+          <View style={styles.navbarWrapper}>
+            <TopNavbar
+              title="Set Geofence"
+              subtitle="Configure geofence center and radius"
+              variant="figma"
+              showBackButton
+              onBackPress={() => setShowGeofenceModal(false)}
+            />
           </View>
 
           <View style={styles.modalMapContainer}>
@@ -670,18 +684,15 @@ const MapScreen: React.FC = () => {
                 Radius: {Math.round(geofenceRadius || 1000)} meters
               </AppText>
               <View style={styles.sliderWrapper}>
-                <TouchableOpacity
+                <View
                   ref={sliderTrackRef}
                   onLayout={e => {
                     const { width } = e.nativeEvent.layout;
-                    setSliderTrackWidth(width);
+                    trackLayoutRef.current = { width };
                   }}
                   style={styles.sliderTrack}
-                  activeOpacity={1}
-                  onPress={e => {
-                    const { locationX } = e.nativeEvent;
-                    handleSliderChange(locationX);
-                  }}>
+                  {...panResponder.panHandlers}
+                  collapsable={false}>
                   <View
                     style={[
                       styles.sliderFill,
@@ -693,9 +704,8 @@ const MapScreen: React.FC = () => {
                       styles.sliderThumb,
                       { left: `${((geofenceRadius || 1000) / 10000) * 100}%` },
                     ]}
-                    {...panResponder.panHandlers}
                   />
-                </TouchableOpacity>
+                </View>
                 <View style={styles.sliderLabels}>
                   <AppText variant="small" color={colors.textSecondary}>
                     0m
@@ -748,7 +758,7 @@ const MapScreen: React.FC = () => {
               />
             </View>
           </View>
-        </View>
+        </Screen>
       </Modal>
     </Screen>
   );
@@ -852,25 +862,6 @@ const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  modalCloseButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalTitle: {
-    flex: 1,
-    textAlign: 'center',
   },
   modalMapContainer: {
     flex: 1,
