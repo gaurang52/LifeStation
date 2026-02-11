@@ -1,7 +1,11 @@
 const db = require('../models');
+const { Op } = require('sequelize');
 const calculateDistanceService = require('./calculate-distance.service');
 const logger = require('../utils/logger');
 const crypto = require('crypto');
+
+/** Event types stored in AllEvents for geofence */
+const GEOFENCE_EVENT_TYPES = ['In Fence', 'Out Fence'];
 
 /**
  * Service for handling geofence logic
@@ -82,6 +86,25 @@ class GeofenceService {
         fenceCenter: { lat: centerLat, lng: centerLng },
       });
 
+      // Get previous geofence status (before this update) for in->out transition detection
+      let previousEvent = null;
+      try {
+        previousEvent = await db.AllEvents.findOne({
+          where: {
+            deviceid: deviceId,
+            eventtype: { [Op.in]: GEOFENCE_EVENT_TYPES },
+          },
+          order: [['eventtime', 'DESC']],
+          attributes: ['eventtype', 'eventtime'],
+          transaction: options.transaction || undefined,
+        });
+      } catch (queryErr) {
+        logger.warn(
+          'Could not fetch previous geofence event for transition check:',
+          queryErr.message,
+        );
+      }
+
       // Save fence alert event to AllEvents table (matching umbrella-app-backend exactly)
       const eventType = status === 'in-fence' ? 'In Fence' : 'Out Fence';
       try {
@@ -105,8 +128,20 @@ class GeofenceService {
         // Don't throw - geofence check should still succeed even if event logging fails
       }
 
+      // Notify caregivers only on in->out transition (was inside fence, now outside)
+      const notifyCaregivers =
+        status === 'out-fence' && previousEvent != null && previousEvent.eventtype === 'In Fence';
+
+      if (notifyCaregivers) {
+        logger.info(
+          `Geofence in->out transition for device ${deviceId}, caregiver notification will be sent`,
+        );
+      }
+
       return {
         status,
+        eventType,
+        notifyCaregivers,
         distance: Math.round(distance), // Round to nearest meter
         radius,
         deviceLocation: { latitude, longitude },

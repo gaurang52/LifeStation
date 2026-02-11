@@ -197,9 +197,10 @@ const webhookEvent = async (req, res) => {
 
       if (location && !isNaN(location.latitude) && !isNaN(location.longitude)) {
         let transaction;
+        let geofenceResult = null;
         try {
           transaction = await sequelize.transaction();
-          await geofenceService.checkGeofenceStatus(deviceId, location, {
+          geofenceResult = await geofenceService.checkGeofenceStatus(deviceId, location, {
             vendor: 'affiliated',
             eventTime: signal.timestamp || new Date(),
             transaction,
@@ -208,6 +209,17 @@ const webhookEvent = async (req, res) => {
         } catch (geoErr) {
           if (transaction) await transaction.rollback();
           logger.error('Geofence error in Affiliated status webhook:', geoErr.message);
+        }
+        if (geofenceResult && geofenceResult.notifyCaregivers) {
+          try {
+            await criticalEventNotificationService.notifyCaregiversOfGeofenceEvent(
+              geofenceResult,
+              deviceId,
+              'imei',
+            );
+          } catch (notifyErr) {
+            logger.error('Geofence caregiver notification failed (Affiliated status):', notifyErr);
+          }
         }
       }
 
@@ -263,9 +275,10 @@ const webhookEvent = async (req, res) => {
 
     if (['Periodic Location', 'Panic'].includes(eventType) && location) {
       let transaction;
+      let geofenceResult = null;
       try {
         transaction = await sequelize.transaction();
-        await geofenceService.checkGeofenceStatus(deviceId, location, {
+        geofenceResult = await geofenceService.checkGeofenceStatus(deviceId, location, {
           vendor: eventData.vendor || eventData.vendor_code,
           eventTime:
             eventData.event_time || eventData.eventUtcTime || eventData.eventTime || new Date(),
@@ -278,6 +291,17 @@ const webhookEvent = async (req, res) => {
           error: error.message,
           deviceId,
         });
+      }
+      if (geofenceResult && geofenceResult.notifyCaregivers) {
+        try {
+          await criticalEventNotificationService.notifyCaregiversOfGeofenceEvent(
+            geofenceResult,
+            deviceId,
+            idType,
+          );
+        } catch (notifyErr) {
+          logger.error('Geofence caregiver notification failed (generic webhook):', notifyErr);
+        }
       }
     }
 

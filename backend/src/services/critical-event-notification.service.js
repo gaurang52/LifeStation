@@ -452,6 +452,221 @@ const notifyCaregiversOfCriticalEvent = async (event, senior, deviceName = null)
 };
 
 /**
+ * Event report ID used for geofence-out notifications (logging and dedup).
+ * Kept short to fit event_notification_logs.eventrpt_id (VARCHAR(10)).
+ */
+const GEOFENCE_OUT_EVENT_ID = 'GEO_OUT';
+
+/**
+ * Send geofence (in->out) notifications to caregivers.
+ * Only call when geofenceResult.notifyCaregivers === true (in->out transition).
+ * @param {object} geofenceResult - Return value from geofenceService.checkGeofenceStatus
+ * @param {string} deviceId - Device ID (IMEI, serial, or UUID)
+ * @param {string} idType - Device ID type (imei, serial, uuid, etc.)
+ * @returns {Promise<object>} - Notification results (push/sms sent/failed counts)
+ */
+const notifyCaregiversOfGeofenceEvent = async (geofenceResult, deviceId, idType = null) => {
+  const results = {
+    pushNotifications: { sent: 0, failed: 0 },
+    smsAlerts: { sent: 0, failed: 0 },
+    errors: [],
+  };
+
+  if (!geofenceResult || geofenceResult.notifyCaregivers !== true) {
+    return results;
+  }
+
+  const senior = await getSeniorForDevice(deviceId, idType);
+  if (!senior || !senior.id) {
+    logger.warn(`No senior user found for device ${deviceId}, skipping geofence notification`);
+    return results;
+  }
+
+  const caregivers = await getActiveCaregivers(senior.id);
+  if (caregivers.length === 0) {
+    logger.info(
+      `No active caregivers found for senior ${senior.id}, skipping geofence notification`,
+    );
+    return results;
+  }
+
+  let deviceName = null;
+  try {
+    const device = await db.Devices.findOne({
+      where: idType
+        ? { device_id: deviceId, id_type: idType }
+        : {
+            [Op.or]: [
+              { device_id: deviceId },
+              { device_imei: deviceId },
+              { device_serial: deviceId },
+              { device_uuid: deviceId },
+            ],
+          },
+    });
+    if (device) {
+      const mapping = await db.UserDeviceMapping.findOne({
+        where: { device_id: device.id },
+      });
+      deviceName = mapping?.device_name || device.name || null;
+    }
+  } catch (err) {
+    logger.debug('Could not fetch device name for geofence notification:', err.message);
+  }
+
+  const eventTime =
+    geofenceResult.eventTime instanceof Date
+      ? geofenceResult.eventTime.toISOString()
+      : new Date(geofenceResult.eventTime || Date.now()).toISOString();
+
+  const syntheticEvent = {
+    eventrpt_id: GEOFENCE_OUT_EVENT_ID,
+    eventtype: 'Out Fence',
+    event_time: eventTime,
+    eventtime: eventTime,
+    timestamp: eventTime,
+    device_id: deviceId,
+    imei: deviceId,
+  };
+
+  const eventDescription = 'Out of Geofence';
+
+  const formatTimeForTimezone = tz => {
+    const options = {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    };
+    if (tz) {
+      try {
+        Intl.DateTimeFormat(undefined, { timeZone: tz });
+        options.timeZone = tz;
+      } catch {
+        // ignore invalid tz
+      }
+    }
+    return new Date(eventTime).toLocaleString('en-US', options);
+  };
+
+  const pushTitle = `📍 ${eventDescription} Alert`;
+  const seniorName = senior.name || 'Senior';
+  const deviceSuffix = deviceName ? ` from ${deviceName}` : '';
+
+  for (const caregiver of caregivers) {
+    try {
+      const alreadySent = await isNotificationAlreadySent(syntheticEvent, caregiver.id);
+      if (alreadySent) {
+        logger.debug(
+          `Skipping duplicate geofence notification for caregiver ${caregiver.id}, device ${deviceId}`,
+        );
+        continue;
+      }
+
+      const recipientTimezone = caregiver.extra_info?.timezone || null;
+      const formattedTime = formatTimeForTimezone(recipientTimezone);
+      const pushMessage = `${seniorName} has left the geofence area${deviceSuffix} at ${formattedTime}.`;
+      const smsMessage = `📍 Geofence Alert: ${seniorName} has left the designated area${
+        deviceName ? ` (${deviceName})` : ''
+      } at ${formattedTime}. Please check the LifeStation app.`;
+
+      if (caregiver.fcm_token) {
+        try {
+          await fcmService.sendNotification(
+            caregiver.fcm_token,
+            pushTitle,
+            pushMessage,
+            {
+              event_type: GEOFENCE_OUT_EVENT_ID,
+              event_description: eventDescription,
+              senior_id: senior.id.toString(),
+              senior_name: seniorName,
+              device_id: deviceId,
+              device_name: deviceName || '',
+              event_time: eventTime,
+              emergency: 'false',
+              priority: 'high',
+            },
+            false, // isEmergency = false for geofence (informational)
+          );
+          await logEventNotification({
+            caregiverId: caregiver.id,
+            seniorId: senior.id,
+            deviceId,
+            eventrptId: GEOFENCE_OUT_EVENT_ID,
+            eventTime,
+            notificationType: 'push',
+            status: 'success',
+          });
+          results.pushNotifications.sent++;
+        } catch (pushError) {
+          logger.error(`Failed to send geofence push to caregiver ${caregiver.id}:`, pushError);
+          results.pushNotifications.failed++;
+          await logEventNotification({
+            caregiverId: caregiver.id,
+            seniorId: senior.id,
+            deviceId,
+            eventrptId: GEOFENCE_OUT_EVENT_ID,
+            eventTime,
+            notificationType: 'push',
+            status: 'failed',
+            errorMessage: pushError.message,
+          });
+        }
+      } else {
+        logger.debug(`Caregiver ${caregiver.id} has no FCM token, skipping geofence push`);
+      }
+
+      if (caregiver.mobile) {
+        try {
+          await smsService.sendSMS(caregiver.mobile, smsMessage);
+          await logEventNotification({
+            caregiverId: caregiver.id,
+            seniorId: senior.id,
+            deviceId,
+            eventrptId: GEOFENCE_OUT_EVENT_ID,
+            eventTime,
+            notificationType: 'sms',
+            status: 'success',
+          });
+          results.smsAlerts.sent++;
+        } catch (smsError) {
+          logger.error(`Failed to send geofence SMS to caregiver ${caregiver.id}:`, smsError);
+          results.smsAlerts.failed++;
+          await logEventNotification({
+            caregiverId: caregiver.id,
+            seniorId: senior.id,
+            deviceId,
+            eventrptId: GEOFENCE_OUT_EVENT_ID,
+            eventTime,
+            notificationType: 'sms',
+            status: 'failed',
+            errorMessage: smsError.message,
+          });
+        }
+      } else {
+        logger.debug(`Caregiver ${caregiver.id} has no mobile, skipping geofence SMS`);
+      }
+    } catch (error) {
+      logger.error(`Error sending geofence notification to caregiver ${caregiver.id}:`, error);
+      results.errors.push({ caregiverId: caregiver.id, error: error.message });
+    }
+  }
+
+  logger.info('Geofence (in->out) notifications processed', {
+    deviceId,
+    seniorId: senior.id,
+    pushSent: results.pushNotifications.sent,
+    pushFailed: results.pushNotifications.failed,
+    smsSent: results.smsAlerts.sent,
+    smsFailed: results.smsAlerts.failed,
+  });
+
+  return results;
+};
+
+/**
  * Process a critical event and notify caregivers
  * @param {object} event - Event object from external API
  * @param {string} deviceId - Device ID (IMEI, serial, or UUID)
@@ -535,5 +750,7 @@ module.exports = {
   getSeniorForDevice,
   processCriticalEvent,
   notifyCaregiversOfCriticalEvent,
+  notifyCaregiversOfGeofenceEvent,
   CRITICAL_EVENT_TYPES,
+  GEOFENCE_OUT_EVENT_ID,
 };
