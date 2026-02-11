@@ -19,7 +19,9 @@ target 'Lifestation' do
   
   pod 'Firebase/Core'
   pod 'Firebase/Messaging'
-  pod 'GoogleMaps'
+  # Use react-native-maps Google subspec so PROVIDER_GOOGLE works on iOS (includes GoogleMaps + Google-Maps-iOS-Utils)
+  rn_maps_path = '../node_modules/react-native-maps'
+  pod 'react-native-maps/Google', :path => rn_maps_path
 
   use_frameworks! :linkage => :static
   $RNFirebaseAsStaticFramework = true

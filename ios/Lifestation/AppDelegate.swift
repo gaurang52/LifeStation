@@ -4,6 +4,7 @@ import React_RCTAppDelegate
 import ReactAppDependencyProvider
 import Firebase
 import UserNotifications
+import GoogleMaps
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate {
@@ -16,6 +17,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
   ) -> Bool {
+    // Initialize Google Maps SDK before any map view loads (required for iOS)
+    if let apiKey = Bundle.main.object(forInfoDictionaryKey: "GMSApiKey") as? String, !apiKey.isEmpty {
+      GMSServices.provideAPIKey(apiKey)
+      #if DEBUG
+      let masked = apiKey.count > 14 ? "\(apiKey.prefix(10))...\(apiKey.suffix(4))" : "***"
+      print("[LifeStation] Google Maps API key set for iOS (masked): \(masked). Bundle ID: \(Bundle.main.bundleIdentifier ?? "?")")
+      #endif
+    } else {
+      #if DEBUG
+      print("[LifeStation] ERROR: GMSApiKey missing or empty in Info.plist. Map will not display on iOS. Add key and ensure Maps SDK for iOS is enabled and bundle ID com.lifestation.careassist is allowed.")
+      #endif
+    }
     FirebaseApp.configure()
     
     // Set up notification delegate
