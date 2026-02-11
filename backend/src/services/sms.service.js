@@ -1,16 +1,17 @@
 const { SNSClient, PublishCommand } = require('@aws-sdk/client-sns');
+const { fromEnv } = require('@aws-sdk/credential-provider-env');
+
+const { defaultProvider } = require('@aws-sdk/credential-provider-node');
+
 const db = require('../models');
 const logger = require('../utils/logger');
 
-// Initialize AWS SNS client
+// Use env vars when set (e.g. local dev); otherwise use default chain (IAM role, instance profile, etc.)
+const useEnvCredentials = process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY;
+
 const snsClient = new SNSClient({
   region: process.env.AWS_REGION || 'us-east-1',
-  credentials: process.env.AWS_ACCESS_KEY_ID
-    ? {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-      }
-    : undefined,
+  credentials: useEnvCredentials ? fromEnv() : defaultProvider(),
 });
 
 /**
@@ -34,14 +35,6 @@ const sendSMS = async (phoneNumber, message) => {
 
   // Ensure phone number is in E.164 format (starts with +)
   const e164Phone = cleanedPhone.startsWith('+') ? cleanedPhone : `+${cleanedPhone}`;
-
-  // Check if AWS credentials are configured
-  if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
-    logger.warn(
-      'AWS SNS credentials not configured. SMS will not be sent. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY in environment variables.',
-    );
-    return null;
-  }
 
   try {
     const command = new PublishCommand({
