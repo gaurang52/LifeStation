@@ -1,12 +1,5 @@
 import { Platform } from 'react-native';
-import {
-  API_BASE_URL,
-  API_TIMEOUT,
-  ENV as ENV_NAME,
-  APP_NAME,
-  APP_VERSION,
-  GOOGLE_PLACE_API_KEY,
-} from '@env';
+import { API_BASE_URL, API_TIMEOUT, ENV as ENV_NAME, APP_NAME, GOOGLE_PLACE_API_KEY } from '@env';
 
 // Default fallback URLs based on platform
 // For local development, use:
@@ -36,6 +29,6 @@ export const ENV = {
   API_TIMEOUT: parseInt(API_TIMEOUT || '30000', 10),
   ENV: ENV_NAME || 'development',
   APP_NAME: APP_NAME || 'LifeStation',
-  APP_VERSION: APP_VERSION || '1.0.0',
+  APP_VERSION: '1.0 (9)',
   GOOGLE_MAPS_API_KEY: GOOGLE_PLACE_API_KEY || '',
 } as const;
