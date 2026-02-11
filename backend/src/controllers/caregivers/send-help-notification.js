@@ -41,21 +41,30 @@ const sendHelpNotification = async (req, res) => {
       });
     }
 
-    // Format timestamp for display
     const timestamp = new Date();
-    const formattedTime = timestamp.toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-    });
-
-    // Prepare notification messages
     const pushTitle = '🚨 Help Requested';
-    const pushMessage = `${
-      senior.name || 'Senior'
-    } has requested help at ${formattedTime}. Please check the LifeStation app immediately.`;
+
+    /** Format time in recipient's timezone (IANA e.g. Asia/Kolkata). Use UTC when timezone not set. */
+    const formatTimeForTimezone = tz => {
+      const options = {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      };
+      if (tz) {
+        try {
+          Intl.DateTimeFormat(undefined, { timeZone: tz });
+          options.timeZone = tz;
+        } catch {
+          options.timeZone = 'UTC';
+        }
+      } else {
+        options.timeZone = 'UTC';
+      }
+      return timestamp.toLocaleString('en-US', options);
+    };
 
     const results = {
       sent: 0,
@@ -64,9 +73,15 @@ const sendHelpNotification = async (req, res) => {
       errors: [],
     };
 
-    // Send notifications to each caregiver
+    // Send notifications to each caregiver (time formatted per caregiver timezone)
     for (const caregiver of caregivers) {
       try {
+        const recipientTimezone = caregiver.extra_info?.timezone || null;
+        const formattedTime = formatTimeForTimezone(recipientTimezone);
+        const pushMessage = `${
+          senior.name || 'Senior'
+        } has requested help at ${formattedTime}. Please check the LifeStation app immediately.`;
+
         // Send push notification
         if (caregiver.fcm_token) {
           try {
