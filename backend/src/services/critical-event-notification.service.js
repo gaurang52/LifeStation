@@ -298,8 +298,7 @@ const notifyCaregiversOfCriticalEvent = async (event, senior, deviceName = null)
     event.eventtime || event.event_time || event.timestamp || new Date().toISOString();
   const deviceId = event.device_id || event.imei || 'Unknown Device';
 
-  /** Format timestamp in recipient's timezone (IANA e.g. Asia/Kolkata) for display.
-   * When tz is null we use UTC so notification time is consistent and not server-dependent. */
+  /** Format timestamp in recipient's timezone (IANA e.g. Asia/Kolkata) for display */
   const formatTimeForTimezone = tz => {
     const options = {
       month: 'short',
@@ -313,10 +312,8 @@ const notifyCaregiversOfCriticalEvent = async (event, senior, deviceName = null)
         Intl.DateTimeFormat(undefined, { timeZone: tz });
         options.timeZone = tz;
       } catch {
-        options.timeZone = 'UTC';
+        // Fallback to device default if invalid
       }
-    } else {
-      options.timeZone = 'UTC';
     }
     return new Date(eventTime).toLocaleString('en-US', options);
   };
@@ -547,10 +544,8 @@ const notifyCaregiversOfGeofenceEvent = async (geofenceResult, deviceId, idType 
         Intl.DateTimeFormat(undefined, { timeZone: tz });
         options.timeZone = tz;
       } catch {
-        options.timeZone = 'UTC';
+        // ignore invalid tz
       }
-    } else {
-      options.timeZone = 'UTC';
     }
     return new Date(eventTime).toLocaleString('en-US', options);
   };
