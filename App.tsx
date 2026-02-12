@@ -28,12 +28,14 @@ import {
   requestNotificationPermission,
   checkNotificationPermission,
 } from '@core/utils/notificationPermissions';
+import { getFormattedEventTimeFromNotificationData } from '@core/utils/formatDate';
 import { setupNotificationHandlers } from '@core/services/notificationHandler';
 import { registerDeviceForRemoteMessages } from '@core/services/fcmService';
 import { authApi } from '@core/api/authApi';
 import { getDeviceTimezone } from '@core/utils/deviceTimezone';
 import {
   ActivityIndicator,
+  Alert,
   StatusBar,
   StyleSheet,
   View,
@@ -279,9 +281,17 @@ const App = (): React.JSX.Element => {
           // Register device for remote messages (iOS only, required before getToken)
           await registerDeviceForRemoteMessages();
 
-          // Setup notification handlers
+          // Setup notification handlers: when user taps notification, show alert with local event time if present
           setupNotificationHandlers(remoteMessage => {
             logger.debug('Notification opened', { messageId: remoteMessage?.messageId });
+            if (!remoteMessage) return;
+            const title = remoteMessage.notification?.title || 'Notification';
+            const body = remoteMessage.notification?.body || '';
+            const data = remoteMessage.data as Record<string, string | null> | undefined;
+            const formattedEventTime = getFormattedEventTimeFromNotificationData(data);
+            const message =
+              body + (formattedEventTime ? `\n\nEvent time: ${formattedEventTime}` : '');
+            Alert.alert(title, message, [{ text: 'OK' }]);
           });
 
           // Check if permission is already granted

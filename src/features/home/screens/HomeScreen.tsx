@@ -569,9 +569,10 @@ const HomeScreen: React.FC = () => {
     };
   }, []);
 
+  /** API sends UTC (ISO with Z). Parse as UTC and format in device local time (DST-safe). */
   const formatEventTime = (eventTime: string): string => {
     try {
-      return moment(eventTime).utc().local().format('MMM DD yyyy hh:mm:ss A');
+      return moment.utc(eventTime).local().format('MMM DD yyyy hh:mm:ss A');
     } catch {
       return eventTime;
     }

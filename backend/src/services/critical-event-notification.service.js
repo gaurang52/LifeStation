@@ -3,6 +3,7 @@ const { Op } = require('sequelize');
 const logger = require('../utils/logger');
 const fcmService = require('./fcm.service');
 const smsService = require('./sms.service');
+const { toUtcIso } = require('../utils/dateUtils');
 
 /**
  * Critical event types that trigger caregiver notifications
@@ -180,9 +181,10 @@ const getSeniorForDevice = async (deviceId, idType = null) => {
  * Check if notification was already sent for this event (prevent duplicates)
  * @param {object} event - Event object
  * @param {number} caregiverId - Caregiver user ID
+ * @param {string} [eventTimeUtc] - Optional UTC ISO time for consistent dedup (use when caller has normalized time)
  * @returns {Promise<boolean>} - True if notification already sent
  */
-const isNotificationAlreadySent = async (event, caregiverId) => {
+const isNotificationAlreadySent = async (event, caregiverId, eventTimeUtc = null) => {
   try {
     const raw =
       event.eventrpt_id ||
@@ -192,17 +194,17 @@ const isNotificationAlreadySent = async (event, caregiverId) => {
       event.eventName;
     const eventrptId =
       normalizeToCriticalCode(raw) || (raw && raw.toUpperCase().replace(/\s+/g, ''));
-    const eventTime = event.eventtime || event.event_time || event.timestamp;
+    const eventTime = eventTimeUtc || event.eventtime || event.event_time || event.timestamp;
     const deviceId = event.device_id || event.imei;
 
     if (!eventrptId || !eventTime || !deviceId) {
       return false; // Can't check without required fields
     }
 
-    // Check if we've sent a notification for this event in the last hour
-    // This prevents duplicate notifications for the same event
-    const oneHourAgo = new Date(new Date(eventTime).getTime() - 60 * 60 * 1000);
-    const oneHourLater = new Date(new Date(eventTime).getTime() + 60 * 60 * 1000);
+    // Use UTC for time window so dedup is consistent across server timezones
+    const timeMs = new Date(eventTime).getTime();
+    const oneHourAgo = new Date(timeMs - 60 * 60 * 1000);
+    const oneHourLater = new Date(timeMs + 60 * 60 * 1000);
 
     const existingNotification = await db.EventNotificationLogs.findOne({
       where: {
@@ -294,8 +296,10 @@ const notifyCaregiversOfCriticalEvent = async (event, senior, deviceName = null)
     event.eventName ||
     '';
   const eventDescription = getEventDescription(eventrptId);
-  const eventTime =
-    event.eventtime || event.event_time || event.timestamp || new Date().toISOString();
+  // Normalize to UTC ISO so body text and FCM data are consistent and DST-safe
+  const eventTimeUtc = toUtcIso(
+    event.eventtime || event.event_time || event.timestamp || new Date(),
+  );
   const deviceId = event.device_id || event.imei || 'Unknown Device';
 
   /** Format timestamp in recipient's timezone (IANA e.g. Asia/Kolkata) for display.
@@ -318,7 +322,7 @@ const notifyCaregiversOfCriticalEvent = async (event, senior, deviceName = null)
     } else {
       options.timeZone = 'UTC';
     }
-    return new Date(eventTime).toLocaleString('en-US', options);
+    return new Date(eventTimeUtc).toLocaleString('en-US', options);
   };
 
   // Prepare notification messages (formatted per caregiver in loop)
@@ -328,7 +332,7 @@ const notifyCaregiversOfCriticalEvent = async (event, senior, deviceName = null)
   for (const caregiver of caregivers) {
     try {
       // Check if notification already sent (prevent duplicates)
-      const alreadySent = await isNotificationAlreadySent(event, caregiver.id);
+      const alreadySent = await isNotificationAlreadySent(event, caregiver.id, eventTimeUtc);
       if (alreadySent) {
         logger.debug(
           `Skipping duplicate notification for caregiver ${caregiver.id} and event ${eventrptId}`,
@@ -338,6 +342,7 @@ const notifyCaregiversOfCriticalEvent = async (event, senior, deviceName = null)
 
       const recipientTimezone = caregiver.extra_info?.timezone || null;
       const formattedTime = formatTimeForTimezone(recipientTimezone);
+      // Body is what the OS shows when app is background/killed; must be in recipient local time
       const pushMessage = `${
         senior.name || 'Senior'
       } has triggered a ${eventDescription.toLowerCase()} alert${
@@ -361,7 +366,7 @@ const notifyCaregiversOfCriticalEvent = async (event, senior, deviceName = null)
               senior_name: senior.name || '',
               device_id: deviceId,
               device_name: deviceName || '',
-              event_time: eventTime,
+              event_time: eventTimeUtc,
               emergency: 'true',
               priority: 'critical',
             },
@@ -373,7 +378,7 @@ const notifyCaregiversOfCriticalEvent = async (event, senior, deviceName = null)
             seniorId: senior.id,
             deviceId: deviceId,
             eventrptId: eventrptId,
-            eventTime: eventTime,
+            eventTime: eventTimeUtc,
             notificationType: 'push',
             status: 'success',
           });
@@ -388,7 +393,7 @@ const notifyCaregiversOfCriticalEvent = async (event, senior, deviceName = null)
             seniorId: senior.id,
             deviceId: deviceId,
             eventrptId: eventrptId,
-            eventTime: eventTime,
+            eventTime: eventTimeUtc,
             notificationType: 'push',
             status: 'failed',
             errorMessage: pushError.message,
@@ -408,7 +413,7 @@ const notifyCaregiversOfCriticalEvent = async (event, senior, deviceName = null)
             seniorId: senior.id,
             deviceId: deviceId,
             eventrptId: eventrptId,
-            eventTime: eventTime,
+            eventTime: eventTimeUtc,
             notificationType: 'sms',
             status: 'success',
           });
@@ -423,7 +428,7 @@ const notifyCaregiversOfCriticalEvent = async (event, senior, deviceName = null)
             seniorId: senior.id,
             deviceId: deviceId,
             eventrptId: eventrptId,
-            eventTime: eventTime,
+            eventTime: eventTimeUtc,
             notificationType: 'sms',
             status: 'failed',
             errorMessage: smsError.message,
