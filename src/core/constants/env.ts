@@ -29,6 +29,6 @@ export const ENV = {
   API_TIMEOUT: parseInt(API_TIMEOUT || '30000', 10),
   ENV: ENV_NAME || 'development',
   APP_NAME: APP_NAME || 'LifeStation',
-  APP_VERSION: '1.0 (9)',
+  APP_VERSION: Platform.OS === 'ios' ? '1.1.0 (0)' : '1.1.0 (10)',
   GOOGLE_MAPS_API_KEY: GOOGLE_PLACE_API_KEY || '',
 } as const;

@@ -85,8 +85,8 @@ android {
         applicationId "com.lifestation"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 8
-        versionName "1.0"
+        versionCode 10
+        versionName "1.1.0"
         // Google Maps API Key - set in gradle.properties or .env
         resValue "string", "google_maps_api_key", project.findProperty("GOOGLE_PLACE_API_KEY") ?: ""
     }

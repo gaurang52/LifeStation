@@ -15,6 +15,10 @@ if linkage != nil
 end
 
 target 'Lifestation' do
+  # Firebase/GoogleMaps require static frameworks - MUST be declared before any pods
+  use_frameworks! :linkage => :static
+  $RNFirebaseAsStaticFramework = true
+
   config = use_native_modules!
   
   pod 'Firebase/Core'
@@ -22,9 +26,6 @@ target 'Lifestation' do
   # Use react-native-maps Google subspec so PROVIDER_GOOGLE works on iOS (includes GoogleMaps + Google-Maps-iOS-Utils)
   rn_maps_path = '../node_modules/react-native-maps'
   pod 'react-native-maps/Google', :path => rn_maps_path
-
-  use_frameworks! :linkage => :static
-  $RNFirebaseAsStaticFramework = true
   
   use_react_native!(
     :path => config[:reactNativePath],
@@ -40,6 +41,13 @@ target 'Lifestation' do
       # :ccache_enabled => true
     )
 
+    # Fix Firebase/Clang module resolution (FirebaseCore.h, React, GoogleMaps not found)
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |config|
+        config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+      end
+    end
+
     # Fix RCTSwiftUI.modulemap not found when Archiving (Release-iphoneos)
     project_path = File.join(installer.sandbox.root, '..', 'Lifestation.xcodeproj')
     if File.exist?(project_path)
@@ -51,6 +59,7 @@ target 'Lifestation' do
           config.build_settings['SWIFT_INCLUDE_PATHS'] ||= ['$(inherited)']
           path = '$(BUILT_PRODUCTS_DIR)'
           config.build_settings['SWIFT_INCLUDE_PATHS'] << path unless config.build_settings['SWIFT_INCLUDE_PATHS'].include?(path)
+          config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
         end
       end
       project.save

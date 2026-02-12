@@ -4,5 +4,5 @@ module.exports = {
   API_TIMEOUT: '30000',
   ENV: 'test',
   APP_NAME: 'LifeStation',
-  APP_VERSION: '1.0 (9)',
+  APP_VERSION: '1.1.0 (0)', // Mock uses iOS format; tests can override for Android
 };
