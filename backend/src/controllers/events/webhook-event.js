@@ -2,6 +2,7 @@ const db = require('../../models');
 const logger = require('../../utils/logger');
 const criticalEventNotificationService = require('../../services/critical-event-notification.service');
 const geofenceService = require('../../services/geofence.service');
+const { toUtcIso } = require('../../utils/dateUtils');
 const { sequelize } = db;
 const crypto = require('crypto');
 
@@ -92,14 +93,15 @@ const webhookEvent = async (req, res) => {
       const deviceId = context.device.device_id;
       const idType = context.device.id_type || 'imei';
 
+      const eventTimeUtc = toUtcIso(time != null ? time : new Date());
       const normalizedEvent = {
         device_id: deviceId,
         id_type: idType,
         signal_type: mapAffiliatedSignalTypeToCritical(signaltype),
         eventrpt_id: mapAffiliatedSignalTypeToCritical(signaltype),
-        event_time: time || new Date().toISOString(),
-        eventtime: time || new Date().toISOString(),
-        timestamp: time || new Date().toISOString(),
+        event_time: eventTimeUtc,
+        eventtime: eventTimeUtc,
+        timestamp: eventTimeUtc,
         location: location || null,
         eventid,
         resolutionCode: resolutionCode != null ? resolutionCode : null,
@@ -118,9 +120,7 @@ const webhookEvent = async (req, res) => {
           await db.AllEvents.create({
             deviceid: deviceId,
             vendorcode: 'affiliated',
-            eventtime: normalizedEvent.event_time
-              ? new Date(normalizedEvent.event_time)
-              : new Date(),
+            eventtime: new Date(normalizedEvent.event_time),
             eventtype: 'Emergency',
             eventid: String(eventid),
             rawevent: { ...eventData, source: 'affiliated_emergency' },
@@ -178,6 +178,7 @@ const webhookEvent = async (req, res) => {
     if (isAffiliatedStatusPayload(eventData)) {
       const { imei, cs_no, signal } = eventData;
       const deviceId = imei;
+      const statusEventTime = toUtcIso(signal?.timestamp != null ? signal.timestamp : new Date());
 
       logger.info('Affiliated status webhook received:', {
         imei,
@@ -202,7 +203,7 @@ const webhookEvent = async (req, res) => {
           transaction = await sequelize.transaction();
           geofenceResult = await geofenceService.checkGeofenceStatus(deviceId, location, {
             vendor: 'affiliated',
-            eventTime: signal.timestamp || new Date(),
+            eventTime: statusEventTime,
             transaction,
           });
           await transaction.commit();
@@ -227,7 +228,7 @@ const webhookEvent = async (req, res) => {
         await db.AllEvents.create({
           deviceid: deviceId,
           vendorcode: 'affiliated',
-          eventtime: signal.timestamp ? new Date(signal.timestamp) : new Date(),
+          eventtime: new Date(statusEventTime),
           eventtype: 'Status Update',
           eventid: `status-${deviceId}-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`,
           rawevent: { ...eventData, source: 'affiliated_status' },
@@ -276,12 +277,14 @@ const webhookEvent = async (req, res) => {
     if (['Periodic Location', 'Panic'].includes(eventType) && location) {
       let transaction;
       let geofenceResult = null;
+      const genericEventTimeUtc = toUtcIso(
+        eventData.event_time || eventData.eventUtcTime || eventData.eventTime || new Date(),
+      );
       try {
         transaction = await sequelize.transaction();
         geofenceResult = await geofenceService.checkGeofenceStatus(deviceId, location, {
           vendor: eventData.vendor || eventData.vendor_code,
-          eventTime:
-            eventData.event_time || eventData.eventUtcTime || eventData.eventTime || new Date(),
+          eventTime: genericEventTimeUtc,
           transaction,
         });
         await transaction.commit();

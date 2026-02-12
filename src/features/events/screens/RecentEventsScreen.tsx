@@ -150,11 +150,12 @@ const RecentEventsScreen: React.FC = () => {
     return new Date(item.eventtime as string).getTime();
   };
 
+  /** API sends UTC (ISO with Z). Parse as UTC and format in device local time (DST-safe). */
   const formatEventTime = (item: DeviceEvent): string => {
     const eventDate = item.rawevent?.originalEvent?.event_date as string | undefined;
     const timeStr = (eventDate || item.eventtime) as string;
     try {
-      return moment(timeStr).utc().local().format('MMM DD, YYYY h:mm A');
+      return moment.utc(timeStr).local().format('MMM DD, YYYY h:mm A');
     } catch {
       return timeStr;
     }
