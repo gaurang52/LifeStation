@@ -1,0 +1,2549 @@
+Aﬃliated Account API
+v4.4.0
+
+ABSTRACT
+This Account API offers Affiliated Monitoring partners a toolset for maintaining
+account information required for certified live agent emergency monitoring.
+
+For Questions & Support:
+Gil Almogi
+Product Manager
+Gil.Almogi@Affiliated.com
+
+This API documentation is defined as Confidential Information under the applicable Non-Disclosure Agreement between Affiliated Monitoring and the appropriate Partner.
+
+Introduction ...............................................................................................................5
+Connecting to API .......................................................................................................5
+Overview .................................................................................................................... 5
+Authentication and Refresh ........................................................................................ 6
+Initial Authentication Request ............................................................................................................................6
+Subsequent Service Requests ..............................................................................................................................7
+Refreshing the API Session ...................................................................................................................................7
+
+Output ........................................................................................................................ 7
+Result .............................................................................................................................................................................7
+Error ...............................................................................................................................................................................8
+Other data ....................................................................................................................................................................8
+
+Rate Limiting............................................................................................................... 8
+Service Requests ....................................................................................................... 10
+Password Update ................................................................................................................................................... 10
+cURL Example ..............................................................................................................................................................10
+Response .........................................................................................................................................................................10
+Get Accounts ............................................................................................................................................................ 11
+cURL Example ..............................................................................................................................................................11
+Response .........................................................................................................................................................................11
+Account Read ........................................................................................................................................................... 12
+cURL Example ..............................................................................................................................................................12
+Response .........................................................................................................................................................................12
+Account Create ........................................................................................................................................................ 18
+Request Input ...............................................................................................................................................................18
+cURL Example ..............................................................................................................................................................20
+Response .........................................................................................................................................................................21
+Account Update ...................................................................................................................................................... 21
+Request Input ...............................................................................................................................................................21
+cURL Example ..............................................................................................................................................................21
+Response .........................................................................................................................................................................21
+Account Activate .................................................................................................................................................... 21
+cURL Example ..............................................................................................................................................................22
+Response .........................................................................................................................................................................22
+Account Deactivate ............................................................................................................................................... 22
+cURL Example ..............................................................................................................................................................22
+Response .........................................................................................................................................................................22
+Account Delete ........................................................................................................................................................ 22
+cURL Example ..............................................................................................................................................................23
+Response .........................................................................................................................................................................23
+Account Search ....................................................................................................................................................... 23
+cURL Example ..............................................................................................................................................................24
+Response .........................................................................................................................................................................24
+Account Link ............................................................................................................................................................ 25
+cURL Example ..............................................................................................................................................................25
+Response .........................................................................................................................................................................25
+
+Affiliated Account API v4.4.0
+
+January 2026
+
+2
+
+Get Service Company Number.......................................................................................................................... 25
+Response .........................................................................................................................................................................26
+Update Service Company Number.................................................................................................................. 26
+Request Input ...............................................................................................................................................................26
+cURL Example ..............................................................................................................................................................26
+Response .........................................................................................................................................................................26
+Contact Create ......................................................................................................................................................... 27
+Request Input ...............................................................................................................................................................27
+cURL Example ..............................................................................................................................................................27
+Response .........................................................................................................................................................................27
+Contact Edit .............................................................................................................................................................. 28
+Request Input ...............................................................................................................................................................28
+cURL Example ..............................................................................................................................................................28
+Response .........................................................................................................................................................................29
+Contact Delete ......................................................................................................................................................... 29
+cURL Example ..............................................................................................................................................................29
+Response .........................................................................................................................................................................29
+Contact Lists............................................................................................................................................................. 29
+cURL Example ..............................................................................................................................................................29
+Response .........................................................................................................................................................................29
+Contact Lists Reorder........................................................................................................................................... 30
+Request Input ...............................................................................................................................................................30
+Response .........................................................................................................................................................................30
+Get Available Lists ................................................................................................................................................. 31
+Response .........................................................................................................................................................................31
+Zone Delete............................................................................................................................................................... 31
+cURL Example ..............................................................................................................................................................31
+Response .........................................................................................................................................................................31
+Get Languages ......................................................................................................................................................... 32
+Response .........................................................................................................................................................................32
+Test Read................................................................................................................................................................... 32
+Response .........................................................................................................................................................................32
+Test Create................................................................................................................................................................ 33
+Request Input ...............................................................................................................................................................33
+Response .........................................................................................................................................................................33
+Test Delete ................................................................................................................................................................ 33
+Request Input ...............................................................................................................................................................34
+Response .........................................................................................................................................................................34
+
+JSON Object .............................................................................................................. 35
+Data Types ................................................................................................................................................................ 35
+Account ...........................................................................................................................................................................35
+Contact ............................................................................................................................................................................37
+Phone ...............................................................................................................................................................................39
+Email ................................................................................................................................................................................41
+Zone ..................................................................................................................................................................................42
+System .............................................................................................................................................................................42
+Agencies ..........................................................................................................................................................................43
+Additional Info.............................................................................................................................................................43
+Vehicle .............................................................................................................................................................................44
+
+Affiliated Account API v4.4.0
+
+January 2026
+
+3
+
+Vital Statistics ..............................................................................................................................................................44
+Test ...................................................................................................................................................................................45
+Hospice ............................................................................................................................................................................46
+
+Affiliated Account API v4.4.0
+
+January 2026
+
+4
+
+Account API
+Introduction
+The Affiliated Monitoring Account API provides a simple RESTful interface with
+JSON-formatted responses to send and receive account information to Affiliated.
+Users of this API are able to read, add, delete, and modify the information associated
+with each monitored account. This information directly impacts how accounts are
+monitored and what response the monitoring center takes in the event of an
+emergency or non-emergency signal.
+
+Connecting to API
+The Account API requires https for connection.
+The API is at https://[subdomain].alertmessage.com/acct
+Environment Subdomain
+Production
+api
+Sandbox
+sb
+
+Overview
+The API uses OAuth 2.0's password grant type to authenticate users. It has 20
+methods.
+ Password Update – Update password for API user
+ Get Accounts – retrieve a full list of accounts, noting statuses active (A), out
+of service(I), and empty (E) (i.e. never-used, empty, provisioned accounts)
+ Account Read – retrieve the information for a specific account
+ Account Create – populate an empty provisioned account for the first time.
+ Account Update – update information in an account that is already in use.
+ Account Activate – places an account in service. This step method must be
+used to make an account monitored. Note: Only In Service accounts are
+monitored.
+ Account Deactivate – places an account out of service. Note: Out of Service
+accounts are not monitored.
+ Account Delete – Places an account out of service and resets it as an empty
+provisioned account. This is necessary if account number is reused.
+ Account Search – search for an account with search terms
+ Get Service Company – get the service company of an account
+ Update Service Company – updates the service company for an account
+ Contact Create – create a new contact for an account
+ Contact Edit – edit specific contact for an account
+ Contact Delete – deletes a specific contact from an account
+Affiliated Account API v4.4.0
+
+January 2026
+
+5
+
+
+
+
+
+
+
+
+
+
+Contact Lists – get contact lists for an account
+Contact Lists Reorder – reorder contact lists
+Get Available Lists – get a list of available lists
+Zone Delete – deletes a specific zone from an account
+Get Languages – get list of available languages
+Tests Read – get a list of all tests on the system
+Test Create – create a test on the system
+Test Delete – cancel all active tests or specific tests
+
+In general, you will need to use Account Create before you can do anything else
+with an account. This is to ensure that the minimal data an account requires is set
+correctly.
+
+Authentication and Refresh
+Initial Authentication Request
+The Account API uses OAuth 2.0’s password grant type to authenticate API users.
+This is done with a post request to
+https://[subdomain].alertmessage.com/token
+using the POST method, sending four parameters
+Key Name
+grant_type
+username
+password
+client_id
+
+Value
+password
+[api_username]
+[api_password]
+affiliated-api
+
+curl --location 'https://[subdomain].alertmessage.com/token' \
+--form 'grant_type="password"' \
+--form 'username="[api_username]"' \
+--form 'password="[api_password]"' \
+--form 'client_id="affiliated-api"'
+
+This will return a JSON string with an access token and a refresh token to be used in
+subsequent API requests.
+{
+
+"access_token": "[access_token]",
+"expires_in": 3600,
+"token_type": "Bearer",
+"scope": null,
+"refresh_token": "[refresh_token]"
+
+}
+
+Affiliated Account API v4.4.0
+
+January 2026
+
+6
+
+or in case of error
+{
+"error":"[error_name]",
+"error_description":"[error description]"
+}
+
+Refresh tokens are valid for 30 days from the time of issue.
+
+Subsequent Service Requests
+For subsequent service requests, use an Authorization Bearer Token following
+OAuth 2.0's standard.
+curl -H 'Authorization: Bearer [access_token]'
+https://[subdomain].alertmessage.com/acct/[cs_no]
+
+Refreshing the API Session
+The API session can be refreshed using the refresh token issued by the initial
+authentication request or the refresh request itself.
+This is done with a post request to
+https://[subdomain].alertmessage.com/token/refresh
+using the POST method, sending four parameters
+Key Name
+grant_type
+client_id
+refresh_token
+
+Value
+password
+affiliated-api
+refresh token
+
+curl --location
+'https://[subdomain].alertmessage.com/token/refresh' \
+--form 'grant_type="password"' \
+--form 'client_id="affiliated-api"' \
+--form 'refresh_token="[refresh_token]"'
+
+This will return the same two tokens as the initial authentication request.
+
+Output
+All service requests will output a well formatted JSON string.
+
+Result
+Every request that makes changes will return a “result” status. If everything worked
+correctly, the status will be “ok”. Otherwise, it will be “error”.
+
+Affiliated Account API v4.4.0
+
+January 2026
+
+7
+
+e.g.
+
+{
+"result": "ok"
+}
+
+Error
+If a service requests returns an error, the status will be set to “error” and there will
+be an error array comprised of error messages.
+e.g.
+
+{
+"result": "error",
+"error": [
+"Could not process account: DEMO102011. Not
+authorized to use Account."
+]
+}
+
+Other data
+Some requests will return additional data, which depends on the specific request. If
+a request is a Read, which does not make any changes, result will be omitted.
+e.g. from Contact Create
+{
+
+"result": "ok",
+"contact_no": 1234567890
+
+}
+
+Rate Limiting
+The API has a rate limit of 600 requests per minute per IP address. When an IP
+address exceeds the rate limit, the API will return the following response:
+{
+
+"error": {
+"code": 429,
+"message": "Rate limit exceeded. Maximum 600 requests per
+minute allowed.",
+"type": "rate_limit_exceeded",
+"retry_after_seconds": 60,
+"limit": 600,
+}
+}
+
+If you receive this error, you may resume making requests after the specified
+duration, but it is recommended that you update your integration to accommodate
+the rate limit to prevent further interruptions.
+
+Affiliated Account API v4.4.0
+
+January 2026
+
+8
+
+Affiliated Account API v4.4.0
+
+January 2026
+
+9
+
+Service Requests
+Password Update
+Update password for API user.
+POST - https://[subdomain].alertmessage.com/password
+After successful update, all access and refresh tokens will automatically expire, and
+API user must re-authenticate to continue.
+New passwords must contain more than eight characters, which include at least
+three of the following four character types:
+ Uppercase letter
+ Lowercase letter
+ Number
+ Special character
+cURL Example
+curl --location 'https://[subdomain].alertmessage.com/password' \
+--header 'Authorization: Bearer [access_token] \
+--header 'Content-Type: application/json' \
+--data '{
+"username": "[username]",
+"current_password": "[current_password]",
+"new_password": "[new_password]"
+}'
+
+Response
+Reset success:
+{
+
+"result": "ok"
+}
+
+If "username" and "current_password" do not match database:
+{
+
+"result": "error",
+"error": [
+"Invalid username and password combination."
+]
+}
+
+If "new_password" is fewer than eight characters long:
+{
+
+"result": "error",
+"error": [
+"Password must be at least 8 characters long."
+]
+
+Affiliated Account API v4.4.0
+
+January 2026
+
+10
+
+}
+
+If "new_password" lacks required complexity:
+{
+
+"result": "error",
+"error": [
+"Password must contain at least three of the following:
+uppercase letter, lowercase letter, number, special character."
+]
+}
+
+Get Accounts
+Returns a list of all accounts that the API user has access to.
+GET – https://[subdomain].alertmessage.com/acct
+cURL Example
+
+curl -X GET https://[subdomain].alertmessage.com/acct -H
+'authorization: Bearer [access_token]' -H 'cache-control: nocache'
+
+Response
+JSON object containing an accounts list and a count.
+e.g.
+{
+
+"accounts": [
+{
+"cs_no": "DEV003",
+"status": "A",
+"name": "Demo Account",
+"oos": false
+},
+{
+"cs_no": "DEV006",
+"status": "I",
+"name": "Demo Account",
+"oos": true
+},
+{
+"cs_no": "BRG-0001",
+"status": "E",
+"name": " BRG-0001",
+"oos": true
+}
+],
+"count": 3
+
+Affiliated Account API v4.4.0
+
+January 2026
+
+11
+
+}
+
+cs_no – the account number
+status – the account’s status
+ A – active account
+ I – inactive account. Note: inactive accounts are out of service and not
+monitored.
+ E – empty account. These are the accounts that are used by Account Create.
+
+Account Read
+Returns complete account information for a specific account, include contacts,
+zones,
+GET – https://[subdomain].alertmessage.com/acct/[cs_no]
+[cs_no] – CS number (account id) of account that is being read
+cURL Example
+
+curl -X GET https://[subdomain].alertmessage.com/acct/[cs_no]
+-H 'authorization: Bearer [access_token]' -H 'cache-control: nocache'
+
+Response
+Account JSON object for specified account
+e.g.
+{
+
+"errors": [],
+"account": {
+"cs_no": "DEMO1011",
+"linked_systems": null
+"servco_no": "880889",
+"dealer_ref_no": null,
+"ext_acct_no": null,
+"device_phone": "4155550000,4155551111",
+"device_id": null,
+"template": "CIR22 ",
+"site_name": "Demo Acct",
+"addr1": "1234 Fake Blvd",
+"addr2": "Suite 100",
+"city": "Novato",
+"state": "CA",
+"zip": "94945",
+"phone1": "5555555555",
+"phone2": null,
+"ext1": null,
+"ext2": null,
+"cross_street": null,
+"passcode": "541254",
+
+Affiliated Account API v4.4.0
+
+January 2026
+
+12
+
+"passcode2": null,
+"timezone": 3,
+"municipality": null,
+"language": "SPANIS",
+"location_type": "R
+",
+"status": "A",
+"oos": false,
+"force_address": null,
+"agencies": [
+{
+"agency_no":554,
+"phone1":"5555555555",
+"agencytype_id":"M ",
+"agency_name":"Test Agency",
+"permit_no":null,
+"effective_date":null,
+"expire_date":null,
+"hospice":false
+},
+{
+"agency_no":555,
+"phone1":"5555555555",
+"agencytype_id":"F ",
+"agency_name":"Test Agency",
+"permit_no":null,
+"effective_date":null,
+"expire_date":null
+},
+{
+"agency_no":556,
+"phone1":"5555555555",
+"agencytype_id":"P ",
+"agency_name":"Test Agency",
+"permit_no":null,
+"effective_date":null,
+"expire_date":null
+}
+],
+"zones": [
+{
+"zone_id": "FA2
+",
+"description": "Fire Alarm",
+"event_id": "1310 ",
+"disp_id": "F14"
+},
+{
+"zone_id": "GA3
+",
+"description": "CO Detector",
+"event_id": "1735 ",
+"disp_id": "F42"
+}
+],
+Affiliated Account API v4.4.0
+
+January 2026
+
+13
+
+"system": {
+"timer_frequency": "Daily",
+"acceptable_timer": "AnySignal",
+"fail_instructions": null,
+"dispatch_instructions": null,
+"system_descr": "Test System",
+"change_date": "Jan 29 2018 07:41:00:000PM"
+},
+"additional_info": {
+"lockbox_location": null,
+"lockbox_code": null,
+"key_location": null,
+"entry_info": null,
+"pets": null
+},
+"vehicle": {
+"make": null,
+"model": null,
+"year": null,
+"color": null,
+"license_plate": null
+},
+"vital_statistics": {
+"height": null,
+"weight": null,
+"birth_year": null,
+"eye_color": null,
+"hair_color": null,
+"gender": null,
+"ethnicity": null
+},
+"contacts": [
+{
+"contact_no": 200395721,
+"last_name": "Smith",
+"first_name": "Jerry",
+"middle_initial": "A",
+"prefix": "Mr.",
+"suffix": null,
+"relationship": "F",
+"keyholder": "Y",
+"passcode": "4321",
+"contact_when": "before",
+"phones": [
+{
+"seq_no": 1,
+"phone": "5554442222",
+"email": null,
+"phonetype": "H",
+"autonotify": null,
+"service_types":
+"ACCESS,BURG,BYPASS",
+Affiliated Account API v4.4.0
+
+January 2026
+
+14
+
+"extension": null
+},
+{
+
+"seq_no": 2,
+"phone": "5554441111",
+"email": null,
+"phonetype": "C",
+"autonotify": null,
+"service_types": null,
+"extension": null
+
+}
+],
+"email": [
+{
+"seq_no": 3,
+"phone": null,
+"email": "jerry@smith.com",
+"phonetype": "EM",
+"autonotify": "N",
+"service_types": null,
+"extension": null
+},
+{
+"seq_no": 4,
+"phone": null,
+"email": "hungry4@apples.com",
+"phonetype": "EM",
+"autonotify": "Y",
+"service_types": null,
+"extension": null
+}
+},
+{
+
+]
+"contact_no": 200395723,
+"last_name": "Smith",
+"first_name": "Elizabeth",
+"middle_initial": "B",
+"prefix": "Mrs.",
+"suffix": null,
+"relationship": "M",
+"keyholder": "N",
+"passcode": "1234",
+"contact_when": "before",
+"phones": [
+{
+"seq_no": 1,
+"phone": "5554440000",
+"email": null,
+"phonetype": "W",
+
+Affiliated Account API v4.4.0
+
+January 2026
+
+15
+
+"autonotify": null,
+"service_types": null,
+"extension": "2178"
+},
+{
+"seq_no": 2,
+"phone": "5554441111",
+"email": null,
+"phonetype": "C",
+"autonotify": null,
+"service_types": null,
+"extension": null
+}
+],
+"email": [
+{
+"seq_no": 3,
+"phone": null,
+"email": "bs@bs.com",
+"phonetype": "EM",
+"autonotify": "N",
+"service_types": null,
+"extension": null
+}
+},
+{
+
+]
+"contact_no": 200395724,
+"last_name": "Smith",
+"first_name": "Summer",
+"middle_initial": "S",
+"prefix": "Ms.",
+"suffix": null,
+"relationship": "SIS",
+"keyholder": "N",
+"passcode": "4",
+"contact_when": "before",
+"phones": [
+{
+"seq_no": 1,
+"phone": "5554449999",
+"email": null,
+"phonetype": "C",
+"autonotify": null,
+"service_types": null,
+"extension": null
+}
+],
+
+Affiliated Account API v4.4.0
+
+January 2026
+
+16
+
+"email": []
+}
+],
+"fall_detection": "N"
+}
+}
+
+Affiliated Account API v4.4.0
+
+January 2026
+
+17
+
+Account Create
+Populates a never-used, empty, provisioned account for the first time. Account
+Create is required the first time data is put into an account
+PUT - https://[subdomain].alertmessage.com/acct/[cs_no]
+[cs_no] – optional – CS number (account id) of account that is being created. If
+[cs_no] is not supplied, an account will be created with [cs_no] assigned by the API.
+The selected [cs_no] will be the first alphabetically of the available shell accounts.
+Consult with your Account Manager to determine if you should always supply a
+[cs_no] or never supply one.
+Note: CS numbers are provisioned by Affiliated. You cannot use just any desired
+value. Please refer to the CS numbers you receive in the Get Accounts endpoint.
+Note: Created accounts are not active and will not be monitored until Account
+Activate is run on them.
+Note: null can mean specific things. If you are not sure what a value should be and it
+is not required, do not send it at all instead of sending it as null.
+Request Input
+JSON string a raw POST data, comprised of an account object.
+e.g.
+{
+
+"name": "Diamond,Lucy",
+"addr1": "1234 Main St",
+"city": "Union",
+"state": "NJ",
+"zip": "07083",
+"phone1": "5555555555",
+"passcode": "8910",
+"location_type": "R",
+"language": "SPANIS",
+"zones": [
+{
+"zone_id": "1",
+"description": "",
+"event_id": "1300 ",
+"disp_id": "F42"
+},
+{
+"zone_id": "2",
+"description": "",
+"event_id": "1270",
+"disp_id": "P1"
+},
+
+Affiliated Account API v4.4.0
+
+January 2026
+
+18
+
+{
+"zone_id": "3",
+"description": "",
+"event_id": "300",
+"disp_id": "P41"
+},
+{
+"zone_id": "4",
+"description": "Back Door",
+"event_id": "300 ",
+"disp_id": "P41"
+}
+],
+"contacts": [
+{
+"last_name": "Jones",
+"first_name": "Tom",
+"middle_initial": "C",
+"keyholder": "N",
+"passcode": "1234",
+"phones": [
+{
+"phone": "9085551212",
+"phonetype": "C",
+"autonotify": "Y"
+},
+{
+"phone": "9085551313",
+"phonetype": "H"
+},
+{
+"phone": "9085551414",
+"phonetype": "W",
+"extension": "4000"
+}
+],
+"email": [
+{
+"email": "name@example.com",
+"autonotify": "N"
+}
+]
+},
+{
+"last_name": "Jones",
+"first_name": "Jane",
+"keyholder": "N",
+"passcode": "5678",
+"phones": [
+{
+"phone": "5555555555",
+"phonetype": "C",
+Affiliated Account API v4.4.0
+
+January 2026
+
+19
+
+"autonotify": "Y"
+}
+],
+"email": [
+{
+"email": "other.name@example.com"
+}
+]
+},
+{
+"last_name": "Jones",
+"first_name": "Bob",
+"keyholder": "N",
+"passcode": "9642",
+"phones": [
+{
+"phone": "5555555555",
+"phonetype": "C",
+"autonotify": "N"
+}
+]
+}
+],
+"fall_detection": "N"
+}
+
+cURL Example
+
+curl --location --request PUT
+'https://[subdomain].alertmessage.com/acct/' \
+--header 'Authorization: Bearer
+669fd28d03b2bb3ce3f4fc4f4c1c0b02c68f9448' \
+--header 'Content-Type: application/json' \
+--data-raw'{"name":"Diamond,Lucy","addr1":"1234 Main
+St","city":"Union","state":"NJ","zip":"07083","phone1":"555555555
+5","passcode":"8910","location_type":"R","language":"SPANIS","zon
+es":[{"zone_id":"1","description":"","event_id":"1300
+","disp_id":"F42"},{"zone_id":"2","description":"","event_id":"12
+70","disp_id":"P1"},{"zone_id":"3","description":"","event_id":"3
+00","disp_id":"P41"},{"zone_id":"4","description":"Back
+Door","event_id":"300","disp_id":"P41"}],"contacts":[{"last_name"
+:"Jones","first_name":"Tom","middle_initial":"C","keyholder":"N",
+"passcode":"1234","phones":[{"phone":"9085551212","phonetype":"C"
+,"autonotify":"Y"},{"phone":"9085551313","phonetype":"H"},{"phone
+":"9085551414","phonetype":"W","extension":"4000"}],"email":[{"em
+ail":"name@example.com","autonotify":"N"}]},{"last_name":"Jones",
+"first_name":"Jane","keyholder":"N","passcode":"5678","phones":[{
+"phone":"5555555555","phonetype":"C","autonotify":"Y"}],"email":[
+{"email":"other.name@example.com"}]},{"last_name":"Jones","first_
+name":"Bob","keyholder":"N","passcode":"9642","phones":[{"phone":
+"5555555555","phonetype":"C","autonotify":"N"}]}],"fall_detection
+":"N"}'
+
+Affiliated Account API v4.4.0
+
+January 2026
+
+20
+
+Response
+JSON with the result status and the cs_no of the created account.
+e.g. {"result": "ok", "cs_no": "DEMO1029"}
+
+Account Update
+Updates information in an existing account. Only data included in the JSON object
+will be updated. It is best to only send data that is changing. To delete a specific
+value, set it to NULL.
+POST – https://[subdomain].alertmessage.com/acct/[cs_no]
+Request Input
+JSON string a raw POST data, comprised of an account object.
+e.g. {"name":"Test Rest API"}
+[cs_no] – CS number (account id) of account that is being updated
+cURL Example
+
+curl -H 'Authorization: Bearer [authorization token]' -X POST -H
+'Content-Type: application/json' -d '{"name":"Test Rest API"}'
+https://[subdomain].alertmessage.com/acct/[cs_no]
+
+Response
+JSON object with error and response keys. On success, result will be “ok”.
+e.g.
+
+{
+"result": "ok"
+}
+
+e.g.
+
+{
+"error": "JSON Error - object value separator ','
+expected"
+}
+
+Account Activate
+Places an account In Service. Only In Service accounts are monitored by the
+monitoring center.
+POST - https://[subdomain].alertmessage.com/acct/[cs_no]/activate
+
+Affiliated Account API v4.4.0
+
+January 2026
+
+21
+
+[cs_no] – CS number (account id) of account that is being placed in service
+cURL Example
+
+curl -H 'Authorization: Bearer [authorization token]' -X POST -H
+'Content-Type: application/json'
+https://[subdomain].alertmessage.com/acct/[cs_no]/activate
+
+Response
+JSON object with error and response keys. On success, result will be “ok”.
+e.g. {"result": "ok"}
+
+Account Deactivate
+Places an account Out of Service. Out of Service accounts are not monitored by the
+monitoring center.
+POST – https://[subdomain].alertmessage.com/acct/[cs_no]/deactivate
+[cs_no] – CS number (account id) of account that is being placed out of service
+cURL Example
+
+curl -H 'Authorization: Bearer [authorization token]' -X POST -H
+'Content-Type: application/json'
+https://[subdomain].alertmessage.com/acct/[cs_no]/deactivate
+
+Response
+JSON object with error and response keys. On success, result will be “ok”.
+e.g. {"result": "ok"}
+
+Account Delete
+Places an account out of service and resets it as an empty provisioned account. This
+is necessary if an account number is reused. An archive of the original account is
+kept by setting it out of service and moving it to a subset of archived [cs_no]s, Future
+use of the original cs_no will point to a new, empty account until it is populated with
+new data by Account Create.
+DELETE – https://[subdomain].alertmessage.com/acct/[cs_no]
+[cs_no] – CS number (account id) of account that is being placed out of service
+
+Affiliated Account API v4.4.0
+
+January 2026
+
+22
+
+The body may also accept a "copyzones" parameter. When set to true or 1, the API
+will copy the zones from the “deleted” account to the new shell.
+cURL Example
+curl --location --request DELETE
+'https://[subdomain].alertmessage.com/acct/[cs_no]' \
+--header 'Authorization: Bearer [token]' \
+--header 'Content-Type: application/json' \
+--data '{
+"copyzones" : true
+}'
+
+Response
+JSON object with error and response keys. On success, result will be “ok”.
+e.g. {"result": "ok"}
+
+Account Search
+Search for an account in the monitoring database with search terms.
+GET - https://[subdomain].alertmessage.com/acct/search/[search term]
+Search term will only be queried based on the following account parameters:
+
+
+
+
+
+
+Site
+o Name
+o Street Address (combined)
+o City
+o State
+o Zip Code
+o Phone Number (1 or 2)
+o API Dealer Reference #
+System
+o CS# (full, last four characters, or last five characters)
+o Device IMEI
+o User-Defined Field 1
+Contact
+o Phone Number (any)
+
+Search terms must contain more than three characters, excluding spaces.
+Response may include results based on multiple matched parameters. Response for
+multiple search terms separated by space will only include results that match all of
+them against individual parameters.
+
+Affiliated Account API v4.4.0
+
+January 2026
+
+23
+
+For example, “123” may yield results based on CS#, phone number, street address
+etc., but “123 Main” will only yield results where any parameter matches on both
+“123” and “Main”—street address being most likely in this scenario—but not results
+that match on “123” or “Main” or both.
+The maximum number of results returned by this endpoint is 100.
+cURL Example
+
+curl --location
+'https://[subdomain].alertmessage.com/acct/search/[search term]'
+\
+--header 'Authorization: Bearer [token]'
+
+Response
+If match is found (“shop”):
+{
+
+"accounts": [
+{
+"cs_no": "0737429",
+"site_name": "Russell's Car Shop",
+"addr1": "2 Stahuber Ave",
+"addr2": null,
+"city": "Union",
+"state": "NJ ",
+"zip": "07083",
+"phone1": null,
+"phone2": null,
+"oos": false
+},
+{
+"cs_no": "2669994",
+"site_name": "Russell's Car Shop",
+"addr1": "2 Stahuber Ave",
+"addr2": null,
+"city": "Union",
+"state": "NJ ",
+"zip": "07083",
+"phone1": null,
+"phone2": null,
+"oos": true
+},
+{
+"cs_no": "DEMO444",
+"site_name": "Joe's Prawn Shop 4",
+"addr1": "100 Bayview Ave.",
+"addr2": "Apt 12",
+"city": "BEVERLY HILL",
+"state": "CA ",
+
+Affiliated Account API v4.4.0
+
+January 2026
+
+24
+
+"zip": "90210",
+"phone1": "8004344000",
+"phone2": null,
+"oos": false
+}
+]
+}
+
+If no match is found (“pet”):
+{
+
+"result": "No accounts found matching the search term"
+}
+
+If search term is shorter than three characters long (“go”):
+{
+
+}
+
+"result": "error",
+"error": [
+"Search term must be at least 3 characters long"
+]
+
+Account Link
+Link two systems to one site. The system associated with cs_no2 is linked to the site
+associated with cs_no1.
+Site-specific information, including contacts, agencies, additional_info, and
+vital_statistics will be lost from cs_no2. After performing the link, reads on cs_no2
+will reflect the site-specific information for cs_no1, and updates to site-specific
+information on cs_no2 will affect cs_no1 and vice-versa.
+PUT – https://[subdomain].alertmessage.com/acct/link/[cs_no1]/[cs_no2]
+cURL Example
+curl -H 'Authorization: Bearer [authorization token]' -X PUT -H
+'Content-Type: application/json'
+https://[subdomain].alertmessage.com/acct/link/[cs_no1]/[cs_no2]
+
+[cs_no1] – CS number on target site
+[cs_no2] – CS number of system to be moved to target site
+Response
+JSON object with error and response keys. On success, result will be “ok”.
+e.g. {"result": "ok"}
+
+Get Service Company Number
+Get the service company number for the account
+Affiliated Account API v4.4.0
+
+January 2026
+
+25
+
+GET – https://[subdomain].alertmessage.com/acct/[cs_no]/servco
+Response
+{
+"servco_no": 880889
+}
+
+Update Service Company Number
+Update the service company number for the account
+POST – https://[subdomain].alertmessage.com/acct/[cs_no]/servco
+Request Input
+JSON string a raw POST data, comprised of a service company.
+e.g. {"servco_no":"880889"}
+cURL Example
+
+curl -H 'Authorization: Bearer [authorization token]' -X POST -H
+'Content-Type: application/json' -d '{"servco_no":"880889"}'
+https:// [subdomain].alertmessage.com/acct/[cs_no]/servco
+
+Response
+{
+"result": "ok"
+"servco_no": 880889
+}
+
+Affiliated Account API v4.4.0
+
+January 2026
+
+26
+
+Contact Create
+Creates a new contact for an account
+PUT – https://[subdomain].alertmessage.com/acct/[cs_no]/contacts/
+[cs_no] - CS number (account id) of account being affected
+Request Input
+JSON string of raw POST data, comprised of a contact object.
+e.g.
+
+{
+"last_name": "Kelly",
+"first_name": "Grace",
+"relationship":"SIS",
+"phones": [
+{
+"phone": "5555551212",
+"phonetype": "C",
+"autonotify": "Y"
+},
+{
+"phone": "5555551214",
+"phonetype": "H"
+}
+],
+"email" : [
+{
+"email":"grace@kelly.com",
+"autonotify":"N"
+}
+]
+}
+
+cURL Example
+
+curl -H 'Authorization: Bearer [authorization token]' -X POST -H
+'Content-Type: application/json' -d '{"last_name":"Kelly",
+"first_name":"Grace", "relationship":"SIS", "phones":[
+{"phone":"5555551212", "phonetype":"C", "autonotify":"Y"}, {
+"phone":"5555551214", "phonetype":"H"} ], "email": [{
+"email":"grace@kelly.com"} ]} '
+https://[subdomain].alertmessage.com/acct/[cs_no]/contacts/[conta
+ct]
+
+Response
+JSON object with error and response keys. On success, result will be “ok”.
+e.g. {"result": "ok", "contact_no": 1234567890}
+
+Affiliated Account API v4.4.0
+
+January 2026
+
+27
+
+Contact Edit
+Edits a specific contact for an account
+POST – https://[subdomain].alertmessage.com/acct/[cs_no]/contacts/[contact_no]
+[cs_no] – CS number (account id) of account being affected
+[contact_no] – the unique id of the contact being affected
+Request Input
+JSON string a raw POST data, comprised of a contact object. Only the elements of the
+contact being edited need to be supplied.
+Note: [contact_no] is required in the URL and identifies which contact to edit. For
+phones and email addresses, seq_no within the JSON object identifies existing items.
+e.g.
+{
+
+}
+
+"last_name": "Contact",
+"first_name": "Test",
+"phones": [
+{
+"seq_no": 1,
+"phone": "6145555555",
+"phonetype": "C"
+}
+],
+"email": [
+{
+"seq_no": 3,
+"email": "contact@test.com"
+}
+],
+“lists”: {
+“add”: [3,4],
+“delete”: [1,2]
+}
+
+cURL Example
+
+curl -X PUT
+https://[subdomain].alertmessage.com/acct/DEMO1001/contacts/ -H
+'authorization: Bearer [authorization token]' -H 'cache-control:
+no-cache' -d '{ "last_name": "Kelly", "first_name": "Grace",
+"relationship":"SIS", "phones": [{"phone": "9085551212",
+"phonetype": "C", "autonotify": "Y" }, {"phone": "9085551214",
+"phonetype": "H", "autonotify": "N"}],
+"email":[{"email":"grace@kelly.com"}]}'
+
+Affiliated Account API v4.4.0
+
+January 2026
+
+28
+
+Response
+JSON object with error and response keys. On success, result will be “ok” and the
+contact_no of the new contact will be included..
+e.g. {"result":"ok","contact_no":3333333333}
+
+Contact Delete
+Deletes a specific contact from an account.
+DELETE –
+https://[subdomain].alertmessage.com/acct/[cs_no]/contacts/[contact_no]
+[cs_no] – CS number (account id) of account being affected
+[contact_no] – the unique id of the contact being affected
+cURL Example
+
+curl -H 'Authorization: Bearer [authorization token]' -X DELETE
+https://[subdomain].alertmessage.com/acct/[cs_no]/contacts/[conta
+ct_no]
+
+Response
+JSON object with error and response keys. On success, result will be “ok”.
+e.g. {"result": "ok"}
+
+Contact Lists
+Gets all contact lists for an account
+GET – https://[subdomain].alertmessage.com/acct/[cs_no]/contacts/lists
+[cs_no] – CS number (account id) of account whose lists are being requested
+cURL Example
+
+curl -X GET
+https://[subdomain].alertmessage.com/acct/DEMO1001/contacts/lists
+-H 'authorization: Bearer [authorization token]' -H 'cachecontrol: no-cache'
+
+Response
+JSON Object wrapping a contact_lists object, where the key is an integer list_id and
+the value is an array of contact_nos in their call order.
+e.g.
+{
+
+"contact_lists": {
+
+Affiliated Account API v4.4.0
+
+January 2026
+
+29
+
+"1": [
+300313077,
+300313078
+],
+"7": [
+200484458,
+300313077
+]
+}
+
+}
+
+Contact Lists Reorder
+Reorders contacts on one or more contact lists for an account.
+POST – https://[subdomain].alertmessage.com/acct/[cs_no]/contacts/lists
+[cs_no] – CS number (account id) of account whose lists(s) are being reordered.
+Request Input
+JSON string of raw POST data, comprised of contact_list object, where key is the list
+and value is an array of contact_nos in the their new contact order.
+Note: not all lists need to be submitted each time, just the list(s) that are being
+reordered. Other lists will remain unaffected.
+Note: if a contact number is not included in the list, it will be removed from the list.
+When reordering contact lists, all contacts for the list must be included in their new
+order.
+e.g.
+
+{
+
+}
+
+"contact_lists": {
+"1": [
+300313077,
+200484458
+]
+}
+
+Response
+JSON object with error and response keys. On success, result will be “ok”.
+e.g. {"result": "ok"}
+
+Affiliated Account API v4.4.0
+
+January 2026
+
+30
+
+Get Available Lists
+Get list of available list ids and the associated description
+GET – https://[subdomain].alertmessage.com/lists
+Response
+{
+"lists": [
+{
+"descr": "Verify",
+"list_no": 0
+},
+{
+"descr": "Main",
+"list_no": 1
+},
+{
+"descr": "Secondary",
+"list_no": 2
+},
+.
+.
+.
+]
+}
+
+Zone Delete
+Deletes a specific zone from an account.
+DELETE – https://[subdomain].alertmessage.com/acct/[cs_no]/zones/[zone_id]
+[cs_no] – CS number (account id) of account being affected
+[zone_id] – the unique id of the zone being affected
+cURL Example
+
+curl -H 'Authorization: Bearer [authorization token]' -X DELETE
+https://[subdomain].alertmessage.com/acct/[cs_no]/zones/[zone_id]
+
+Response
+JSON object with error and response keys. On success, result will be “ok”.
+e.g. {"result": "ok"}
+
+Affiliated Account API v4.4.0
+
+January 2026
+
+31
+
+Get Languages
+Get list of available languages
+GET – https://[subdomain].alertmessage.com/acct/languages
+Response
+{
+"result": "ok",
+"languages": [
+{
+"descr": "Acholi",
+"lang_id": "ACHOLI"
+},
+{
+"descr": "Afrikaans",
+"lang_id": "AFRIKA"
+},
+{
+"descr": "Albanian",
+"lang_id": "ALBANI"
+},
+...
+{
+"descr": "Yiddish",
+"lang_id": "YIDDIS"
+},
+{
+"descr": "Yoruba",
+"lang_id": "YORUBA"
+}
+]
+}
+
+Test Read
+Gets all current and future tests for a system
+GET – https://[subdomain].alertmessage.com/acct/[cs_no]/test
+Response
+{
+
+"tests": {
+"337": {
+"system_no": [system_no],
+"seqno": 337,
+"effective_date": "2019-01-14 12:03:00",
+"expire_date": "2019-01-14 14:03:00",
+"zones": [[array of zone_ids]],
+"servtype_list": [[array of service types]]
+},
+"349": {
+"system_no": 173228,
+"seqno": 349,
+"effective_date": "2019-01-14 12:03:00",
+
+Affiliated Account API v4.4.0
+
+January 2026
+
+32
+
+}
+
+"expire_date": "2019-01-14 14:03:00",
+"zones": [],
+"servtype_list": []
+
+},
+"result": "ok"
+}
+
+Test Create
+Places an account on test
+PUT – https://[subdomain].alertmessage.com/acct/[cs_no]/test
+Request Input
+Optional JSON string of raw data, comprised of an object with multiple optional
+parameters.
+e.g.
+{
+
+"length": 120,
+"test_category": "API",
+"comment": "This is a 2 hour test",
+"zones": "3,7,E373",
+"service_types": "TRBL"
+}
+
+Response
+{
+
+}
+
+"test": {
+"effective_date": "2023-12-07 09:50:00",
+"expire_date": "2023-12-07 11:50:00",
+"zones": [
+"3,7,E373"
+],
+"service_types": "TRBL",
+"id": 45
+},
+"result": "ok"
+
+Test Delete
+Cancels all active tests or a specific test on a system
+DELETE – https://[subdomain].alertmessage.com/acct/[cs_no]/test
+
+Affiliated Account API v4.4.0
+
+January 2026
+
+33
+
+Request Input
+Optional JSON string of raw data, comprised of a test object with two parameters
+seqnos – optional – array of test_ids to cancel, if left blank, all active test on
+the system will be cancelled.
+comment – optional – a comment to include as part of the test cancelation.
+e.g.
+{
+
+"comment":"this will cancel all active tests"
+}
+
+e.g.
+{
+
+"seqnos":[349],
+"comment":"this will cancel test 349"
+}
+
+e.g.
+{
+
+"seqnos":[349,351],
+"comment":"this will cancel 2 tests, ids: 349 and 351"
+}
+
+Response
+{
+"result": "ok"
+}
+
+Affiliated Account API v4.4.0
+
+January 2026
+
+34
+
+JSON Object
+All account data passed to update or create or returned by the API is a JSON encoded
+object.
+
+Data Types
+Bold names are required by Account Create function
+Italic parameter names are required by Account Update functions
+Grey parameter names are returned by Account Read but are not affected by
+Account Create or Account Update.
+Account
+cs_no
+linked_systems
+
+varchar(20)
+array
+
+servco_no
+dealer_ref_no
+name
+addr1
+addr2
+city
+state
+zip
+
+int
+varchar(255)
+varchar(60)
+varchar(60)
+varchar(60)
+varchar(30)
+varchar(3)
+varchar(10)
+
+phone1
+ext1
+phone2
+ext2
+cross_street
+passcode
+passcode2
+timezone
+
+varchar(16)
+varchar(10)
+varchar(16)
+varchar(10)
+varchar(60)
+varchar(20)
+varchar(20)
+tinyint
+
+municipality
+location_type
+
+varchar(20)
+enum
+
+Affiliated Account API v4.4.0
+
+Account ID
+An array of systems, identified by "cs_no",
+that are linked to the same site as the
+current "cs_no" being read. Value is null if
+there are no others.
+Service Company number for account
+Dealer's reference number
+account name
+account street address 1
+account street address 2
+account city
+account state
+account zip code.
+US zips should only be 5 digits. Canadian
+zips should not include the space.
+account phone number
+secondary phone number for account.
+closest cross street
+first pass code for account
+second pass code for account
+timezone for account. Possible values:
+ 0 - Eastern Time
+ 1 - Central Time
+ 2 - Mountain Time
+ 3 - Pacific Time
+ 4 - Alaskan Time
+ 5 - Hawaiian Time
+ 99 - Atlantic Time Zone
+Borough/county/township for account.
+Location type. Example values
+ C – Commercial
+
+January 2026
+
+35
+
+status
+
+oos
+
+varchar(1)
+
+ R – Residential Home/Apt
+ PMOB – PERS Mobile
+Indication of site status
+ A – Active
+ I – Inactive
+ E – Empty/shell
+“status” must be “A” and “oos” must be
+false for signals to be monitored for the
+designated CS#.
+Indication of system out-of-service status.
+System is out of service if value is true.
+
+boolean
+
+force_address
+
+boolean
+
+device_phone
+
+varchar(16)
+
+device_id
+prefix
+
+varchar(255)
+varchar(20)
+
+“status” must be “A” and “oos” must be
+false for signals to be monitored for the
+designated CS#.
+If set to true, address will be accepted even
+if it fails address verification.
+Device’s phone number. Should be just
+digits, not special characters, letters or
+spaces. If a device has multiple phone
+numbers, separate them with a comma.
+Serial number of the device
+Account Create only.
+The leading characters of the desired
+Account ID (CS#). Use to choose among
+multiple account ranges that serve
+different purposes.
+Empty strings or null will be ignored. Prefix
+will be ignored if an Account ID is specified
+in the URL.
+
+template
+
+enum
+
+Prefix search holds priority over template
+search.
+Sets or updates template used by system.
+The value itself is a string up to six
+characters.
+Consult your integrations contact or
+Partner Support for the appropriate values
+you should use.
+When submitting on Account Create, the
+API will first search for an empty account
+
+Affiliated Account API v4.4.0
+
+January 2026
+
+36
+
+contacts
+zones
+system
+
+array
+array
+object
+
+agencies
+additional_info
+
+array
+object
+
+vehicle
+
+object
+
+vital_statistics
+
+object
+
+hospice
+
+object
+
+corp_id
+udf_001
+sim_id
+
+(shell) where this template is already
+assigned. Otherwise, API will return the
+first available empty account like normal.
+array of contact data objects
+array of zone data objects
+list of system options, especially regarding
+test timers
+array of agency data objects
+additional account information, especially
+data useful for PERS and similar accounts
+information describing the users vehicle.
+This is necessary for monitoring related to
+vehicles.
+End-user’s vital statics to help emergency
+responder’s identify user, when away from
+home.
+End-user’s hospice agency name and phone
+number
+
+int
+varchar(150)
+varchar(255)
+
+Note: Updating this object will replace the
+medical agency on the site with the hospice
+information and set the “hospice”
+parameter for the agency to true.
+Corporate account ID
+A user defined field. Can be used as desired.
+A SIM card’s ICCID. To be used for MPERS
+accounts.
+
+Contact
+contact_no
+
+int
+
+last_name
+first_name
+prefix
+suffix
+middle_initial
+contact_when
+
+varchar(30)
+varchar(20)
+varchar(20)
+varchar(20)
+char(1)
+enum
+
+verify_flag
+
+enum
+
+Affiliated Account API v4.4.0
+
+unique id for contact. (required for account
+updates; ignored for creates; do not use for
+direct contact edit)
+Contact's last name
+Contact's first name
+Contact's prefix (e.g. Mr., Ms., Dr.)
+Contact's suffix (e.g. Jr., Sr., III)
+Contact's middle initial
+When contact is called during a monitored
+event. possible values are
+before – call before dispatch
+after – call after dispatch
+none – do not call
+Whether contact is called prior to dispatch
+ Y – call before dispatch
+ N – do not call before dispatch
+
+January 2026
+
+37
+
+lists
+
+enumlist
+
+Places contact on “verify” contact list.
+Call lists the contact will be added to. Array of
+integers for each list to put contact on. The
+suggested lists are
+
+
+
+
+
+relationship
+
+Affiliated Account API v4.4.0
+
+enum
+
+0 – Do not assign to this list
+1 – Main – Contact After Dispatch
+2 – Secondary call list
+7 – Real time email notification
+
+Note: all lists might not be available or
+relevant for your accounts. Consult your
+Account Manager on which ones you should
+use.
+Note: The “verify” list that appears in the
+Contact Lists endpoint is not the same as 0
+here. Please use “verify” when updating via
+Contact List Reorder.
+Relationship of contact to account owner.
+Most appropriate for PERS accounts.
+Available values:
+A - Aunt
+BIN - Brother-In-Law
+BMGR - Building Manager
+BRO - Brother
+CLG - Clergy
+COU - Cousin
+CTKR - Caretaker
+D - Daughter
+DIL - Daughter-In-Law
+DR - Doctor
+EMP - Employee
+EXH - Ex-Husband
+EXW - Ex-Wife
+F - Father
+FDK - Front Desk
+FR - Friend
+GDSN - Grandson
+GDTR - Granddaughter
+H - Husband
+HOS - Hospice
+LAW - Lawyer
+M - Mother
+MAID - Cleaning service
+MNGR - Manager
+
+January 2026
+
+38
+
+keyholder
+
+enum
+
+phones
+
+array
+
+email
+
+array
+
+passcode
+
+varchar(30)
+
+seq_no
+
+tinyint
+
+phone
+phonetype
+
+varchar(16)
+enum
+
+autonotify
+
+enum
+
+N - Neighbor
+NIEC - Niece
+NPHW - Nephew
+OWN - Owner
+PAR - Parents
+POA - Power of Attorney
+PRT - Partner/Significant Other
+RUN - Runner
+S - Son
+SERV - Service Tech
+SIL - Son-In-Law
+SIN - Sister-In-Law
+SIS - Sister
+STD - Step-Daughter
+STS - Step-Son
+U - Uncle
+W - Wife
+Is the contact a key holder. Primarily for PERS
+accounts. Available values are
+Y – Yes
+N – No
+Array of phone objects (See Data Types -]
+phones in Appendix)
+Array of email objects (See Data Types -]
+email in Appendix)
+Passcode for contact. Case-insensitive,
+alphanumeric. Do not submit special
+characters.
+
+Phone
+
+Affiliated Account API v4.4.0
+
+Sequence number. (required for updates; do
+not use for creates, but must be unique for
+contact)
+Phone number
+Type of phone. Possible values:
+C – Cellular
+F – Fax
+H – Home phone
+W – Work Phone
+EM – Email (pass an email address
+instead of a phone number)
+Whether to automatically send a text message
+on events. This will only work if phonetype is
+set to C.
+Y – 'Yes' autonotify is enabled
+
+January 2026
+
+39
+
+N – Autonotify is not enabled
+X – Phone is opted out of receiving text
+messages.
+
+service_types
+
+enumlist
+
+Note: enabling autonotify on a phone with
+phonetype ‘C’ will create an additional phone
+with phonetype ‘TX’, the phone number in the
+phone parameter, and an email-to-text value
+in the email parameter. This is not an error.
+Event service types that will trigger
+notification text for phone. If no values are
+passed, phone will not receive text
+notifications.
+Example list: “BURG,FIRE,PANIC”
+Possible values:
+ACCESS - Access
+APCOS - ASAP Event Codes
+BURG - BURGLARY
+BYPASS - Bypass
+CO - Carbon Monoxide
+DFLT - Default
+ELEV - Elevator
+ENV - Environmental
+FIRE - Fire
+LT - Live Test
+MED - Medical
+MISC - Misc
+NOTEST - No Test Timer Received
+O/C - Open & Close
+OFTEST - On/Off Test
+OPACT - Operator Action
+PANIC - Panic
+REST - Restoral/Cancel
+SERV - Service
+STATUS - Status
+SUPV - Supervisory
+SYSTEM - System Message
+TAMPER - Tamper
+TEST - Test
+TRBL - Trouble
+TT - Test Timer
+UNDEF - Undefined Signal
+VIDEO - Video
+
+Affiliated Account API v4.4.0
+
+January 2026
+
+40
+
+extension
+
+varchar(10)
+
+seq_no
+
+tinyint
+
+Phone extension
+
+Email
+
+email
+autonotify
+
+service_types
+
+Sequence number. (required for updates; do
+not use for creates, but must be unique for
+contact)
+varchar(255) Email Address
+enum
+Whether to automatically send emails on
+events.
+Y – 'Yes' autonotify is enabled
+N – Autonotify is not enabled
+A – Autonotify is enabled but contact
+is not added to any list by default. (do
+not use this feature without
+discussing with your account
+manager.)
+C – Autonotify is enabled and contact
+is added to list 8. (do not use this
+feature with discussing without your
+account manager.)
+enumlist
+
+Event service types that will trigger
+notification text for phone. If no values are
+passed, phone will not receive text
+notifications.
+Example list: “BURG,FIRE,PANIC”
+Possible values:
+ACCESS - Access
+APCOS - ASAP Event Codes
+BURG - BURGLARY
+BYPASS - Bypass
+CO - Carbon Monoxide
+DFLT - Default
+ELEV - Elevator
+ENV - Environmental
+FIRE - Fire
+LT - Live Test
+MED - Medical
+MISC - Misc
+NOTEST - No Test Timer Received
+O/C - Open & Close
+OFTEST - On/Off Test
+OPACT - Operator Action
+PANIC - Panic
+
+Affiliated Account API v4.4.0
+
+January 2026
+
+41
+
+REST - Restoral/Cancel
+SERV - Service
+STATUS - Status
+SUPV - Supervisory
+SYSTEM - System Message
+TAMPER - Tamper
+TEST - Test
+TRBL - Trouble
+TT - Test Timer
+UNDEF - Undefined Signal
+VIDEO - Video
+Zone
+zone_id
+description
+
+varchar(6)
+varchar(50)
+
+event_id
+
+enum
+
+disp_id
+
+enum
+
+alt_cs_no
+
+varchar(20)
+
+Unique id for zone.
+Free form text for description of the zone (e.g.
+Front door motion.)
+Event ID. Based on your needs, you will be
+supplied with a list of available event_ids and
+their descriptions. The value itself is a string
+up to six characters.
+Dispatch instructions ID. Based on your
+needs, you will be supplied with a list of
+available dsip_ids and their descriptions. You
+will be supplied with values that suit your use
+cases. The value itself is a string up to six
+characters.
+ID for account where signals will route
+instead of current account. Use with caution.
+
+System
+timer_frequency
+
+enum
+
+acceptable_timer
+
+enum
+
+fail_instructions
+
+enum
+
+Affiliated Account API v4.4.0
+
+Frequency of Test Timer. Possible
+values:
+ None
+ TwiceDaily
+ Daily
+ Weekly
+ Monthly
+What to accept for the test timer.
+Possible value:
+ AnySignal – Any Signal
+ TimeTestOnly – Test Timer
+only
+Instructions for failed test timer.
+Possible values:
+
+January 2026
+
+42
+
+
+
+dispatch_instructions
+
+enum
+
+system_descr
+
+varchar(30)
+
+Agencies
+type
+
+enum
+
+phone
+
+varchar(16)
+
+name
+
+varchar(30)
+
+permit_no
+
+varchar(20)
+
+effective
+
+date
+
+expires
+
+date
+
+Additional Info
+lockbox_location
+
+The type of agency being updated or
+modified. Common values:
+ P – Police
+ F – Fire
+ M - Medical
+The phone number of the agency. This is
+what is used to find the correct agency in
+the database. Do not include dashes or
+parentheses.
+The name of the agency. This cannot be
+modified via the API.
+The permit number for the corresponding
+agency and site.
+The effective date of the permit.
+The format of the date must be ‘YYYY-MMDD’.
+The expiration date of the permit.
+The format of the date must be ‘YYYY-MMDD’.
+
+varchar(255)
+
+lockbox_code
+
+varchar(10)
+
+key_location
+
+varchar(100)
+
+Affiliated Account API v4.4.0
+
+TTFEMF – Notify Dealer
+Electronically only
+ G-NOTT – Notify Per
+Instructions (requires
+dispatch_instructions)
+ TTFACS – Notify Subscriber &
+Dealer Electronically only
+ TTFLOG – Log Only
+ TTFSE – Notify Subscriber
+Electronically Only
+Dispatch instructions id. Based on
+your needs, you may be supplied with
+a list of available disp_ids and their
+descriptions.
+Panel description.
+
+January 2026
+
+Free form text explaining where a
+lockbox (if available) is located.
+Lockbox combination if lockbox is
+present.
+Free form text describing where a
+key is hidden
+
+43
+
+entry_info
+
+varchar(255)
+
+pets
+pets_bite_warning
+
+varchar(255)
+varchar(150)
+
+med_list
+
+varchar(140)
+
+child
+
+enum
+
+disabled
+
+enum
+
+weapons
+
+enum
+
+oxygen
+
+enum
+
+partner_id
+customer_service_no
+customer_service_em
+hospital
+
+varchar(150)
+varchar(10)
+varchar(150)
+varchar(255)
+
+Free form text containing any special
+instruction for entry (e.g. gate code).
+Free form text describing pets.
+Free form text describing any pet
+bite warning.
+Free form text describing the
+location of End-user’s medication
+list.
+Whether there is a child at the Enduser’s premises.
+Y – 'Yes' there is a child
+N – 'No' there is not a child
+Whether the End-user is disabled.
+Y – 'Yes' they are disabled
+N – 'No' they are not disabled
+Whether there are weapons at the
+End-user’s premises.
+Y – 'Yes' there are weapons
+N – 'No' there are not any weapons
+Whether there is oxygen used at
+End-user’s premises.
+Y – 'Yes' oxygen is used
+N – 'No' oxygen is not used
+Partner ID
+Customer service phone number
+Customer service email address
+Subscriber’s preferred hospital
+
+Vehicle
+make
+model
+year
+color
+license_plate
+
+varchar(255)
+varchar(255)
+varchar(255)
+varchar(255)
+varchar(255)
+
+Vehicle make
+Vehicle model
+Vehicle year
+Vehicle color
+Vehicle license plate number
+
+Vital Statistics
+height
+weight
+birth_year
+eye_color
+hair_color
+gender
+
+varchar(255)
+varchar(255)
+varchar(4)
+varchar(255)
+varchar(255)
+enum
+
+ethnicity
+
+varchar(255)
+
+Affiliated Account API v4.4.0
+
+January 2026
+
+User’s height
+User’s weight
+User’s birth year
+User’s eye color
+User’s hair color
+User’s gender
+F – female
+M – male
+User’s apparent ethnicity.
+
+44
+
+user_hearing_impaired
+
+enum
+
+user_speaking_impaired
+
+enum
+
+Whether the End-user is hearing
+impaired.
+Y – 'Yes' user is hearing impaired
+N – 'No' user is not hearing
+impaired
+Whether the End-user is speaking
+impaired.
+Y – 'Yes' user is speaking
+impaired
+N – 'No' user is not speaking
+impaired
+
+Test
+length
+
+int
+
+test_category
+
+enum
+
+The amount of time a test will last in
+minutes. Defaults to 120.
+The category for the test type.
+Possible Values
+ API – Standard Test Category
+ ACT – Automated Callback Testing
+ APT – Automated PERS Testing
+ FDR – Fire Drill
+ LT – Live testing
+
+comment
+zones
+
+Defaults to “API”.
+varchar(50)
+Comment to go with the test that helps with
+identifying purpose or user.
+enumlist(250) List of zone IDs that should be placed on
+test. Individual zone IDs cannot be longer
+than 6 characters each. Spaces will be
+parsed out. Zones do not need to exist on
+the system to be placed on test.
+This field restricts the test to the zones
+selected. To put all signals regardless of
+zone on test, do not use this parameter.
+
+service_types
+
+enumlist
+
+The maximum number of characters that
+can be submitted for this parameter is 250.
+List of service types that should be placed
+on test.
+This field restricts the test to the service
+types selected. To put all signals regardless
+
+Affiliated Account API v4.4.0
+
+January 2026
+
+45
+
+of signal type on test, do not use this
+parameter.
+Possible values:
+ACCESS - Access
+APCOS - ASAP Event Codes
+BURG - BURGLARY
+BYPASS - Bypass
+CO - Carbon Monoxide
+DFLT - Default
+ELEV - Elevator
+ENV - Environmental
+FIRE - Fire
+LT - Live Test
+MED - Medical
+MISC - Misc
+NOTEST - No Test Timer Received
+O/C - Open & Close
+OFTEST - On/Off Test
+OPACT - Operator Action
+PANIC - Panic
+REST - Restoral/Cancel
+SERV - Service
+STATUS - Status
+SUPV - Supervisory
+SYSTEM - System Message
+TAMPER - Tamper
+TEST - Test
+TRBL - Trouble
+TT - Test Timer
+UNDEF - Undefined Signal
+VIDEO - Video
+Hospice
+name
+phone
+
+Affiliated Account API v4.4.0
+
+varchar(30)
+varchar(16)
+
+The name of the hospice agency
+The phone number of the hospice agency
+
+January 2026
+
+46
+
+

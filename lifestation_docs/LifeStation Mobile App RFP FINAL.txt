@@ -1,0 +1,241 @@
+Request for Proposal (RFP)
+LifeStation Caregiver Mobile App – v1.0 Development
+Issued By: LifeStation
+Proposal Due: March 20, 2026 at 5:00 PM Eastern
+Primary Contact: Dan Entin, VP Product & Technology
+1. Company Overview
+LifeStation is a national provider of Personal Emergency Response Systems (PERS), serving
+seniors and caregivers through in-home units, mobile pendants, and smartwatches. As
+part of its 2026 strategic priorities, LifeStation is launching its first caregiver-facing mobile
+application.
+This initiative is designed to:
+• Address competitive gaps in caregiver experience (see Medical Guardian, Freeus,
+Aloe Care apps)
+• Enable customer self-service and reduce cost-to-serve
+• Establish the foundation for LifeStation as a Service (LSaaS), including smartphone-
+based safety offerings that wouldn’t require a dedicated PERS device
+• Create a scalable digital platform for feature expansion through 2027 and beyond
+LifeStation is seeking a development partner to design and build v1.0 of the mobile
+application, with the potential for a multi-phase engagement.
+2. Engagement Overview
+LifeStation intends to partner with an experienced mobile development agency to:
+• Design and develop the v1.0 mobile application
+• Integrate with existing monitoring APIs
+• Deliver a scalable, maintainable architecture aligned to future roadmap phases
+• Support deployment to the Apple App Store and Google Play (with LifeStation as
+publisher of record)
+1
+This is a work-for-hire engagement. All source code and intellectual property will be owned
+exclusively by LifeStation.
+Strong performance on v1.0 will position the selected agency for continued development
+phases extending through at least 2027.
+3. Strategic Context
+While v1.0 focuses on core caregiver functionality, the mobile app is foundational to
+LifeStation’s broader digital strategy.
+Future phases may include:
+• Geofencing and alert configuration
+• Activity telemetry (steps, heart rate)
+• Calling into the PERS device from the mobile app
+• Initiating an SOS call from the mobile app
+• Medication reminders
+• Automated wellness check-ins
+• Insight and anomaly detection algorithms
+• Smartphone-only safety offerings
+The architecture delivered in v1.0 must support extensibility and modular feature
+expansion, specifically local connectivity between app and PERS device (via Bluetooth)
+and app-only experience where there is no dedicated PERS device.
+4. Scope – v1.0 (Mobile App)
+4.1 User Roles
+The application must support two distinct but connected user experiences:
+• Caregivers (primary strategic focus)
+• End-Users (seniors with LifeStation PERS device)
+Role-based onboarding, permissions, and differentiated UX flows are required.
+2
+3
+4.2 Core Features
+Core features listed below in priority order. A functional spec is in progress and will be
+shared with the chosen partner as soon as it is complete. Additional context on these
+features can be gathered by looking at competitor mobile apps. Lastly, API documentation
+for interfacing with the device will be provided alongside this RFP for review.
+4.2.1 Authentication & Account Provisioning
+• Account creation including SMS-based authentication
+• Validation against existing LifeStation customer records
+• Invitation flows (primary account holder vs. invited users)
+• Role-based permissions
+• HIPAA-compliant architecture
+4.2.2 Device Visibility & Monitoring
+• View device status
+• Real-time location (where applicable)
+• Recent location history
+• Alarm/event history
+• Push notifications for alarms/events
+4.2.3 Emergency Contacts
+• View emergency contacts
+• Add/edit/delete emergency contacts
+4.2.4 Billing (Direct-to-Consumer Accounts Only)
+• View billing information
+• Update credit card information via secure API
+• Suppression of billing features for insurance/B2B accounts
+The experience must scale appropriately across the different PERS devices as they have
+varying data and functionality:
+• In-home units
+4
+• Mobile pendants
+• Smartwatches
+4.3 Web Application (Parallel Scope)
+LifeStation requires delivery of a web-based application aligned to the v1.0 feature set. The
+web application would include all core features outlined in Section 4.2, with the exception
+of push notifications.
+Because this initiative is being developed in React Native, LifeStation expects meaningful
+reuse of business logic, UI components, and architectural patterns across mobile and
+web. Proposals should assume a shared codebase strategy wherever technically
+appropriate.
+Vendors must clearly describe:
+• Proposed web architecture (e.g., React Native Web or alternative)
+• Percentage of anticipated code reuse
+• Specific components expected to be shared
+• Incremental engineering effort required beyond mobile v1.0
+• Any technical limitations that materially reduce reuse
+If reuse is limited, vendors must explicitly justify the architectural constraints driving that
+limitation. Proposals that treat the web application as a net-new standalone build without
+leveraging shared architecture may be viewed as misaligned with project objectives.
+Delivery Expectations for Web Application
+Vendors must:
+1. 2. 3. Indicate whether the web application can be delivered concurrently without
+jeopardizing the mobile launch.
+If not, propose a fast-follow timeline (e.g., 4–8 weeks post-launch).
+Confirm that mobile delivery will not be delayed due to web scope expansion.
+5
+5. Technical Requirements
+5.1 Framework
+• React Native (required)
+• Single shared codebase for iOS, Android and web
+• Clean, modular architecture supporting future extensibility
+5.2 Infrastructure & Integration
+• AWS-aligned architecture (LifeStation will extend access to its environment)
+• Integration with Affiliated Monitoring APIs
+• Flexibility to adapt or expand APIs as features evolve
+5.3 Analytics & Observability
+Plan to integrate the following services into the app:
+• Mixpanel (product analytics)
+• Datadog (observability)
+• Crash analytics platform (e.g., Crashlytics)
+• Userpilot (onboarding, in-app messaging)
+5.4 Security & Compliance
+• HIPAA-compliant architecture
+• Encrypted data in transit and at rest
+• Secure authentication and authorization controls
+• App Store and Google Play compliance
+6. UX & Design Expectations
+LifeStation intends to differentiate through the clarity and polish of the user experience.
+The selected partner must:
+• Conduct collaborative UX discovery
+• Develop Figma-based interactive prototypes
+6
+• Support structured user testing prior to development
+• Design for senior accessibility and caregiver efficiency
+• Minimize tap count to critical functions (location visibility, alarms)
+• Prioritize speed, clarity, and workflow simplicity
+Clean, intuitive execution is a critical success factor.
+7. Internal Stakeholders & Governance
+The selected agency will work closely with LifeStation’s internal leadership and technical
+team. This will be a collaborative engagement with active product and engineering
+participation.
+Core Internal Team
+Dan Entin – VP, Product & Technology
+Executive sponsor responsible for strategic direction, scope governance, vendor oversight,
+and executive alignment.
+Dan Coppola – Senior Product Manager (Day-to-Day Project Lead)
+Primary working contact. Responsible for backlog prioritization, requirements clarification,
+sprint participation, and acceptance validation.
+Milind Deodhar – Head of Software Engineering
+Technical authority overseeing architecture, API alignment, security posture, and
+engineering standards.
+Glenn Tigas – Senior Software Engineer
+Hands-on technical contributor supporting API integration, validation, technical review,
+and coordination with the monitoring platform.
+Amrish Goyal – President
+Executive stakeholder reviewing milestone progress and strategic alignment.
+7
+Governance Expectations
+The agency should anticipate:
+• Weekly status reviews
+• Technical design reviews prior to major implementation phases
+• Biweekly executive-level status updates
+• Direct collaboration with internal engineering
+• Shared Jira-based backlog management
+• Clear documentation and structured knowledge transfer
+Proposals must describe communication cadence, escalation structure, tooling, and
+quality control approach.
+8. Staffing & Delivery Model Requirements
+LifeStation requires a blended onshore/offshore staffing model to balance quality,
+communication efficiency, and cost structure.
+Proposals must clearly specify:
+1. Staffing breakdown (onshore vs. offshore allocation)
+2. Roles assigned to the project
+3. Hourly rate for each role
+4. Average blended hourly rate
+5. Explanation of how the staffing mix optimizes cost without sacrificing quality
+Roles should include, at minimum:
+• Project Manager
+• UX/UI Designer
+• React Native Developer(s)
+• Backend/API Engineer (if required)
+• QA Engineer
+• DevOps/Release Support (if applicable)
+Transparent rate disclosure is required.
+8
+9. Deliverables
+The selected agency will provide:
+• UX wireframes and high-fidelity designs
+• Production-ready iOS and Android applications
+• Full source code transfer to LifeStation repository
+• Technical documentation
+• API documentation
+• QA test plans and results
+• App Store and Google Play deployment support
+• Post-launch stabilization support (minimum 30–60 days)
+10. Timeline Expectations
+LifeStation seeks to get to market with the mobile app as fast as possible with a desired
+launch in September 2026.
+Proposals must include:
+• Detailed timeline
+• Speed to market tradeoffs, if any are required
+• Sprint structure
+• Resource allocation plan
+• Critical path assumptions
+• Risk identification and mitigation strategy
+11. Proposal Submission Requirements
+Proposals must include:
+1. Executive summary
+2. Relevant case studies (IoT, connected devices, health or safety preferred)
+3. Technical architecture overview
+4. UX and discovery methodology
+5. Staffing model with onshore/offshore breakdown
+6. Role-by-role hourly rate sheet
+9
+7. Blended rate calculation
+8. Development methodology
+9. QA/testing approach
+10. Risk assessment
+11. Timeline with milestones
+12. Post-launch support model
+13. Assumptions and exclusions
+12. Evaluation Criteria
+Proposals will be evaluated based on:
+• Demonstrated mobile + connected device experience
+• React Native expertise
+• UX capability
+• Staffing model efficiency and transparency
+• Delivery confidence within timeline
+• Communication and governance approach
+• Long-term partnership potential
+13. Submission Instructions
+Submit proposals electronically in PDF format to:
+dan.entin@lifestation.com
+Deadline: March 20, 2026 at 5:00 PM Eastern
+Late submissions may not be considered – reach out to Dan asap if you expect a problem
+with the deadline.
+To schedule time to discuss the project or ask questions about the RFP
+use this Calendly link.
+10

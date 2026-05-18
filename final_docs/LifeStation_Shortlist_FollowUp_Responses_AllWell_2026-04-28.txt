@@ -1,0 +1,182 @@
+LifeStation Caregiver Mobile App v1.0 — Shortlist Follow-Up
+Responses to Code Ownership, Independence, and Architecture Questions
+Prepared for: LifeStation
+ Prepared by: AllWell
+ Date: April 28, 2026
+
+
+Executive Note
+AllWell confirms a work-for-hire engagement with exclusive intellectual property ownership by LifeStation, fully aligned with the RFP.
+In response to LifeStation’s requirement for a fully independent and deployable solution, we confirm:
+A new, greenfield codebase will be created
+Entire system will be owned, hosted, and controlled by LifeStation
+No dependency on AllWell-hosted services, platforms, or internal systems
+Delivered solution will be self-contained and production-ready within LifeStation’s environment
+Prior experience and domain knowledge may inform implementation, but no runtime or architectural dependency will exist on AllWell systems.
+
+
+
+
+1. Code Ownership & Independence
+Q1.1 Will the delivered codebase include all components required to run the application independently?
+Answer:
+ Yes.
+AllWell will deliver a complete, production-ready system, including:
+Mobile apps (iOS & Android)
+Web application (as per RFP scope)
+Backend / middleware services
+This includes:
+Authentication flows
+API integrations
+Event handling & notifications
+Data aggregation
+All code and configurations will be fully owned by LifeStation.
+Infrastructure will be provisioned within LifeStation’s AWS accounts, using:
+LifeStation-owned credentials
+LifeStation-managed third-party tools (analytics, monitoring, etc.)
+
+Q1.2 Will the application be deployable entirely within LifeStation’s AWS environment?
+Answer:
+ Yes.
+All runtime components will operate inside LifeStation AWS
+No dependency on:
+AllWell hosting
+AllWell APIs
+AllWell internal platforms
+The system will only integrate with:
+LifeStation-approved APIs (Affiliated Monitoring, etc.)
+Standard third-party services (e.g., push notifications, billing)
+
+Q1.3 What is required to install, configure, and validate the system in LifeStation AWS?
+Answer:
+ AllWell will deliver and execute:
+AWS setup aligned with LifeStation standards:
+IAM roles (least privilege)
+Environment setup (dev/staging/prod)
+Infrastructure provisioning (via agreed approach):
+Terraform / AWS CDK / LifeStation standards
+Secrets management:
+AWS Secrets Manager / Parameter Store
+CI/CD pipelines:
+Integrated with LifeStation repositories
+Full validation:
+API integrations (Affiliated / Brighton)
+Push notifications
+Core user flows
+Documentation:
+Deployment runbooks
+Monitoring setup
+Rollback procedures
+Knowledge transfer sessions for LifeStation engineering team
+
+Q1.4 Will any components remain coupled to AllWell systems?
+Answer:
+ No.
+There will be zero dependency on:
+AllWell databases
+Internal services
+Identity systems
+Infrastructure
+Only standard dependencies will exist:
+Open-source libraries
+Vendor SDKs (with proper licenses)
+An SBOM (Software Bill of Materials) and license summary will be provided.
+
+Q1.5 If prior backend assumptions existed, what changes are required?
+Answer:
+ No dependency on existing AllWell backend will be used.
+Instead:
+New repositories under LifeStation control
+New AWS infrastructure (LifeStation-owned)
+Fresh environment configuration
+This is a clean, independent implementation.
+
+Q1.6 Impact on Cost, Timeline, and Functionality
+Functionality:
+ No change. Full v1.0 scope will be delivered.
+Timeline:
+Greenfield build may add a small buffer (few weeks)
+Exact adjustment depends on:
+API readiness
+Environment access
+Cost:
+Work-for-hire model remains
+Final confirmation (or adjustment if needed) will be provided within 5 business days of award, before SOW finalization
+
+
+2. Licensing & Ongoing Dependencies
+Q2.1 Is continued engagement with AllWell required post-launch?
+Answer:
+ No.
+LifeStation will have full operational independence
+System runs entirely in LifeStation environment
+Post-launch support:
+30–60 days stabilization (included)
+Beyond that:
+Optional engagement only
+No licensing fees
+No platform lock-in
+
+3. Backend / Middleware Scope
+Q3.1 What will AllWell deliver vs LifeStation?
+AllWell Will Deliver:
+Mobile apps (React Native)
+Web application
+Backend / BFF services:
+API orchestration (Affiliated Monitoring APIs)
+Data normalization
+Authorization enforcement
+Authentication system:
+SMS OTP
+Invitations
+RBAC
+Event handling:
+Webhooks (if required)
+Notification pipeline
+Push notifications:
+FCM / APNs integration
+Observability:
+Datadog
+Crash analytics
+Mixpanel
+Userpilot
+Documentation:
+API docs
+Deployment runbooks
+Testing evidence
+
+LifeStation Will Provide:
+AWS infrastructure & governance
+API access (Affiliated / Brighton)
+Billing system access (D2C)
+Security/compliance policies
+App Store / Play Store publishing
+Enterprise identity requirements (if applicable)
+
+4. Feature Clarification — Authentication
+Q4.1 Will authentication use AllWell platform or custom model?
+Answer:
+ Custom, LifeStation-owned implementation.
+No dependency on AllWell identity systems
+Proposed approach:
+SMS-based authentication (OTP)
+Role-based access (Caregiver / Senior)
+Invitation flows
+Validation against LifeStation customer records
+Likely implementation:
+AWS-native solution (e.g., Cognito)
+Plus a custom LifeStation-owned account service
+All:
+Credentials
+Tokens
+User data
+Will reside entirely within LifeStation infrastructure
+
+Closing
+AllWell is fully aligned with LifeStation’s requirement for:
+Complete code ownership
+Zero platform dependency
+Independent deployment
+We are prepared to finalize a detailed Statement of Work (SOW) reflecting this model.
+Any adjustments to cost or timeline (if applicable) will be communicated transparently prior to final agreement.
+

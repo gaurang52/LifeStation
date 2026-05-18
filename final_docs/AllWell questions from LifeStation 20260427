@@ -1,0 +1,22 @@
+In your proposal you estimate 35 man weeks of work at a cost of $24,900 to deliver the v1.0  LifeStation caregiver mobile app and web app. The proposal states “All deliverables & code  created during this project – are owned by LifeStation”. Given that this work-for-hire model is not  typical for AllWell, we want to confirm how this would work in practice and ensure the solution is  fully independent and deployable within LifeStation’s environment. 
+1. Code Ownership & Independence 
+We expect that LifeStation will have full ownership of the delivered codebase and that the  application will be able to operate independently of AllWell systems. 
+To confirm how this would be achieved: 
+• Will the delivered codebase include all components required to run the application  independently, including backend services and infrastructure? 
+• Will the application be deployable entirely within LifeStation’s AWS environment, without  any dependency on AllWell-hosted services or shared platforms? 
+• What would be required for your team to install, configure, and validate the full system  within LifeStation’s AWS environment as part of this engagement? 
+• Are there any components of the system (services, libraries, infrastructure, or data  models) that would remain coupled to AllWell’s internal platform? 
+• If your proposal assumes use of your existing backend environment, what changes  would be required to instead provision and run this in a separate, LifeStation-owned  environment? 
+• What impact would that have on: 
+o Cost 
+o Timeline 
+o Functionality 
+2. Licensing & Ongoing Dependencies 
+We assume there are no licensing or platform dependencies required post-delivery. 
+● Would there be any requirement to continue working with AllWell post-launch? How  does the answer to this relate to question 1 above? 
+3. Backend / Middleware Scope 
+Given the architecture required for this application, we want to ensure there is no implicit  dependency on AllWell’s backend platform. 
+● For example: event handling (webhooks), notifications, authentication, data aggregation ● What would you expect LifeStation to build vs what your team would deliver?  
+4. Feature Clarification 
+While you committed to delivering all v1.0 features, the implementation approach to some is less clear.
+● Authentication - are you intending to use an authentication / user management model  from your existing platform, or build a custom model aligned to our requirements?

@@ -1,0 +1,47 @@
+﻿1. Salesforce Scope
+Is Salesforce required for v1.0, or a future phase?
+ If v1.0: which objects/data and what use cases (read vs write)?
+→ This directly impacts scope, cost, and timeline (+2–3 weeks).
+________________
+
+
+2. Data Storage Decision
+Are you OK with using Postgres (RDS) for relational data (caregiver–subscriber relationships, roles, mappings)?
+ → This is a core architecture decision we need confirmed before build.
+
+
+Reasons - 
+Natural fit for our data model
+Caregiver–subscriber relationships, roles, and permissions are inherently relational → Postgres handles this cleanly without workarounds.
+Data integrity is critical (and built-in)
+Foreign keys, constraints, and transactions ensure we don’t end up with broken relationships or inconsistent permissions — DynamoDB can’t enforce this.
+No access-pattern lock-in
+Requirements will evolve → Postgres lets us query flexibly.
+DynamoDB forces upfront design and becomes painful when requirements change.
+ Lower engineering complexity and risk
+With DynamoDB, we’d need to manually manage joins, duplication, and consistency in code → more bugs, more edge cases.
+Postgres keeps logic in the database where it belongs.
+________________
+
+
+3. Compute Pattern
+Are you OK with a split model: ECS (Express) for data aggregation and Lambda for notifications?
+ If not, are you OK with adding RDS Proxy for a full Lambda approach?
+→ This impacts scalability, reliability, and AWS setup.
+
+
+
+
+Reasons - 
+Recommended approach (split model):
+ECS (Express/Node.js) → data aggregation (persistent connections, better for Postgres)
+Lambda → notifications/event-driven workloads (stateless, scalable)
+Why not full Lambda:
+Each invocation creates DB connections → risk of connection exhaustion
+Requires RDS Proxy to manage pooling → adds cost and AWS complexity
+Benefits of split model:
+Better scalability for DB-heavy workloads
+More reliable connection handling (persistent pool in ECS)
+Cleaner separation of concerns (API vs event processing)
+Decision needed:
+OK with split model (recommended)

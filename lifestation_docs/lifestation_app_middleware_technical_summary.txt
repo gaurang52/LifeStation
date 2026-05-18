@@ -1,0 +1,188 @@
+﻿‘
+LifeStation App Middleware Architecture Technology Summary and Delivery Model 
+Summary The proposed AWS-hosted middleware provides a central application-facing API layer for  mobile and web clients. It centralizes identity, authorization, data orchestration, notification routing, and  response shaping while shielding the frontend from downstream system complexity. 
+Recommended Technology Allocation 
+Area 
+	Primary AWS / Platform  
+Components 
+	Primary Responsibility
+	Identity &  
+authentication
+	Cognito, API Gateway, Lambda,  DynamoDB
+	Authenticate users, map them to  monitored accounts, and enforce  caregiver/subscriber access.
+	Data aggregation  and API  
+normalization
+	API Gateway, Lambda, Secrets  Manager, Affiliated APIs, Salesforce  APIs, Device API
+	Compose a single app-facing response  from multiple backend systems. Stabilize  versioning, hide backend inconsistencies,  and shape responses for frontend  consumption.
+	Push notifications /  eventing
+	API Gateway or EventBridge,  Lambda, DynamoDB, APNs, FCM
+	Receive internal hooks, route events,  deduplicate, and fan out emergency  notifications.
+	Logging/Analytics 
+	CloudWatch, Lambda, API Gateway,  Sumo Logic, Datadog, Mixpanel
+	Capture structured application and  platform logs in AWS, forward operational  data to Sumo Logic and Datadog, and  send curated product analytics events to  Mixpanel while enforcing redaction and  avoiding sensitive data in logs.
+	
+
+
+
+1. Identity and Authentication 
+Purpose 
+This component establishes user identity, verifies authentication, and determines what accounts,  individuals, and actions each user is authorized to access within the application. It separates  authentication from authorization, allowing user sign-in to be managed centrally while access control  remains flexible enough to support caregiver, subscriber, and other account relationship models. 
+User authentication is handled through Amazon Cognito, while the middleware maps authenticated  users to the monitored accounts and people they are permitted to access.
+App Middleware Architecture Summary 
+Key Components 
+• Amazon Cognito – User authentication, sign-in management, token issuance, and optional  multi-factor authentication  
+• Amazon API Gateway + AWS Lambda – Secured API entry point and token validation layer for  application requests  
+• DynamoDB or another application data store – Relationship mapping and authorization context  between users, accounts, and people  
+• AWS Secrets Manager – Secure storage of credentials and integration secrets used by the  middleware  
+Authentication Flow 
+1. The user signs in via Amazon Cognito (email/password, OTP, or optional SMS MFA) 2. Cognito validates credentials and issues a JWT token 
+3. The client sends the JWT with each request to API Gateway 
+4. The middleware (Lambda) validates the token 
+5. Upon successful validation, the request proceeds to authorization and downstream processing 
+Authorization Model 
+Authorization is handled primarily within the middleware to support complex, domain-specific access rules. 
+• User vs. Account Separation 
+A Cognito user represents an authenticated identity, but not necessarily a monitored subscriber  or account. 
+The middleware maps users to the accounts and individuals they are allowed to access. • Relationship Mapping 
+Access is determined by relationships (e.g., caregiver → subscriber), stored in a database such  as DynamoDB. 
+• Role-Based Access (Coarse-Grained) 
+High-level roles (e.g., caregiver, subscriber) can be managed using Cognito groups or attributes. • Fine-Grained Permissions 
+Detailed access rules (e.g., which data or actions are allowed) are enforced within middleware  logic. 
+Invitation and Onboarding Flow 
+The identity model supports invitation-based onboarding for scenarios such as caregiver access. In this  approach, invitation workflows establish the required account relationship before or during the user’s  Cognito onboarding process. 
+Once the invited user completes registration or sign-in, the middleware links that authenticated identity  to the pre-defined account relationship and associated access permissions. This provides a controlled  way to provision multi-user access without embedding that logic directly in the authentication system. 
+Multi-Factor Authentication (Optional) 
+Optional SMS-based multi-factor authentication can be supported through Amazon Cognito. If enabled,  the application can present an additional SMS verification step during sign-in before Cognito issues  session tokens.
+App Middleware Architecture Summary 
+SMS delivery is handled through AWS messaging resources configured within the AWS account.  Because this capability is optional, it can be enabled selectively based on security requirements,  onboarding flow, or user type without changing the broader identity architecture. 
+Key Design Principles 
+• Separation of concerns: Authentication is handled by Cognito, while authorization is enforced  within the middleware.  
+• Flexible identity model: The system supports a distinction between authenticated app users  and monitored account records.  
+• Centralized access control: Authorization decisions are evaluated in one server-side layer rather  than distributed across clients.  
+• Role and relationship awareness: High-level roles can be stored in Cognito, while relationship based permissions remain application-driven.  
+• Extensibility: New roles, invitation models, and permission rules can be introduced without  redesigning the authentication platform.  
+Key Outcome 
+The system can reliably determine: 
+• Who the user is 
+• What role they hold  
+• Which accounts and individuals they are linked to 
+• What actions they are authorized to perform 
+This creates a secure and extensible identity model that supports both straightforward authentication  and more complex caregiver/subscriber access relationships. 
+2. Data Aggregation 
+Purpose 
+Establishes the middleware as the primary aggregation layer for application data. Its role is to combine  information from multiple backend systems into a single, app-facing contract so that the frontend can  operate against one consistent API surface rather than coordinating separate integrations across  Affiliated APIs, Salesforce APIs, and device services. 
+By centralizing aggregation within the middleware, the application can present unified views to mobile  and web clients while reducing frontend complexity and shielding client applications from backend specific structures and dependencies. 
+Key Components 
+• AWS Lambda – Primary orchestration layer for data retrieval, combination, and response  assembly  
+• Amazon API Gateway – Secure client entry point for application requests  
+• AWS Secrets Manager – Secure storage and retrieval of credentials required for downstream  API access  
+• Affiliated APIs – Source of core account, profile, contact, billing, and event-history data  • Salesforce APIs – Source of CRM, service, case, and account-context data where relevant to the  user experience 
+App Middleware Architecture Summary 
+• Device API – Source of operational device data such as GPS, battery, fall-related signals, and  current location behavior  
+• DynamoDB (optional) – Support for lightweight caching, lookup data, or application-side  aggregation support where needed  
+API Flow 
+1. The mobile app makes an HTTPS request to Amazon API Gateway for an app-facing endpoint,  including the Cognito JWT in the Authorization header.  
+2. Amazon API Gateway receives the request and routes it to the appropriate AWS Lambda function that implements the middleware logic.  
+3. The AWS Lambda middleware validates the Cognito JWT, confirms the request is authenticated,  and extracts the user identity and claims.  
+4. The middleware checks the user’s application-level access rules, using Amazon DynamoDB 5. If the request is authorized, the middleware reads the required backend API credentials from  AWS Secrets Manager. 
+6. The AWS Lambda function builds the downstream request for the Account API, mapping the  authenticated app user to the correct backend account identifier.  
+7. The middleware sends the outbound request from AWS Lambda to the Account API over  HTTPS, using the credentials retrieved from AWS Secrets Manager.  
+8. The Account API returns the requested account data back to the Lambda middleware.  9. The AWS Lambda middleware normalizes and shapes the Account API response into a  frontend-friendly payload, hiding backend-specific field names or inconsistencies if needed.  10. The middleware returns the final response to Amazon API Gateway.  
+11. Amazon API Gateway sends the normalized JSON response back to the mobile app over  HTTPS.  
+Aggregation Model 
+Data aggregation is handled primarily within the middleware. When the client requests information, the  middleware is responsible for determining which backend systems must be queried, retrieving the  necessary data, and assembling a unified response optimized for frontend consumption. 
+This model allows the application to consume a single API contract even when the underlying data  originates from multiple systems with different responsibilities, structures, and access methods. 
+Source Responsibilities 
+• Affiliated APIs 
+• Affiliated APIs serve as the primary source for core business and customer data. This includes  account information, profile details, contact records, billing data, and event history. These APIs  provide much of the foundational information required for the core application experience. • Salesforce API 
+• Salesforce APIs contribute additional customer and operational context where needed. This  may include CRM data, case information, service details, and broader account context that  supports the end-user experience or internal workflows surfaced through the application. • Device Data Warehouse API 
+• The Device API provides operational and telemetry-related information associated with  monitored devices not covered by the existing Affiliated Device API. This includes data such as  GPS position, battery status, fall-related signals, and historical location. 
+App Middleware Architecture Summary 
+App-Facing Response Composition 
+The middleware combines these backend sources into app-specific views designed around the needs  of the frontend. Rather than exposing raw backend responses directly, the middleware assembles data  into unified responses for screens and workflows such as: 
+This approach improves frontend simplicity, supports a more stable application contract, and allows  backend systems to evolve independently without requiring direct client integration changes. 
+Optional Caching and Lookup Support 
+Where beneficial, DynamoDB can be used to support lightweight caching, lookup acceleration, or other  aggregation-related support functions. This can help reduce repeated downstream calls for commonly  accessed data and improve performance for views that rely on repeated access to the same account,  relationship, or device context. 
+Key Design Principles 
+• Single application contract: The frontend should interact with one middleware API surface  rather than multiple backend systems.  
+• Centralized orchestration: Data retrieval and composition should occur within the middleware,  not in the client application.  
+• Backend abstraction: The middleware should shield frontend applications from backend specific structures and integration details.  
+• Flexible composition: Data from account, CRM, and device systems can be combined as  needed to support user-facing workflows.  
+• Extensibility: Additional data sources can be incorporated later without requiring major changes  to the frontend integration model.  
+Key Outcome 
+The result is a centralized aggregation layer that can reliably assemble unified, frontend-ready  responses from Affiliated APIs, Salesforce APIs, and device services. This enables the application to  deliver consistent account, alert, device, and caregiver experiences through a single controlled API  surface. 
+3. Push Notifications and Eventing 
+Purpose 
+This component establishes the event-driven notification model for emergency and account-level alerts  within the application. Its purpose is to deliver timely push notifications to subscribers and caregivers  based on internal system events, while keeping notification delivery separate from normal  request/response API traffic. 
+Emergency notifications should be initiated by internal event hooks rather than by continuous client  polling. This approach improves responsiveness, reduces unnecessary API traffic, and provides a  cleaner separation between operational event handling and standard application data access.
+App Middleware Architecture Summary 
+Key Components 
+• Internal event hooks – Source of emergency and account-level events from existing event driven systems 
+• Amazon API Gateway– AWS intake layer for receiving normalized internal events • AWS Lambda – Event processing and notification orchestration 
+• DynamoDB and/or middleware relationship lookup – Recipient and device resolution based on  account relationships and notification preferences 
+• APNs (iOS) and FCM (Android) – Push delivery channels for mobile notifications Event Processing Flow 
+1. An internal system generates an emergency event for a given account number.  2. That event is sent into AWS through the intake layer on Amazon API Gateway 3. The AWS intake layer passes the event to an AWS Lambda notification processor.  4. The notification processor evaluates the event details and determines what type of notification  needs to be sent.  
+5. The notification processor looks up the appropriate recipients for the event from the  DynamoDB, which includes the caregivers or subscribers associated with the affected account.  6. The processor sends push notifications to the appropriate platforms using APNs for iOS  devices and FCM for Android devices.  
+7. The mobile devices receive the emergency notification.  
+Event Routing 
+Event routing is handled within the notification processing layer. Each incoming event is first  normalized into a consistent internal format and then routed to the correct recipients based on account  relationships and notification preferences. 
+This allows the system to notify the appropriate subscribers, caregivers, or other linked users for a  given account while maintaining flexibility as relationship models evolve. 
+Recipient and Device Resolution 
+Recipient determination is based on the account relationships defined within the middleware and  supported by DynamoDB. Once the relevant users are identified, the system resolves the active mobile  devices associated with those users and prepares the push notification for delivery. 
+This separation between event routing and device resolution helps keep the notification flow modular  and easier to extend. 
+Deduplication 
+Deduplication should be enforced within the eventing pipeline to prevent duplicate push notifications  during retries or repeated upstream hook delivery. An idempotency key such as cs_no + event type +  alarminc_no + timestamp can be used to identify repeated instances of the same event and suppress  duplicate delivery. 
+This ensures that retry behavior and upstream event repetition do not result in multiple notifications  being sent for a single alert condition.
+App Middleware Architecture Summary 
+Key Design Principles 
+• Event-driven delivery: Emergency notifications are triggered by internal hooks rather than client  polling. 
+• Separation of concerns: Push delivery is handled independently from standard application  request/response traffic. 
+• Centralized routing: Recipient selection and device targeting are handled in one server-side  notification flow. 
+• Deduplication by design: Idempotency is built into the pipeline to prevent repeated notifications. • Lightweight notification payloads: Push messages act as signals, while full event details are  retrieved securely through the application API. 
+Key Outcome 
+The system can reliably receive internal emergency events, route them to the correct subscribers and  caregivers, prevent duplicate delivery, and send lightweight push notifications to mobile devices  through APNs and FCM. This provides a responsive and scalable notification model that aligns with the  broader middleware architecture. 
+4. Logging and Analytics 
+Purpose 
+This component establishes the logging, monitoring, and analytics strategy for the middleware stack.  Its purpose is to provide a centralized AWS-native collection point for operational telemetry, support  integration with the organization’s existing observability platforms, and maintain a clear separation  between infrastructure/application logs and product analytics events. 
+CloudWatch serves as the primary AWS landing point for logs and metrics generated by the middleware  stack, including AWS Lambda, Amazon API Gateway, and related AWS services. From that foundation,  logs and metrics can be forwarded to external platforms based on their intended use. 
+Key Components 
+• Amazon CloudWatch – Primary AWS-native collection point for logs, metrics, and alarms • CloudWatch Alarms – Native alerting for service health, failures, and threshold-based  conditions 
+• Datadog – Service health monitoring, dashboards, latency/error tracking, alerting, and selected  high-value logs 
+• Sumo Logic – Centralized operational log search and long-term cross-system analysis • Mixpanel – Curated product analytics and user behavior event tracking 
+Logging Model 
+Logging is anchored in CloudWatch as the native telemetry layer for AWS-hosted application services.  Logs and metrics generated by Lambda, API Gateway, and related components are collected first in  CloudWatch, where they support short-term troubleshooting, native AWS visibility, and alarm-driven  monitoring. 
+This model provides a stable operational baseline within AWS while allowing selected data to be  forwarded to external systems for broader search, analysis, and monitoring use cases.
+App Middleware Architecture Summary 
+Monitoring and Alerting 
+CloudWatch and CloudWatch Alarms provide the base level of service monitoring and alerting for the  middleware environment. These services are used to track AWS-native metrics, identify failures, and  support threshold-based alarms for core operational behavior. 
+Datadog complements this capability by providing broader service health monitoring, dashboarding,  latency and error tracking, and alerting across the application stack. It may also ingest selected high value logs where doing so supports faster incident detection or troubleshooting. 
+Centralized Log Analysis 
+Sumo Logic remains the primary destination for centralized operational log analysis and longer-term  cross-system investigation. This includes searching and correlating middleware logs with other  enterprise systems, enabling a broader operational view than AWS-native logs alone. 
+By positioning Sumo Logic as the main destination for retained operational log analysis, the  architecture supports continuity with existing observability practices while still keeping CloudWatch as  the default collection point inside AWS. 
+Product Analytics 
+Mixpanel is used exclusively for curated product and user-behavior events. It is not intended to receive  raw infrastructure logs or unfiltered application telemetry. 
+This distinction ensures that product analytics remain focused on user interactions and application  behavior, while operational logs continue to serve monitoring, troubleshooting, and audit needs. It also  helps keep analytics data intentional, relevant, and easier to interpret. 
+Forwarding and Routing 
+Forwarding from AWS to external observability platforms can be handled through CloudWatch  subscription filters, Kinesis Data Firehose, or similar routing mechanisms where needed. These  capabilities support buffering, delivery, and controlled distribution of telemetry to downstream  platforms without changing the primary AWS-native collection model. 
+This approach allows the architecture to integrate with multiple existing platforms while preserving a  clean and manageable telemetry pipeline. 
+Logging Discipline and Data Handling 
+Operational logging should follow a structured format so that logs can be consistently parsed,  searched, and correlated across CloudWatch, Sumo Logic, and Datadog. Redaction and data handling  controls should also be applied to ensure that sensitive or inappropriate data is not propagated into  logs or analytics platforms. 
+A clear separation should be maintained between: 
+• operational logs, used for application behavior, failures, and troubleshooting • monitoring metrics, used for service health and alerting 
+• product analytics events, used for user behavior and feature adoption analysis
+App Middleware Architecture Summary 
+This separation ensures that each platform receives the telemetry best suited to its purpose. Key Design Principles 
+• AWS-native first: CloudWatch is the primary landing point for middleware logs and metrics. • Purpose-based routing: Telemetry is forwarded to external platforms based on operational,  monitoring, or analytics use case. 
+• Separation of concerns: Operational logs, monitoring signals, and product analytics events are  modeled and routed separately. 
+• Structured telemetry: Logs should be emitted in a consistent, machine-readable format to  support downstream parsing and search. 
+• Controlled data handling: Redaction and telemetry discipline should prevent inappropriate or  unnecessary data from entering observability pipelines. 
+Key Outcome 
+The result is a logging and analytics model in which CloudWatch provides the AWS-native operational  baseline, Sumo Logic supports centralized log analysis, Datadog supports service health monitoring  and alerting, and Mixpanel captures curated product analytics. This creates a scalable and  maintainable telemetry strategy that supports both engineering operations and application insight  without conflating their purposes.
+App Middleware Architecture Summary 
+Example Diagrams 
+Fetch Account information 
+  
+
+Emergency push notifications
+  
+App Middleware Architecture Summary

@@ -1,0 +1,676 @@
+Introduction ...............................................................................................................1
+Connecting to API .......................................................................................................1
+Overview ....................................................................................................................1
+Authentication............................................................................................................2
+Initial Authentication Request ............................................................................................................................2
+Subsequent Service Requests ..............................................................................................................................2
+Refreshing the API Session ...................................................................................................................................3
+
+Throttling ...................................................................................................................3
+Output ........................................................................................................................3
+POST Data...................................................................................................................4
+Rate Limiting...............................................................................................................4
+Service Requests .........................................................................................................5
+Recent History ...........................................................................................................................................................5
+Optional Parameters .................................................................................................................................................. 5
+cURL Example ................................................................................................................................................................ 5
+Response ........................................................................................................................................................................... 5
+History Create ............................................................................................................................................................6
+Limits ................................................................................................................................................................................. 6
+cURL Example ................................................................................................................................................................ 6
+Response ........................................................................................................................................................................... 7
+History Ready .............................................................................................................................................................7
+cURL Example ................................................................................................................................................................ 8
+Response ........................................................................................................................................................................... 8
+History Get ...................................................................................................................................................................8
+cURL Example ................................................................................................................................................................ 8
+Response ........................................................................................................................................................................... 8
+Signal Types ............................................................................................................................................................. 10
+cURL Example ..............................................................................................................................................................10
+Response .........................................................................................................................................................................10
+Accounts Create...................................................................................................................................................... 10
+cURL Example ..............................................................................................................................................................10
+Response .........................................................................................................................................................................11
+Accounts Ready ...................................................................................................................................................... 11
+cURL Example ..............................................................................................................................................................11
+Response .........................................................................................................................................................................12
+Accounts Get ............................................................................................................................................................ 12
+cURL Example ..............................................................................................................................................................12
+Response .........................................................................................................................................................................12
+
+Output Column Values .............................................................................................. 13
+Recent Events .......................................................................................................................................................... 13
+History Get ................................................................................................................................................................ 13
+Accounts Get ............................................................................................................................................................ 14
+
+Affiliated REST Report API v1.0.8
+
+September 2025
+
+i
+
+REST Report API
+Introduction
+The Affiliated Monitoring Report API provides a simple RESTful interface to receive
+alarm activity reports and data from Affiliated. Users of this API are able to retrieve
+activity data on individual accounts or for all of their accounts.
+
+Connecting to API
+The Report API requires https for connection.
+The API is at https://[subdomain].alertmessage.com/report
+Environment Subdomain
+Production
+api
+Sandbox
+sb
+
+Overview
+The API uses OAuth 2.0's password grant type to authenticate users. It currently has
+5 methods.
+• Get Recent History– Get 50 most recent event signals for an account
+• History Create– Request a history report
+• History Ready– Check to see if a history report is ready
+• History Get – Retrieve history report.
+• Get Signal Type – get a list of available signal types for filtering.
+
+Affiliated REST Report API v1.0.8
+
+September 2025
+
+1
+
+Authentication
+Initial Authentication Request
+The Reports API uses OAuth 2.0’s password grant type to authenticate API users.
+This is done with a post request to
+https://[subdomain].alertmessage.com/token
+using the POST method, sending four parameters
+Key Name
+grant_type
+username
+password
+client_id
+
+Value
+password
+[api_username]
+[api_password]
+affiliated-report
+
+curl --location 'https://[subdomain].alertmessage.com/token' \
+--form 'grant_type="password"' \
+--form 'username="[api_username]"' \
+--form 'password="[api_password]"' \
+--form 'client_id="affiliated-report"'
+
+This will return a JSON string with an access token and a refresh token to be used in
+subsequent API requests.
+{
+"access_token": "[access_token]",
+"expires_in": 3600,
+"token_type": "Bearer",
+"scope": null,
+"refresh_token": "[refresh_token]"
+}
+
+or in case of error
+{
+"error":"[error_name]",
+"error_description":"[error description]"
+}
+
+Refresh tokens are valid for 30 days from the time of issue.
+
+Subsequent Service Requests
+For subsequent service requests, use an Authorization Bearer Token in the request
+header following OAuth 2.0's standard.
+curl -H 'Authorization: Bearer [access_token]‘
+https://[subdomain].alertmessage.com/report/[cs_no]
+Affiliated REST Report API v1.0.8
+
+September 2025
+
+2
+
+Refreshing the API Session
+The API session can be refreshed using the refresh token issued by the initial
+authentication request or the refresh request itself.
+This is done with a post request to
+https://[subdomain].alertmessage.com/token/refresh
+using the POST method, sending four parameters
+Key Name
+grant_type
+client_id
+refresh_token
+
+Value
+password
+affiliated-report
+refresh token
+
+curl --location
+'https://[subdomain].alertmessage.com/token/refresh' \
+--form 'grant_type="password"' \
+--form 'client_id="affiliated-report"' \
+--form 'refresh_token="[refresh_token]"'
+
+This will return the same two tokens as the initial authentication request.
+
+Throttling
+You are limited in how many report requests you can make per hour. Recent
+History and History Create have different limits, with Recent History’s limit being
+significantly higher. To learn your limits or to request an increase, please contact
+Account Management.
+
+Output
+All output from the API is a JSON object. It will always include a “result” value, which
+will be “ok” if the process ran correctly.
+e.g. {
+"result": "ok",
+"report_id": 8933
+}
+
+If there is an error, “result” will be “error” and an “msg” object with a description of
+the error will be returned.
+e.g. {
+"result": "error",
+Affiliated REST Report API v1.0.8
+
+September 2025
+
+3
+
+"msg": {
+"error": "Invalid ownership"
+}
+}
+
+POST Data
+If the service request requires POST data, it is passed as raw POST data comprised
+of a JSON string. If this document designates a POST variable as optional, that
+variable should not be included in the JSON string, unless it is being used. NULL and
+FALSE values for passed variables will affect the output of a service call.
+
+Rate Limiting
+The API has a rate limit of 600 requests per minute per IP address. When an IP
+address exceeds the rate limit, the API will return the following response:
+{
+"error": {
+"code": 429,
+"message": "Rate limit exceeded. Maximum 600 requests per
+minute allowed.",
+"type": "rate_limit_exceeded",
+"retry_after_seconds": 60,
+"limit": 600,
+}
+}
+
+If you receive this error, you may resume making requests after the specified
+duration, but it is recommended that you update your integration to accommodate
+the rate limit to prevent further interruptions.
+
+Affiliated REST Report API v1.0.8
+
+September 2025
+
+4
+
+Service Requests
+Recent History
+Returns the 50 most recent events for the specified account.
+GET – https://[subdomain].alertmessage.com/report/recent/[cs_no]
+Optional Parameters
+page int
+Starting with page 2, provides the next 50 most recent events.
+Response will contain less than 50 events or be empty when
+maximum pages have been reached or exceeded.
+oa
+boolean When set to false, the response will exclude events with an
+eventrpt_id value of “OA”. These events are included by default
+or when value is set to true.
+cURL Example
+curl -X GET
+https://[subdomain].alertmessage.com/report/recent/[cs_no] -H
+'authorization: Bearer [access_token]‘ -H 'cache-control: nocache'
+
+cs_no – Central station number (account number) of account whose recent history
+is being requested
+Response
+JSON object containing result status and an array of up to 50 events.
+e.g.
+{
+
+"result": "ok",
+"events": [
+{
+"servtype_id": "NOTEST",
+"procopt_id": "SETATI,RPT,TT",
+"operator_action_type": "",
+"eventrpt_id": "TF",
+"servco_name": "Demo",
+"corpacct_id": "",
+"servco_no": "880888",
+"sitetype_id": "PMOB",
+"sitetype": "PERS- Mobile (Generic)",
+"state_id": "NJ",
+"servtype": "No Test Timer Received",
+"site_addr1": "2 Stahuber Ave",
+"event_date": "2025-09-19 17:21:45",
+"seqno": "4003958674",
+"system_no": "300417622",
+
+Affiliated REST Report API v1.0.8
+
+September 2025
+
+5
+
+"zone_id": "",
+"full_clear_flag": "N",
+"test_seqno": "",
+"event_id": "TTFLOG",
+"event_descr": "TIMER TEST NOT RECEIVED (LOG)",
+"user_name": "",
+"user_id": "",
+"area": "",
+"zonestate_id": "",
+"match": "LATES-ati",
+"phone": "",
+"zone_comment": "",
+"additional_info": "Late Timer Test 09/19/2025
+17:21:44",
+"alarminc_no": "1662599911",
+"cs_no": "1991142",
+"site_name": "Gil Test - Prod PMOB",
+"system_descr": null
+},
+etc.
+}
+
+History Create
+Creates a request for an Event History Report. A history report is used to query
+either a specific date range for a single account or a specific date range for all or
+some of your accounts.
+POST – https://[subdomain].alertmessage.com/report/history
+Limits
+This report applies a limit to how many days are queried at one time.
+•
+•
+
+If a single [cs_no] is specified, the date range is limited to 366 days.
+For all other queries, the date range is limited to 31 days.
+
+cURL Example
+curl -X POST \
+https://[subdomain].alertmessage.com/report/history \
+-H 'authorization: Bearer [access_token]‘ \
+-H 'cache-control: no-cache' \
+-H 'content-type: application/json' \
+-d '{
+"servco_no": "[service_company_no]",
+"before": "2017-10-11 00:00:00",
+"after": "2017-10-01 00:00:00",
+"cs_start": "[first account number]",
+"cs_end": "[last account number]",
+
+Affiliated REST Report API v1.0.8
+
+September 2025
+
+6
+
+"signal_type": ["TT","TF"],
+"title": "Test Report TT TF w/corpacct"
+}'
+
+servco_no
+
+integer
+
+before
+
+cs_start
+cs_end
+signal_types
+
+yyyy-mm-dd
+hh:mm:ss
+yyyy-mm-dd
+hh:mm:ss
+varchar(20)
+varchar(20)
+list
+
+title
+
+varchar(255)
+
+after
+
+If your account has access to multiple service companies, a
+service company number. This will limit the report to just
+that service company.
+Date/time stamp using the YYYY-MM-DD hh:mm:ss format.
+If it is not supplied, the current datetime will be used.
+Date/time stamp using the YYYY-MM-DD hh:mm:ss format.
+If it is not supplied, 30 days ago will be used.
+The first cs_no in a range of account numbers to filter on.
+The last cs_no in a range of account numbers to filter on.
+JSON array of signal types to filter on. See Signal Types
+service for possible values.
+The title of the report. This will not appear in the final
+report output. If the API user logs in with their credentials
+to the Affiliated Partner Portal, the title will appear in the
+list of generated reports. A title will be assigned if not
+provided.
+
+For a single system, set both cs_start and cs_end to the system’s cs_no.
+Note: If a range of more than one system is specified, the maximum date range for
+the request is limited to 31 days.
+Note: All parameters are optional. If a parameter is not being used, it should be
+omitted from the JSON string. NULL or FALSE values or empty strings will affect the
+output.
+Response
+JSON object containing result status and report_id
+e.g.
+{
+"result": "ok",
+"report_id": 8903
+}
+
+result – response status. Should be “ok”.
+report_id – identifier for requested report.
+
+History Ready
+Checks if a requested report has finished processing and is ready for downloading.
+GET – https://[subdomain].alertmessage.com/report/history/[report_id]/ready
+Affiliated REST Report API v1.0.8
+
+September 2025
+
+7
+
+cURL Example
+curl -X GET \
+https://[subdomain].alertmessage.com/report/history/[report_id]/r
+eady \
+-H 'authorization: Bearer [access_token]‘ \
+-H 'cache-control: no-cache'
+
+report_id – the identifier for a report returned by History Create.
+Response
+JSON object containing result and status
+e.g.
+{
+
+"result": "ok",
+"status": "ready"
+}
+
+result – response status. Should be “ok”.
+status – Indicates whether report is ready for download. A response of “ready”
+means that the report is completed and ready for download. A response of
+“pending” indicates that the report is not ready yet. Wait a few seconds and try
+again.
+
+History Get
+Retrieves the CSV file of a report when it is ready
+GET – https://[subdomain].alertmessage.com/report/history/[report_id]
+cURL Example
+curl -X GET \
+https://[subdomain].alertmessage.com/report/history/[report_id]
+\
+-H 'authorization: Bearer [access_token]‘ \
+-H 'cache-control: no-cache'
+
+report_id – the identifier for a report returned by History Create.
+Response
+A csv file with the contents of the report.
+Affiliated REST Report API v1.0.8
+
+September 2025
+
+8
+
+Affiliated REST Report API v1.0.8
+
+September 2025
+
+9
+
+Signal Types
+Retrieves the full list of signal types that can be used to filter History reports.
+GET – https://[subdomain].alertmessage.com/report/signal_types
+cURL Example
+curl -X GET \
+https://[subdomain].alertmessage.com/report/signal_types \
+-H 'authorization: Bearer [access_token]‘ \
+-H 'cache-control: no-cache' \
+
+Response
+A JSON object with result status and array of signal_types
+e.g.
+{
+
+"result": "ok",
+"signal_types": [
+{
+"eventrpt_id": "A",
+"descr": "Alarm Misc"
+},
+{
+"eventrpt_id": "AA",
+"descr": "Alarm Accessed"
+},
+…,
+{
+"eventrpt_id": "ZZ",
+"descr": "No Group Assigned"
+}
+]
+}
+
+Accounts Create
+Creates a request for an Accounts Report. This report will provide a list of all
+accounts accessible to the user along with relevant information for each.
+POST – https://[subdomain].alertmessage.com/report/account
+cURL Example
+curl -X POST \
+https://[subdomain].alertmessage.com/report/account \
+-H 'authorization: Bearer [access_token]‘ \
+-H 'cache-control: no-cache' \
+-H 'content-type: application/json' \
+
+Affiliated REST Report API v1.0.8
+
+September 2025
+
+10
+
+-d '{
+"Report_Title": "New Accounts Report",
+"OOS_Status": "Both"
+}'
+
+Report_Title
+
+varchar(255)
+
+OOS_Status
+
+enum
+
+The title of the report. This will not appear in the final
+report output. If the API user logs in with their credentials
+to the Affiliated Partner Portal, the title will appear in the
+list of generated reports. A title will be assigned if not
+provided.
+The current status of accounts you would like to query.
+Possible values:
+• “In Service”
+• “Out Of Service”
+• “Both”
+
+Note: All parameters are optional. If a parameter is not being used, it should be
+omitted from the JSON string. NULL or FALSE values or empty strings will affect the
+output.
+Response
+JSON object containing result status and report_id
+e.g.
+{
+
+"result": "ok",
+"report_id": 8903
+}
+
+result – response status. Should be “ok”.
+report_id – identifier for requested report.
+
+Accounts Ready
+Checks if a requested report has finished processing and is ready for downloading.
+GET – https://[subdomain].alertmessage.com/report/account/[report_id]/ready
+cURL Example
+curl -X GET \
+https://[subdomain].alertmessage.com/report/account/[report_id]/r
+eady \
+-H 'authorization: Bearer [access_token]‘ \
+-H 'cache-control: no-cache'
+
+Affiliated REST Report API v1.0.8
+
+September 2025
+
+11
+
+report_id – the identifier for a report returned by Accounts Create.
+Response
+JSON object containing result and status
+e.g.
+{
+
+"result": "ok",
+"status": "ready"
+}
+
+result – response status. Should be “ok”.
+status – Indicates whether report is ready for download. A response of “ready”
+means that the report is completed and ready for download. A response of
+“pending” indicates that the report is not ready yet. Wait a few seconds and try
+again.
+
+Accounts Get
+Retrieves the CSV file of a report when it is ready
+GET – https://[subdomain].alertmessage.com/report/account/[report_id]
+cURL Example
+curl -X GET \
+https://[subdomain].alertmessage.com/report/account/[report_id]
+\
+-H 'authorization: Bearer [access_token]‘ \
+-H 'cache-control: no-cache'
+
+report_id – the identifier for a report returned by Accounts Create.
+Response
+A csv file with the contents of the report.
+
+Affiliated REST Report API v1.0.8
+
+September 2025
+
+12
+
+Output Column Values
+Recent Events
+event_date – date/time of event
+seqno – event sequence number
+alarminc_no – number assigned to events related to one dispatching incident;
+events with the same value can be grouped together
+system_no – unique id of system
+zone_id – ID of zone that generated event
+full_clear_flag – whether event full cleared the event
+test_seqno – if the event created a test, the sequence number of the test
+event_id – identifier of event
+event_descr – description of event
+user_name –user name who generated event
+user_id – user id of user who generated event at panel
+area – partition the signal was generated from
+zonestate_id – status of the zone (usually A – Alarm, T – Trouble, or R – Restore)
+match – information about how signal was interpreted by automation software
+phone – phone number dialed for event
+zone_comment – description of the zone
+additional_info – additional information for event
+servtype_id – event category
+procopt_id – process option id
+operator_action_type
+servco_name – Service Company site belongs to
+corpacct_id – Corporation Account ID assigned to site
+servco_no – Service Company site belongs to (number)
+sitetype_id – what kind of site the system belongs to
+sitetype – what kind of site the system belongs to (description)
+state_id – state/province/territory of site
+servtype – event category (description)
+site_addr1 – first address value
+cs_no – Central Station Number, a.k.a. account number
+site_name – name of the site system belongs to
+system_descr – system description (if provided)
+
+History Get
+Account_Number – Central Station Number
+Site_Name – name of the site system belongs to, includes first address value
+Dealer – service Company site belongs to, number and name
+Site_Type – what kind of site the system belongs to
+Corp_ID – Corporation Account ID assigned to site
+Event_Date – date/time of event
+
+Affiliated REST Report API v1.0.8
+
+September 2025
+
+13
+
+Zone – ID of zone that generated event
+State – status of the zone (usually A – Alarm, T – Trouble, or R – Restore)
+Event – event ID and description
+Additional Info – description of the zone, phone number dialed, other information
+Area – partition the signal was generated from
+User_Name –user name who generated event
+User_No – user id of user who generated event at panel
+Comment – additional information for event
+Event_Service_Type – event category (does not necessarily match “signal_type”
+sent on History Create)
+Match – information about how signal was interpreted by automation software
+Alarminc_No – number assigned to events related to one dispatching incident;
+events with the same value can be grouped together
+
+Accounts Get
+cs_no – Central Station Number
+site_name – name of the site system belongs to,
+site_addr1 – first line of the address of the site the system belongs to
+site_addr2 – second line of the address of the site the system belongs to
+city_name – city of the site
+state_id – state or province of the site
+zip_code – zip code of the site
+timezone – time zone of the site
+phone1 – first phone for the site
+phone2 – second phone for the site
+sitetype_id – site/location type of the site
+systype_id – system type or template assigned to system
+system_descr – description provided for system
+ooscat_id – Out of Service category (empty if system is in service)
+active_date – date system went active regardless of current status (empty if never
+in service)
+oos_start_date – date system went inactive (empty if system is in service)
+Test_Timer – interval in hours at which test timers are expected for system
+DeviceID – ID/IMEI of device assigned to system
+DeviceNO – phone number associated with device
+servco_no – number of the service company associated with site
+servco_name – name of the service company associated with site
+corpservco_no – number of any corp account associated with site
+corpservco_name – name of any corp account associated with site
+
+Affiliated REST Report API v1.0.8
+
+September 2025
+
+14
+
+

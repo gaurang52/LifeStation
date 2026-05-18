@@ -1,0 +1,674 @@
+Introduction ...............................................................................................................1
+Connecting to API .......................................................................................................1
+Overview ....................................................................................................................1
+Authentication............................................................................................................1
+Initial Authentication Request ............................................................................................................................1
+Subsequent Service Requests ..............................................................................................................................2
+Refreshing the API Session ...................................................................................................................................2
+Device Identifiers......................................................................................................................................................3
+
+Output ........................................................................................................................3
+Error ...............................................................................................................................................................................3
+Other data ....................................................................................................................................................................4
+
+Rate Limiting...............................................................................................................4
+Service Requests .........................................................................................................5
+Get Devices ..................................................................................................................................................................5
+cURL Example ................................................................................................................................................................ 5
+Parameters...................................................................................................................................................................... 5
+Response ........................................................................................................................................................................... 5
+Device Read .................................................................................................................................................................5
+cURL Example ................................................................................................................................................................ 6
+Response ........................................................................................................................................................................... 6
+Device Get Most Recent Information ................................................................................................................6
+cURL Example ................................................................................................................................................................ 6
+Response ........................................................................................................................................................................... 6
+Device Request Signal .............................................................................................................................................7
+cURL Example ................................................................................................................................................................ 7
+Response ........................................................................................................................................................................... 7
+Request Throttling....................................................................................................................................................... 8
+Device Get Fall Detection Status .........................................................................................................................8
+cURL Example ................................................................................................................................................................ 8
+Response ........................................................................................................................................................................... 8
+Device Turn On Fall Detection.............................................................................................................................8
+cURL Example ................................................................................................................................................................ 9
+Response ........................................................................................................................................................................... 9
+Device Turn Off Fall Detection ............................................................................................................................9
+cURL Example ................................................................................................................................................................ 9
+Response ........................................................................................................................................................................... 9
+SIM Read .................................................................................................................................................................... 10
+cURL Example ..............................................................................................................................................................10
+Response .........................................................................................................................................................................10
+SIM Activate ............................................................................................................................................................. 11
+cURL Example ..............................................................................................................................................................11
+Response .........................................................................................................................................................................11
+SIM Deactivate ........................................................................................................................................................ 11
+cURL Example ..............................................................................................................................................................11
+Response .........................................................................................................................................................................11
+
+Brighton Device API v1.0.8
+
+August 2025
+
+i
+
+Data Objects ............................................................................................................. 13
+Device ..............................................................................................................................................................................13
+Sim .....................................................................................................................................................................................13
+
+Brighton Device API v1.0.8
+
+August 2025
+
+ii
+
+Device API
+Introduction
+The Brighton Device API provides a simple RESTful interface with JSON-formatted
+responses to send and receive device information to Brighton. Users of this API are
+able to read, add, delete and modify the information associated with each device.
+
+Connecting to API
+The Device API requires https for connection.
+The API is at https://[subdomain].alertmessage.com/device
+Environment Subdomain
+Production
+api
+Sandbox
+sb
+
+Overview
+The API uses OAuth 2.0's password grant type to authenticate users. It has 10
+methods.
+• Get Devices – Retrieve a list of all devices that the API user has access to
+• Device Read – retrieve the information for a specific device
+• Device Get Most Recent Information – most recent signal information for a
+device
+• Device Request Signal – Request that a device send a fresh signal to get its
+current status.
+• Device Get Fall Detection Status – retrieve Fall Detection status for a
+device.
+• Device Turn On Fall Detection – Request Fall Detection activation for a
+device.
+• Device Turn Off Fall Detection – Request Fall Detection deactivation for a
+device.
+• SIM Read – Retrieve the information about a given SIM card.
+• SIM Activate – Request SIM card activation.
+• SIM Deactivate – Request SIM card deactivation.
+
+Authentication
+Initial Authentication Request
+The Account API uses OAuth 2.0’s password grant type to authenticate API users.
+This is done with a post request to
+
+Brighton Device API v1.0.8
+
+August 2025
+
+1
+
+https://[subdomain].alertmessage.com/token
+using the POST method, sending four parameters
+Key Name
+grant_type
+username
+password
+client_id
+
+Value
+password
+[api_username]
+[api_password]
+brighton-api
+
+curl --location 'https://[subdomain].alertmessage.com/token' \
+--form 'grant_type="password"' \
+--form 'username="[api_username]"' \
+--form 'password="[api_password]"' \
+--form 'client_id=" brighton-api"'
+
+This will return a JSON string with an access token and a refresh token to be used in
+subsequent API requests.
+{
+"access_token": "[access_token]",
+"expires_in": 3600,
+"token_type": "Bearer",
+"scope": null,
+"refresh_token": "[refresh_token]"
+}
+
+or in case of error
+{
+"error":"[error_name]",
+"error_description":"[error description]"
+}
+
+Refresh tokens are valid for 30 days from the time of issue.
+
+Subsequent Service Requests
+For subsequent service requests, use an Authorization Bearer Token following
+OAuth 2.0's standard.
+curl -H 'Authorization: Bearer [access_token]'
+https://[subdomain].alertmessage.com/device/[identifier_type]/[id
+entifier]
+
+Refreshing the API Session
+The API session can be refreshed using the refresh token issued by the initial
+authentication request or the refresh request itself.
+
+Brighton Device API v1.0.8
+
+August 2025
+
+2
+
+This is done with a post request to
+https://[subdomain].alertmessage.com/token/refresh
+using the POST method, sending four parameters
+Key Name
+grant_type
+client_id
+refresh_token
+
+Value
+password
+brighton-api
+refresh token
+
+curl --location
+'https://[subdomain].alertmessage.com/token/refresh' \
+--form 'grant_type="password"' \
+--form 'client_id=" brighton-api"' \
+--form 'refresh_token="[refresh_token]"'
+
+This will return the same two tokens as the initial authentication request.
+
+Device Identifiers
+Each device can be identified by one of three identifiers
+• imei – Device-specific identification number
+• uid – ID supplied by partner from their system
+• iccid – SIM-specific identification number
+All API calls that refer to a specific device will include an [id_type] and an [id] in the
+URL, allowing the same service to access a device using any of the identifiers.
+
+Output
+All service requests will output a well-formatted JSON string.
+
+Error
+If a service requests returns an error, the status will be set to “error” and there will
+be an error array comprised of error messages.
+e.g.
+
+{
+"status": "error",
+"error": [
+"Could not process device: DEMO102011. Not
+authorized to use Device."
+]
+}
+
+Brighton Device API v1.0.8
+
+August 2025
+
+3
+
+Other data
+Some requests will return additional data, which depends on the specific request. If
+a request is a READ, which does not make any changes, result will be omitted.
+e.g. from Device Read
+{
+
+"device": {
+"Caller_ID": null,
+"Custom_Reference_Field": null,
+"Device_Status": "unassigned",
+"Fall_Detection_Status": "inactive",
+"Firmware_Version": "1",
+"ICCID": "8901030330002548XXXX",
+"IMEI": "14614614614XXXX",
+"SIM_Status": "Inactive",
+"Service_Company": 880888,
+"cs_no": null,
+"device_id": 380501
+},
+"errors": [],
+"status": "ok"
+}
+
+Rate Limiting
+The API has a rate limit of 600 requests per minute per IP address. When an IP
+address exceeds the rate limit, the API will return the following response:
+{
+"error": {
+"code": 429,
+"message": "Rate limit exceeded. Maximum 600 requests per
+minute allowed.",
+"type": "rate_limit_exceeded",
+"retry_after_seconds": 60,
+"limit": 600,
+}
+}
+
+If you receive this error, you may resume making requests after the specified
+duration, but it is recommended that you update your integration to accommodate
+the rate limit to prevent further interruptions.
+
+Brighton Device API v1.0.8
+
+August 2025
+
+4
+
+Service Requests
+Get Devices
+Returns a list of all devices that the API user has access to.
+GET – https://[subdomain].alertmessage.com/device
+cURL Example
+curl -X GET https://[subdomain].alertmessage.com/device -H
+'authorization: Bearer [access_token]' -H 'cache-control: nocache' -H 'accept: application/json'
+
+Parameters
+Parameters filter the results. Available fields are
+•
+•
+•
+•
+
+status – active or inactive status of the SIM card
+servco – service company number associated with device
+corp_id – corporate account id associated with device
+page – results are paginated in batches of 50; defaults to 1
+
+Response
+JSON object containing an devices list and a count.
+e.g.
+{
+"count": 1,
+"devices": [
+{
+"Custom_Reference_Field": null,
+"Device_Status": "unassigned",
+"IMEI": "999999999999999",
+"Service_Company": 999999,
+"cs_no": null
+}
+],
+"errors": [],
+"of": 1,
+"page": "1",
+"status": "ok"
+}
+
+Device Read
+Returns complete device information for a specific device.
+GET – https://[subdomain].alertmessage.com/device/[id_type]/[id]
+[id_type] – The type of identifier used to identify the device (‘imei’, ‘iccid’ or ‘uid’).
+
+Brighton Device API v1.0.8
+
+August 2025
+
+5
+
+[id] – The identifier of the device.
+
+cURL Example
+curl -X GET
+https://[subdomain].alertmessage.com/device/[id_type]/[id]
+-H 'authorization: Bearer [access_token]' -H 'cache-control: nocache' -H 'accept: application/json'
+
+Response
+Device JSON object for specified device
+e.g.
+{
+"device": {
+"Caller_ID": "5551234567",
+"Custom_Reference_Field": null,
+"Device_Status": "assigned",
+"Fall_Detection_Status": "pending",
+"Firmware_Version": "A1A",
+"ICCID": "11111111111111111111",
+"IMEI": "999999999999999",
+"SIM_Status": "Active",
+"Service_Company": 999999,
+"cs_no": "DEMO10102"
+},
+"errors": [],
+"status": "ok"
+}
+
+Device Get Most Recent Information
+Returns most recent signal information for a device.
+GET – https://[subdomain].alertmessage.com/device/[id_type]/[id]/recent
+[id_type] – The type of identifier used to identify the device (‘imei’, ‘iccid’ or ‘uid’).
+[id] – The identifier of the device.
+cURL Example
+curl -X GET
+https://[subdomain].alertmessage.com/device/[id_type]/[id]/recent
+-H 'authorization: Bearer [access_token]' -H 'cache-control: nocache' -H 'accept: application/json'
+
+Response
+JSON response object for specified device most recent signal
+
+Brighton Device API v1.0.8
+
+August 2025
+
+6
+
+e.g.
+
+{
+"errors": [],
+"signal": {
+"battery": {
+"level": 28,
+"timestamp": "2020-10-01 11:56:28"
+},
+"location": {
+"accuracy": "20",
+"latitude": "41.58661100",
+"longitude": -71.65123800",
+"timestamp": "2020-10-01 11:56:30",
+"type": "satellite"
+},
+"signal_strength": {
+"signal_strength": 100,
+"timestamp": "2020-10-01 11:56:28"
+},
+"timestamp": "2020-10-01 11:56:30"
+},
+"status": "ok"
+}
+
+Device Request Signal
+Send the device a request for it to send a new signal.
+For this feature to work, the device must be supported by the API. Speak with your
+account rep to confirm whether it will work.
+POST – https://[subdomain].alertmessage.com/device/[id_type]/[id]/signal
+[id_type] – The type of identifier used to identify the device (‘imei’, ‘iccid’ or ‘uid’).
+[id] – The identifier of the device.
+cURL Example
+curl -X GET
+https://[subdomain].alertmessage.com/device/[id_type]/[id]/signal
+-H 'authorization: Bearer [access_token]' -H 'cache-control: nocache' -H 'accept: application/json'
+
+Response
+JSON response object
+e.g.
+{
+"status": "ok",
+
+Brighton Device API v1.0.8
+
+August 2025
+
+7
+
+"errors": []
+}
+
+Request Throttling
+There is a limit of 5 requests per device per day.
+There is a limit of 500 requests per partner per day.
+
+Device Get Fall Detection Status
+Request current Fall Detection status for a specific device.
+For this feature to work, the device must be supported by the API. Speak with your
+account rep to confirm whether it will work.
+GET – https://[subdomain].alertmessage.com/device/[id_type]/[id]/falldetection
+[id_type] – The type of identifier used to identify the device (‘imei’, ‘iccid’ or ‘uid’).
+[id] – The identifier of the device.
+cURL Example
+curl -X GET
+https://[subdomain].alertmessage.com/device/[id_type]/[id]/fallde
+tection
+-H 'authorization: Bearer [access_token]' -H 'cache-control: nocache' -H 'accept: application/json'
+
+Response
+JSON response object.
+e.g.
+{
+"status": "ok",
+"errors": [],
+"fall_detection_status": [status]
+}
+
+[status] –
+• ‘active’ - Device currently has the Fall Detection feature turned on.
+• ‘inactive’ - Device currently has the Fall Detection feature turned off.
+• ‘pending’ - Device currently has the Fall Detection feature turned off.
+
+Device Turn On Fall Detection
+Request Fall Detection activation.
+For this feature to work, the device must be supported by the API. Speak with your
+account rep to confirm whether it will work.
+
+Brighton Device API v1.0.8
+
+August 2025
+
+8
+
+PUT – https://[subdomain].alertmessage.com/device/[id_type]/[id]/falldetection
+[id_type] – The type of identifier used to identify the device (‘imei’, ‘iccid’ or ‘uid’).
+[id] – The identifier of the device.
+cURL Example
+curl -X PUT
+https://[subdomain].alertmessage.com/device/[id_type]/[id]/fallde
+tection
+-H 'authorization: Bearer [access_token]' -H 'cache-control: nocache' -H 'accept: application/json'
+
+Response
+JSON response object.
+e.g.
+{
+"status": "ok",
+"errors": [],
+}
+
+Device Turn Off Fall Detection
+Request Fall Detection deactivation.
+For this feature to work, the device must be supported by the API. Speak with your
+account rep to confirm whether it will work.
+DELETE –
+https://[subdomain].alertmessage.com/device/[id_type]/[id]/falldetection
+[id_type] – The type of identifier used to identify the device (‘imei’, ‘iccid’ or ‘uid’).
+[id] – The identifier of the device.
+cURL Example
+curl -X DELETE
+https://[subdomain].alertmessage.com/device/[id_type]/[id]/fallde
+tection
+-H 'authorization: Bearer [access_token]' -H 'cache-control: nocache' -H 'accept: application/json'
+
+Response
+JSON response object.
+e.g.
+{
+"status": "ok",
+
+Brighton Device API v1.0.8
+
+August 2025
+
+9
+
+"errors": [],
+}
+
+SIM Read
+Get information about a SIM card. This feature is only available if Affiliated manages
+the SIM cards for your devices.
+GET – https://[subdomain].alertmessage.com/sim/[id_type]/[id]
+[id_type] – The type of identifier used to identify the device (‘imei’, ‘iccid’ or ‘uid’).
+[id] – The identifier of the device.
+cURL Example
+curl -X GET
+https://[subdomain].alertmessage.com/sim/[id_type]/[id]/
+-H 'authorization: Bearer [access_token]' -H 'cache-control: nocache' -H 'accept: application/json'
+
+Response
+JSON sim object
+status – the status of the response. Should be "ok". If there is an error, it will be
+"error"
+errors – an array of error messages
+sim – an object of sim information
+ICCID – the SIM’s ID
+uid – ID supplied by partner from their system
+cs – the Central Station number, aka the account number
+SIM_Status – The current status of the SIM card. (e.g. "Active", "Inactive",
+"Activation pending", "Deactivation pending")
+e.g.
+{
+"status": "ok",
+"errors": [],
+"sim": {
+"ICCID":"b2b2b2b2b2b2b2b2b2b2",
+"uid":"partnerID",
+"cs":"DEMO1000",
+"Caller_ID":"123123123",
+"IMEI":"c3c3c3c3c3c3c3c3c3c3",
+"SIM_Status":"Active"
+}
+}
+
+Brighton Device API v1.0.8
+
+August 2025
+
+10
+
+SIM Activate
+Request SIM Activation. This feature is only available if Affiliated manages the SIM
+cards for your devices.
+PUT – https://[subdomain].alertmessage.com/sim/[id_type]/[id]/activate
+[id_type] – The type of identifier used to identify the device (‘imei’, ‘iccid’ or ‘uid’).
+[id] – The identifier of the device.
+cURL Example
+curl -X PUT
+https://[subdomain].alertmessage.com/sim/[id_type]/[id]/activate
+-H 'authorization: Bearer [access_token]' -H 'cache-control: nocache' -H 'accept: application/json'
+
+Response
+JSON response object.
+e.g.
+{
+"status": "ok",
+"errors": [],
+}
+
+SIM Deactivate
+Request SIM Deactivation. This feature is only available if Affiliated manages the SIM
+cards for your devices.
+DELETE – https://[subdomain].alertmessage.com/sim/[id_type]/[id]/deactivate
+[id_type] – The type of identifier used to identify the device (‘imei’, ‘iccid’ or ‘uid’).
+[id] – The identifier of the device.
+cURL Example
+curl -X DELETE
+https://[subdomain].alertmessage.com/sim/[id_type]/[id]/deactivat
+e
+-H 'authorization: Bearer [access_token]' -H 'cache-control: nocache' -H 'accept: application/json'
+
+Response
+JSON response object.
+e.g.
+{
+"status": "ok",
+
+Brighton Device API v1.0.8
+
+August 2025
+
+11
+
+"errors": [],
+}
+
+Brighton Device API v1.0.8
+
+August 2025
+
+12
+
+Data Objects
+Device
+varchar(20) Device-specific identification number
+imei
+Custom_Reference_Field varchar(255) Partner defined field
+Device_Status
+enum
+Device account status, possible values:
+• Assigned
+• Unassigned
+ICCID
+varchar(60) SIM-specific identification number
+SIM_Status
+The current status of the SIM card, possible
+enum
+values:
+• Active
+• Active Pending
+• Inactive
+• Inactive Pending
+Caller_ID
+varchar(60) Phone number associated with SIM card
+Firmware_Version
+varchar(30) Current device firmware version
+Fall_Detection_Status
+enum
+Current fall detection status, possible values:
+• Active
+• Inactive
+• Pending
+Service_Company
+Service Company assigned to device
+int
+cs_no
+varchar(20) Central Station number aka account number
+Sim
+ICCID
+IMEI
+
+varchar(20)
+varchar(20)
+
+SIM-specific identification number
+Device-specific identification number
+
+uid
+
+varchar(20)
+
+ID supplied by partner from their system
+
+Caller_ID
+
+varchar(20)
+
+Phone number associated with SIM card
+
+cs
+
+varchar(20)
+
+Central Station number aka account number
+
+SIM_Status
+
+enum
+
+The current status of the SIM card, possible
+values:
+• Active
+• Active Pending
+• Inactive
+• Inactive Pending
+
+Brighton Device API v1.0.8
+
+August 2025
+
+13
+
+
